@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Proyectos\Aplicacion_Colegio\Aplicacion_Colegio\debug_ficha.py", line 14, in <module>
+    ctx = DashboardPsicologoService._get_ficha_estudiante_context(psicologo, psicologo.rbd_colegio, {})
+  File "C:\Proyectos\Aplicacion_Colegio\Aplicacion_Colegio\backend\apps\core\services\dashboard_nuevos_roles_service.py", line 386, in _get_ficha_estudiante_context
+    ).select_related('role').order_by('last_name', 'first_name')[:200]
+                             ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SuperUsuario\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\django\db\models\query.py", line 1727, in order_by
+    obj.query.add_ordering(*field_names)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\SuperUsuario\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\django\db\models\sql\query.py", line 2305, in add_ordering
+    self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SuperUsuario\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'last_name' into field. Choices are: anotaciones_convivencia, anotaciones_registradas, anuncios_creados, anuncios_leidos, apellido_materno, apellido_paterno, apoderados, asistencias, becas, becas_aprobadas, boletas, boletas_anuladas, calificaciones_actualizadas, calificaciones_registradas, cambios_estado_matricula, cambios_estado_realizados, ciclos_creados, ciclos_modificados, clases_impartidas, clases_matriculadas, comunicados_leidos, comunicados_publicados, conversaciones_como_p1, conversaciones_como_p2, derivaciones_externas, derivaciones_realizadas, detalles_informe_profesor, disponibilidades, dispositivos_moviles, email, entregas_tareas, entrevistas_orientacion, entrevistas_realizadas, estados_cuenta, eventos_auditoria, fecha_creacion, firmas_apoderado, firmas_invalidadas, firmas_realizadas, groups, id, informes_academicos, informes_generados, is_active, is_staff, is_superuser, justificativos_inasistencia, justificativos_presentados, justificativos_revisados, last_login, logentry, materiales_subidos, matriculas, matriculas_creadas, matriculas_mejoradas, matriculas_modificadas, mensajes_enviados, mensajes_recibidos, nombre, notas, notificaciones, pagos, pagos_procesados, password, perfil_apoderado, perfil_asesor_financiero, perfil_estudiante, perfil_profesor, planificaciones_aprobadas, planificaciones_enviadas, plantillas_creadas, preferencias_notificacion, prestamos_recursos, rbd_colegio, recursos_publicados, relaciones_apoderados, role, role_id, rut, tareas_creadas, tareas_revisadas, tickets_asignados, tickets_reportados, user_permissions

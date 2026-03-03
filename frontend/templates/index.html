@@ -1,0 +1,247 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Académico - Sistema de Gestión Educativa</title>
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle cx="20" cy="20" r="18" fill="#ff8a00"/>
+                    <path d="M20 10 L20 23 M13 16 L20 23 L27 16" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="13" y="25" width="14" height="6" rx="1" fill="white"/>
+                </svg>
+                <span class="logo-text">EDUHUB</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Características de la Plataforma</a></li>
+                <li><a href="#portal">Acceso al Portal</a></li>
+                <li><a href="#contact">Ayuda del Campus</a></li>
+            </ul>
+            <a href="{% url 'accounts:login' %}" class="btn-apply">Postular Ahora</a>
+        </div>
+    </nav>
+
+    <div class="welcome-container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <span class="badge-icon">⭐</span> INSCRIPCIONES ABIERTAS
+                    </div>
+                    <h1 class="hero-title">
+                        Potenciando la<br>
+                        <span class="hero-title-highlight">Próxima Generación.</span>
+                    </h1>
+                    <p class="hero-description">
+                        Un ecosistema completo para el aprendizaje moderno.<br>
+                        Acceso a información en tiempo real, comunicación directa y<br>
+                        planificación académica inteligente en un portal unificado.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="{% url 'accounts:login' %}" class="btn-hero-primary">
+                            Ingresar al Portal Estudiantil →
+                        </a>
+                        <a href="#features" class="btn-hero-secondary">
+                            Ver Características
+                        </a>
+                    </div>
+                    <div class="hero-notice">
+                        <div class="notice-badge">
+                            <span class="notice-icon">✓</span>
+                            <span>ADMISIONES ABIERTAS</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="hero-image-wrapper">
+                        <div class="image-placeholder">
+                            <svg width="100%" height="100%" viewBox="0 0 600 500">
+                                <defs>
+                                    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#d97706;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#92400e;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#heroGrad)" rx="20"/>
+                                <circle cx="200" cy="200" r="60" fill="rgba(255,255,255,0.1)"/>
+                                <circle cx="400" cy="250" r="80" fill="rgba(255,255,255,0.1)"/>
+                                <circle cx="300" cy="350" r="50" fill="rgba(255,255,255,0.1)"/>
+                                <text x="300" y="250" font-size="48" fill="rgba(255,255,255,0.3)" text-anchor="middle">👥</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="features-section">
+            <div class="features-container">
+                <h2 class="section-title">Construido para el Éxito Académico</h2>
+                <p class="section-subtitle">Explora las herramientas que hacen de Eduhub el corazón de nuestra comunidad de aprendizaje.</p>
+                
+                <div class="features-grid">
+
+                    <div class="feature-box">
+                        <div class="feature-icon orange-icon">
+                            <svg width="40" height="40" viewBox="0 0 40 40">
+                                <path d="M8 25 L8 12 L20 5 L32 12 L32 25" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <path d="M20 26 L20 32" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <h3>Calificaciones en Tiempo Real</h3>
+                        <p>Explora métricas de rendimiento semanales, retroalimentación<br>detallada de instructores e informes de progreso<br>instantáneos.</p>
+                    </div>
+
+                    <div class="feature-box">
+                        <div class="feature-icon red-icon">
+                            <svg width="40" height="40" viewBox="0 0 40 40">
+                                <rect x="8" y="12" width="24" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <path d="M8 15 L20 22 L32 15" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <circle cx="28" cy="18" r="4" fill="#ff6b6b"/>
+                            </svg>
+                        </div>
+                        <h3>Mensajería Directa</h3>
+                        <p>Envía conversaciones entre<br>estudiantes, padres y educadores con nuestro sistema de<br>respuesta rápida.</p>
+                    </div>
+
+                    <div class="feature-box">
+                        <div class="feature-icon yellow-icon">
+                            <svg width="40" height="40" viewBox="0 0 40 40">
+                                <rect x="8" y="8" width="24" height="24" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <path d="M8 15 L32 15 M17 8 L17 15 M23 8 L23 15" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <h3>Calendario de Eventos</h3>
+                        <p>Vista unificada de fechas límite, exámenes y eventos<br>escolares con sincronización automática a tu calendario<br>personal.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Portal Access Section -->
+        <section id="portal" class="portal-section">
+            <div class="portal-container">
+                <div class="portal-card portal-left">
+                    <div class="portal-icon">⚙️</div>
+                    <h2>Panel de Control</h2>
+                    <div class="portal-content">
+                        <div class="portal-item">
+                            <h3>CENTRO DE APRENDIZAJE</h3>
+                            <h4>Estudiantes y Familias</h4>
+                            <p>Navega nuestros recursos de aprendizaje, accede a<br>materiales de tareas y rastrea tu<br>trayectoria académica.</p>
+                            <a href="{% url 'accounts:login' %}?rol=estudiante" class="btn-portal">Acceder al Portal →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="portal-card portal-right">
+                    <div class="portal-header">
+                        <div class="portal-icon">👨‍🏫</div>
+                        <h3>TERMINAL DE PERSONAL</h3>
+                    </div>
+                    <h4>Personal Académico</h4>
+                    <p>Potencia tu enseñanza con planillas de<br>calificaciones, herramientas de planificación de lecciones<br>y comunicaciones con padres.</p>
+                    <a href="{% url 'accounts:login_staff' %}" class="btn-portal-staff">Inicio de Sesión Personal →</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Community Announcements -->
+        <section class="announcements-section">
+            <div class="announcements-container">
+                <div class="announcements-header">
+                    <div class="announcements-icon">📢</div>
+                    <h2>ANUNCIOS DE LA COMUNIDAD</h2>
+                    <a href="#" class="view-archives">Ver Archivo</a>
+                </div>
+
+                <div class="announcements-list">
+                    <div class="announcement-item">
+                        <div class="announcement-icon urgent">⚠️</div>
+                        <div class="announcement-content">
+                            <span class="announcement-badge">URGENTE</span>
+                            <h4>Nuevo Equipamiento de Laboratorio STEM Disponible para Reserva</h4>
+                            <p>Estamos emocionados de presentar los nuevos dispositivos IoT disponibles para estudiantes para proyectos del próximo semestre a través del portal tecnológico.</p>
+                        </div>
+                    </div>
+
+                    <div class="announcement-item">
+                        <div class="announcement-icon update">📋</div>
+                        <div class="announcement-content">
+                            <span class="announcement-badge">ACTUALIZACIÓN</span>
+                            <h4>Cafetería: Lanzamiento de Menú Completo de Temporada</h4>
+                            <p>A partir del lunes, nuestra cafetería abre con un menú completo de temporada. Consulta la publicación a continuación para la guía completa.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-links-grid">
+                <a href="#" class="quick-link-card">
+                    <div class="quick-link-icon">🍽️</div>
+                    <span>CAFETERÍA</span>
+                </a>
+                <a href="#" class="quick-link-card">
+                    <div class="quick-link-icon">📄</div>
+                    <span>CERTIFICADOS</span>
+                </a>
+                <a href="#" class="quick-link-card spirit-shop">
+                    <h3>Tienda Escolar</h3>
+                    <p>Productos para representar tu campus.<br>Muestra tu orgullo escolar, ropa,<br>calcomanías y más.</p>
+                    <button class="btn-shop">Comprar Ahora</button>
+                </a>
+            </div>
+        </section>
+
+
+        <footer class="footer">
+            <div class="footer-container">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <svg width="40" height="40" viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="18" fill="#ff8a00"/>
+                            <path d="M20 10 L20 23 M13 16 L20 23 L27 16" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="13" y="25" width="14" height="6" rx="1" fill="white"/>
+                        </svg>
+                        <span>EDUHUB</span>
+                    </div>
+                    <p>&copy; 2026 Eduhub • Sistema de Gestión Educativa</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#">Términos de Servicio</a>
+                    <a href="#">Política de Privacidad</a>
+                    <a href="#">Soporte</a>
+                    <a href="#">Documentación</a>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script>
+        // Smooth scroll para navegación
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

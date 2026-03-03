@@ -1,0 +1,159 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Académico - {{ rol|title }}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Design System -->
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <!-- Dashboard CSS -->
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <!-- Page-specific CSS -->
+    {% if pagina_actual == 'gestionar_ciclos' %}
+    <link rel="stylesheet" href="{% static 'css/admin_escolar/gestionar_ciclos.css' %}">
+    {% endif %}
+</head>
+
+<body class="pagina-{{ pagina_actual }}">
+    <div class="dashboard-container">
+
+        {# Incluir sidebar dinámicamente según rol #}
+        {% include sidebar_template %}
+
+        <main class="main-content">
+
+            <header class="top-header">
+                <div class="breadcrumbs">
+                    <span>{{ year }} | Portal Académico</span>
+                    <div class="school-info">
+                        <div class="school-badge">
+                            <span class="school-icon">🏫</span>
+                            <div class="school-details">
+                                <span class="school-name">{{ escuela_nombre }}</span>
+                                {% if rol in 'Administrador general,Administrador escolar' and escuela_rbd %}
+                                <span class="school-rbd">RBD: {{ escuela_rbd }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-info">
+                    {# Sistema de Notificaciones #}
+                    <div class="notificaciones-container">
+                        <button class="btn-notificaciones" id="btnNotificaciones">
+                            <span class="icon">🔔</span>
+                            <span class="badge-notificaciones" id="badgeNotificaciones" style="display: none;">0</span>
+                        </button>
+
+                        <div class="dropdown-notificaciones" id="dropdownNotificaciones" style="display: none;">
+                            <div class="notif-header">
+                                <h3>Notificaciones</h3>
+                                <button class="btn-marcar-todas" id="btnMarcarTodas" title="Marcar todas como leídas">
+                                    ✓
+                                </button>
+                            </div>
+                            <div class="notif-lista" id="listNotificaciones">
+                                <div class="notif-loading">Cargando...</div>
+                            </div>
+                            <div class="notif-footer">
+                                <a href="#" id="verTodasNotificaciones">Ver todas</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <span>{{ nombre_usuario }}</span>
+                    <div class="user-menu">
+                        <div class="user-avatar">
+                            {{ nombre_usuario|first|upper }}
+                        </div>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="dropdown-header">
+                                <strong>{{ nombre_usuario }}</strong>
+                                <span style="font-size: 0.85rem; color: #666;">{{ rol|title }}</span>
+                                <span style="font-size: 0.8rem; color: #999; margin-top: 5px;">
+                                    🏫 {{ escuela_nombre }}
+                                </span>
+                            </div>
+                            <hr style="margin: 10px 0; border: none; border-top: 1px solid #e0e0e0;">
+                            <a href="{% url 'dashboard' %}?pagina=perfil" class="dropdown-item">
+                                👤 Mi Perfil
+                            </a>
+                            {% if rol == 'Administrador general' %}
+                            <a href="{% url 'seleccionar_escuela' %}" class="dropdown-item">
+                                🏫 Cambiar Escuela
+                            </a>
+                            {% endif %}
+                            <form method="POST" action="{% url 'accounts:logout' %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item logout"
+                                    style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit;">
+                                    🚪 Cerrar Sesión
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="content-area">
+
+                {# Banner de Configuración Incompleta (solo para admin/admin_escolar) #}
+                {% if setup_incomplete %}
+                <div class="setup-alert-banner"
+                    style="background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%); color: white; padding: 1.2rem 1.8rem; border-radius: 16px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 16px rgba(255, 138, 0, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 1.2rem;">
+                        <div style="font-size: 2.5rem;">⚙️</div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 1.15rem; margin-bottom: 0.4rem;">
+                                Configuración Incompleta
+                            </div>
+                            <div style="font-size: 0.95rem; opacity: 0.95;">
+                                Tu colegio está configurado al {{ setup_progress }}%. Completa los pasos pendientes para
+                                desbloquear todas las funcionalidades.
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{% url 'setup_checklist' %}"
+                        style="background: white; color: #ff8a00; padding: 0.8rem 1.8rem; border-radius: 10px; text-decoration: none; font-weight: 600; white-space: nowrap; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                        Ver Checklist →
+                    </a>
+                </div>
+                {% endif %}
+
+                {# Mostrar mensajes de Django #}
+                {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {# Incluir contenido dinámicamente según página solicitada #}
+                {% if content_template %}
+                {% include content_template %}
+                {% else %}
+                {% block content %}{% endblock %}
+                {% endif %}
+
+            </section>
+        </main>
+    </div>
+
+    <!-- Bootstrap JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Dashboard scripts -->
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/notificaciones.js' %}"></script>
+</body>
+
+</html>

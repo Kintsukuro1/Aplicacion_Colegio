@@ -1,0 +1,694 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/estudiante/detalle_clase.css' %}">
+{% csrf_token %}
+
+
+
+<div class="content-wrapper">
+    {# Breadcrumb #}
+    <div class="breadcrumb" style="display: flex; align-items: center;">
+        <a href="{% url 'dashboard' %}?pagina=mis_clases">← Volver a Mis Clases</a>
+        {% if es_profesor and ver_como_alumno %}
+        <div style="margin-left: auto;">
+            <a href="{% url 'ver_detalle_clase' clase.id %}" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';">
+                <span style="font-size: 1.2rem;">👨‍🏫</span>
+                <span>Volver a Vista Profesor</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Header de la Clase #}
+    <div class="clase-header-banner" style="border-left: 5px solid {{ asignatura.color }}">
+        <div class="clase-header-content">
+            <div class="clase-icon-large" style="background-color: {{ asignatura.color }}20; color: {{ asignatura.color }}">
+                📖
+            </div>
+            <div class="clase-info">
+                <h1 class="clase-titulo">{{ asignatura.nombre }}</h1>
+                <div class="clase-meta">
+                    <span class="meta-item">
+                        <span class="icon">🎓</span>
+                        {{ curso.nombre }}
+                    </span>
+                    <span class="meta-item">
+                        <span class="icon">👨‍🏫</span>
+                        {{ profesor.get_full_name }}
+                    </span>
+                    {% if asignatura.codigo %}
+                    <span class="meta-item">
+                        <span class="icon">📋</span>
+                        {{ asignatura.codigo }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Tabs de Navegación #}
+    <div class="tabs-navigation">
+        <button class="tab-button active" data-tab="materiales">
+            <span class="icon">📎</span>
+            Materiales
+            <span class="badge">{{ total_materiales }}</span>
+        </button>
+        <button class="tab-button" data-tab="tareas">
+            <span class="icon">📝</span>
+            Tareas
+            <span class="badge">{{ total_tareas }}</span>
+        </button>
+        <button class="tab-button" data-tab="calendario">
+            <span class="icon">📅</span>
+            Calendario
+        </button>
+        <button class="tab-button" data-tab="anuncios">
+            <span class="icon">📢</span>
+            Anuncios
+            <span class="badge">{{ total_anuncios }}</span>
+        </button>
+        <button class="tab-button" data-tab="calificaciones">
+            <span class="icon">📊</span>
+            Libro de calificaciones
+        </button>
+    </div>
+
+    {# Contenido Principal #}
+    <div class="clase-content-layout">
+        
+        {# Columna Principal - Contenido #}
+        <div class="main-column">
+            
+            {# Tab: Materiales #}
+            <div class="tab-content active" id="tab-materiales">
+                <h2 class="section-title">📎 Materiales de Clase</h2>
+                
+                {% if materiales %}
+                <div class="materiales-lista">
+                    {% for material in materiales %}
+                    <div class="material-item">
+                        <div class="material-icon">{{ material.get_icono }}</div>
+                        <div class="material-info">
+                            <div class="material-titulo">{{ material.titulo }}</div>
+                            {% if material.descripcion %}
+                            <div class="material-descripcion">{{ material.descripcion }}</div>
+                            {% endif %}
+                            <div class="material-meta">
+                                <span>{{ material.get_tamanio_legible }}</span>
+                                <span>•</span>
+                                <span>{{ material.fecha_creacion|date:"d/m/Y" }}</span>
+                                <span>•</span>
+                                <span>{{ material.subido_por.get_full_name }}</span>
+                            </div>
+                        </div>
+                        <div class="material-acciones">
+                            <a href="{{ material.archivo.url }}" class="btn-icon" download title="Descargar">
+                                ⬇️
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📎</span>
+                    <p>No hay materiales disponibles</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Tareas #}
+            <div class="tab-content" id="tab-tareas">
+                <h2 class="section-title">📝 Tareas de la Clase</h2>
+                
+                {% if tareas %}
+                <div class="tareas-lista">
+                    {% for item in tareas %}
+                    <div class="tarea-card-inline">
+                        <div class="tarea-info">
+                            <h3 class="tarea-titulo">{{ item.tarea.titulo }}</h3>
+                            <div class="tarea-meta">
+                                <span>📅 {{ item.tarea.fecha_entrega|date:"d/m/Y H:i" }}</span>
+                                <span>•</span>
+                                {% if item.estado == 'corregida' %}
+                                <span class="badge badge-estado badge-corregida">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% if item.entrega.calificacion %}
+                                <span class="calificacion-grande">{{ item.entrega.calificacion }}</span>
+                                {% endif %}
+                                {% elif item.estado == 'entregada' %}
+                                <span class="badge badge-estado badge-entregada">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% elif item.estado == 'atrasada' %}
+                                <span class="badge badge-estado badge-atrasada">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% else %}
+                                <span class="badge badge-estado badge-pendiente">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="tarea-instrucciones-short">
+                                {{ item.tarea.instrucciones|truncatewords:20 }}
+                            </div>
+                        </div>
+                        <div class="tarea-acciones">
+                            <a href="{% url 'ver_tareas_estudiante' %}" class="btn-secondary-small">
+                                Ver detalle
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📝</span>
+                    <p>No hay tareas publicadas</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Calendario #}
+            <div class="tab-content" id="tab-calendario">
+                <h2 class="section-title">Calendario de Clases</h2>
+                <div class="horario-semanal">
+                    {% for dia, bloques in horarios_por_dia.items %}
+                    <div class="dia-card">
+                        <div class="dia-titulo">{{ dia }}</div>
+                        <div class="bloques-container">
+                            {% for bloque in bloques %}
+                            <div class="bloque-horario">
+                                <span class="bloque-num">Bloque {{ bloque.bloque_numero }}</span>
+                                <span class="bloque-time">{{ bloque.hora_inicio }} - {{ bloque.hora_fin }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state-small">
+                        <span class="icon">⏰</span>
+                        <p>No hay horarios asignados</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Tab: Anuncios #}
+            <div class="tab-content" id="tab-anuncios">
+                <h2 class="section-title">📢 Anuncios de la Clase</h2>
+                
+                <div id="anuncios-container">
+                    {% if anuncios %}
+                        {% for anuncio in anuncios %}
+                        <div class="anuncio-card {% if anuncio.anclado %}anclado{% endif %}" 
+                             data-anuncio-id="{{ anuncio.id_anuncio }}"
+                             onclick="marcarAnuncioLeido({{ anuncio.id_anuncio }})"
+                             style="cursor: pointer; transition: all 0.3s;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px;">
+                                    {% if anuncio.anclado %}📌{% endif %}
+                                    {{ anuncio.titulo }}
+                                </h3>
+                                <span style="color: #6b7280; font-size: 0.875rem;">
+                                    {{ anuncio.fecha_creacion|date:"d/m/Y H:i" }}
+                                </span>
+                            </div>
+                            <div style="color: #4b5563; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap;">{{ anuncio.contenido }}</div>
+                            {% if anuncio.archivo_adjunto %}
+                            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; display: inline-block;">
+                                <a href="{{ anuncio.archivo_adjunto.url }}" download onclick="event.stopPropagation();" style="color: #3b82f6; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                    📎 <span>Descargar archivo adjunto</span>
+                                </a>
+                            </div>
+                            {% endif %}
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.875rem;">
+                                Publicado por {{ anuncio.autor.get_full_name }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <span style="font-size: 4rem; display: block; margin-bottom: 16px;">📢</span>
+                        <p style="color: #6b7280; font-size: 1.1rem;">No hay anuncios publicados</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Tab: Calificaciones #}
+            <div class="tab-content" id="tab-calificaciones">
+                <h2 class="section-title">Libro de calificaciones</h2>
+                {% if evaluaciones_proximas %}
+                <div class="calificaciones-lista">
+                    {% for evaluacion in evaluaciones_proximas %}
+                    <div class="calificacion-item">
+                        <span class="cal-nombre">{{ evaluacion.titulo }}</span>
+                        <span class="cal-fecha">{{ evaluacion.fecha_evaluacion|date:"d/m/Y" }}</span>
+                        <span class="cal-nota">-</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📊</span>
+                    <p>No hay calificaciones registradas</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Mensajes #}
+            <div class="tab-content" id="tab-mensajes">
+                <h2 class="section-title">Mensajes</h2>
+                <div class="empty-state-small">
+                    <span class="icon">💬</span>
+                    <p>No hay mensajes</p>
+                </div>
+            </div>
+
+            {# Tab: Grupos #}
+            <div class="tab-content" id="tab-grupos">
+                <h2 class="section-title">Grupos</h2>
+                <div class="empty-state-small">
+                    <span class="icon">👥</span>
+                    <p>No hay grupos creados</p>
+                </div>
+            </div>
+
+        </div>
+
+        {# Columna Lateral - Información #}
+        <aside class="sidebar-column">
+            
+            {# Profesor del Curso #}
+            <div class="info-card">
+                <h3 class="info-card-title">Profesores del curso</h3>
+                <div class="profesor-info">
+                    <div class="profesor-avatar">
+                        <span class="avatar-icon">👨‍🏫</span>
+                    </div>
+                    <div class="profesor-datos">
+                        <div class="profesor-nombre">{{ profesor.get_full_name }}</div>
+                        <div class="profesor-rol">PROFESOR</div>
+                        <a href="mailto:{{ profesor.email }}" class="profesor-contacto">
+                            <span class="icon">📧</span>
+                            Enviar mensaje
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {# Detalles y Acciones #}
+            <div class="info-card">
+                <h3 class="info-card-title">Detalles y acciones</h3>
+                <div class="detalles-lista">
+                    <div class="detalle-item">
+                        <span class="detalle-icon">👥</span>
+                        <a href="#" class="detalle-link">Ver a los participantes de su curso</a>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-icon">📚</span>
+                        <a href="#" class="detalle-link">Ver herramientas del curso y de la institución</a>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Lista</span>
+                        <div class="detalle-info">
+                            <div class="detalle-desc">Total de estudiantes: {{ total_estudiantes }}</div>
+                            <a href="#" class="detalle-link-small">Ver a los participantes de su curso</a>
+                        </div>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Class Collaborate</span>
+                        <div class="detalle-info">
+                            <a href="#" class="detalle-link-button">Unirse a la sesión</a>
+                        </div>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Libros y herramientas</span>
+                        <div class="detalle-info">
+                            <a href="#" class="detalle-link-small">Ver herramientas del curso y de la institución</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+    </div>
+</div>
+
+<script>
+// Manejo de Tabs
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    // Función para activar una pestaña
+    function activateTab(tabName) {
+        // Quitar clase active de todos los botones y contenidos
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        
+        // Activar el botón correspondiente
+        const targetButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+        if (targetButton) {
+            targetButton.classList.add('active');
+        }
+        
+        // Mostrar el contenido correspondiente
+        const targetContent = document.getElementById('tab-' + tabName);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+    }
+
+    // Verificar si hay un ancla en la URL (ej: #anuncios)
+    const hash = window.location.hash.substring(1); // Quitar el #
+    if (hash) {
+        // Si hay un ancla, activar esa pestaña
+        activateTab(hash);
+    }
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            activateTab(tabName);
+        });
+    });
+});
+
+// Marcar anuncio como leído
+function marcarAnuncioLeido(anuncioId) {
+    const anuncioCard = document.querySelector(`.anuncio-card[data-anuncio-id="${anuncioId}"]`);
+    
+    // Si ya está leído, no hacer nada
+    if (anuncioCard.classList.contains('leido')) {
+        return;
+    }
+    
+    fetch(`/mensajes/anuncio/${anuncioId}/marcar-leido/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Marcar visualmente como leído
+            anuncioCard.classList.add('leido');
+            
+            // Quitar el badge "NUEVO"
+            const badgeNuevo = anuncioCard.querySelector('span[style*="background: #3b82f6"]');
+            if (badgeNuevo) {
+                badgeNuevo.remove();
+            }
+            
+            // Actualizar el contador en la pestaña
+            const badgeAnuncios = document.querySelector('.tab-button[data-tab="anuncios"] .badge');
+            if (badgeAnuncios) {
+                let count = parseInt(badgeAnuncios.textContent) || 0;
+                if (count > 0) {
+                    count--;
+                    badgeAnuncios.textContent = count;
+                    if (count === 0) {
+                        badgeAnuncios.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Mover el anuncio al final de la lista
+            setTimeout(() => {
+                const container = document.getElementById('anuncios-container');
+                container.appendChild(anuncioCard);
+                anuncioCard.style.opacity = '0.7';
+            }, 300);
+        }
+    })
+    .catch(error => {
+        console.error('Error al marcar anuncio como leído:', error);
+    });
+}
+</script>
+<!-- Modal para ver participantes -->
+<div id="modal-participantes" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>👥 Participantes de {{ asignatura.nombre }}</h3>
+            <button class="modal-close" onclick="cerrarModalParticipantes()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Profesor -->
+            <div class="participante-seccion">
+                <h4 style="color: #1e40af; margin-bottom: 12px; font-size: 14px; font-weight: 600; text-transform: uppercase;">
+                    👨‍🏫 Profesor
+                </h4>
+                <div class="participante-item">
+                    <div class="participante-info">
+                        <div class="participante-avatar">{{ profesor.nombre.0 }}{{ profesor.apellido_paterno.0 }}</div>
+                        <div class="participante-datos">
+                            <span class="participante-nombre">{{ profesor.get_full_name }}</span>
+                            <span class="participante-rol">Profesor(a) de {{ asignatura.nombre }}</span>
+                        </div>
+                    </div>
+                    {% url 'mensajeria:bandeja_mensajes' as mensajes_url %}
+                    <a href="{% if mensajes_url %}{{ mensajes_url }}?clase_id={{ clase.id }}&destinatario_id={{ profesor.id }}{% else %}{% url 'dashboard' %}{% endif %}" class="btn-mensaje" title="Enviar mensaje a {{ profesor.get_full_name }}">
+                        📧 Enviar mensaje
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estudiantes -->
+            <div class="participante-seccion" style="margin-top: 24px;">
+                <h4 style="color: #1e40af; margin-bottom: 12px; font-size: 14px; font-weight: 600; text-transform: uppercase;">
+                    👨‍🎓 Compañeros ({{ estudiantes_lista|length }})
+                </h4>
+                {% if estudiantes_lista %}
+                    <div class="participantes-lista">
+                        {% for estudiante in estudiantes_lista %}
+                        <div class="participante-item">
+                            <div class="participante-info">
+                                <div class="participante-avatar">{{ estudiante.nombre.0 }}{{ estudiante.apellido_paterno.0 }}</div>
+                                <div class="participante-datos">
+                                    <span class="participante-nombre">{{ estudiante.get_full_name }}</span>
+                                    <span class="participante-rol">Estudiante</span>
+                                </div>
+                            </div>
+                            <a href="{% if mensajes_url %}{{ mensajes_url }}?clase_id={{ clase.id }}&destinatario_id={{ estudiante.id }}{% else %}{% url 'dashboard' %}{% endif %}" class="btn-mensaje" title="Enviar mensaje a {{ estudiante.get_full_name }}">
+                                📧 Enviar mensaje
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="text-align: center; color: #64748b; padding: 20px;">No hay otros estudiantes en este curso.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Modal container */
+.modal-container {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Modal header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background-color: #f1f5f9;
+    color: #1e293b;
+}
+
+/* Modal body */
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Participante section */
+.participante-seccion {
+    margin-bottom: 16px;
+}
+
+/* Participante item */
+.participante-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+
+.participante-item:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+/* Participante info */
+.participante-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+/* Participante avatar */
+.participante-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Participante datos */
+.participante-datos {
+    display: flex;
+    flex-direction: column;
+}
+
+.participante-nombre {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+.participante-rol {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* Botón mensaje */
+.btn-mensaje {
+    background-color: #3b82f6;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-mensaje:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar personalizado para la lista de participantes */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+</style>
+
+<script>
+// Función para abrir el modal de participantes
+function abrirModalParticipantes() {
+    const modal = document.getElementById('modal-participantes');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Evitar scroll del body
+}
+
+// Función para cerrar el modal de participantes
+function cerrarModalParticipantes() {
+    const modal = document.getElementById('modal-participantes');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto'; // Restaurar scroll del body
+}
+
+// Cerrar modal al hacer clic en el overlay
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modal-participantes');
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            cerrarModalParticipantes();
+        }
+    });
+    
+    // Agregar evento a los enlaces de "Ver participantes"
+    const enlacesParticipantes = document.querySelectorAll('a[href="#"]:not(.tab-button)');
+    enlacesParticipantes.forEach(enlace => {
+        if (enlace.textContent.includes('Ver a los participantes')) {
+            enlace.addEventListener('click', function(e) {
+                e.preventDefault();
+                abrirModalParticipantes();
+            });
+        }
+    });
+});
+</script>

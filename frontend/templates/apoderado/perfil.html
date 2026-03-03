@@ -1,0 +1,55 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'css/apoderado/perfil.css' %}">
+
+<div class="content-wrapper">
+  <div class="profile-container">
+    <div class="profile-card">
+      <h2>👤 Mi Perfil</h2>
+
+      <div class="profile-grid">
+        <div class="profile-field">
+          <label>Nombre</label>
+          <p>{{ nombre_usuario }}</p>
+        </div>
+
+        <div class="profile-field">
+          <label>Email</label>
+          <p>{{ request.user.email|default:"-" }}</p>
+        </div>
+
+        <div class="profile-field">
+          <label>Rol</label>
+          <p>Apoderado</p>
+        </div>
+
+        <div class="profile-field">
+          <label>Escuela</label>
+          <p>{{ escuela_nombre }}</p>
+        </div>
+      </div>
+    </div>
+
+    {% if apoderado %}
+      <div class="profile-card">
+        <h2>📞 Contacto</h2>
+
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label>Teléfono</label>
+            <p>{{ apoderado.telefono|default:"-" }}</p>
+          </div>
+
+          <div class="profile-field">
+            <label>Dirección</label>
+            <p>{{ apoderado.direccion|default:"-" }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div>
+      <a class="btn btn-outline-primary" href="{% url 'dashboard' %}?pagina=inicio">Volver al inicio</a>
+    </div>
+  </div>
+</div>

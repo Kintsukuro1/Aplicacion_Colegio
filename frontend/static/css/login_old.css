@@ -1,0 +1,170 @@
+/* ================================
+   ESTILOS BASE (coherencia con index)
+==================================*/
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #444;
+}
+
+/* ================================
+   CONTENEDOR GENERAL
+==================================*/
+.login-container {
+    width: 100%;
+    max-width: 420px;
+}
+
+.login-card {
+    background: #fff;
+    padding: 40px 35px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    animation: fadeIn 0.6s ease;
+}
+
+/* ANIMACIÓN */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ================================
+   HEADER DEL LOGIN
+==================================*/
+.login-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.back-button a {
+    font-size: 14px;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-block;
+    margin-bottom: 15px;
+    transition: 0.2s;
+}
+
+.back-button a:hover {
+    opacity: 0.7;
+}
+
+.login-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.login-header p {
+    color: #666;
+    font-size: 15px;
+}
+
+/* ================================
+   FORMULARIO
+==================================*/
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1.5px solid #ddd;
+    font-size: 15px;
+    transition: 0.25s;
+}
+
+input:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.22);
+}
+
+/* ================================
+   OPCIONES DEL FORMULARIO
+==================================*/
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0 18px;
+}
+
+.remember-me input {
+    margin-right: 4px;
+}
+
+.forgot-pass {
+    font-size: 14px;
+    text-decoration: none;
+    color: #667eea;
+    transition: 0.2s;
+}
+
+.forgot-pass:hover {
+    text-decoration: underline;
+}
+
+/* ================================
+   BOTÓN LOGIN
+==================================*/
+.login-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(102,126,234,0.45);
+}
+
+/* ================================
+   MENSAJES DE ERROR
+==================================*/
+.error-message {
+    background: #ffe1e1;
+    color: #c0392b;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+/* ================================
+   FOOTER
+==================================*/
+.login-footer {
+    text-align: center;
+    margin-top: 15px;
+    color: #eee;
+    font-size: 14px;
+}

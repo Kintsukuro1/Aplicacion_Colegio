@@ -1,0 +1,296 @@
+{% load static %}
+
+<div class="calendario-container">
+    <div class="page-header">
+        <div class="header-content">
+            <a href="{% url 'dashboard' %}" class="back-link">← Volver al Dashboard</a>
+            <h1 class="page-title">📆 Calendario del Pupilo</h1>
+            <p class="page-subtitle">Próximas evaluaciones y tareas de tu pupilo</p>
+        </div>
+    </div>
+
+    <!-- Selector de pupilo -->
+    {% if estudiantes|length > 1 %}
+    <div class="student-selector">
+        <label for="selectEstudiante">Seleccionar pupilo:</label>
+        <select id="selectEstudiante" onchange="cambiarEstudiante(this.value)">
+            {% for est in estudiantes %}
+            <option value="{{ est.id }}" {% if estudiante_seleccionado and estudiante_seleccionado.id==est.id
+                %}selected{% endif %}>
+                {{ est.nombre }} {{ est.apellido_paterno }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
+    {% if estudiante_seleccionado %}
+    <div class="selected-student">
+        <span class="student-badge">👤 {{ estudiante_seleccionado.nombre }} {{ estudiante_seleccionado.apellido_paterno
+            }}</span>
+        <span class="event-count">{{ total_eventos }} eventos próximos</span>
+    </div>
+    {% endif %}
+
+    {% if eventos_calendario %}
+    <div class="events-timeline">
+        {% for evento in eventos_calendario %}
+        <div class="event-card event-{{ evento.tipo }}">
+            <div class="event-date-col">
+                <span class="event-day">{{ evento.fecha|date:"d" }}</span>
+                <span class="event-month">{{ evento.fecha|date:"M" }}</span>
+            </div>
+            <div class="event-divider" style="background-color: {{ evento.color }};"></div>
+            <div class="event-content">
+                <div class="event-header">
+                    <span class="event-icon">{{ evento.icono }}</span>
+                    <span class="event-tipo-badge" style="background: {{ evento.color }}20; color: {{ evento.color }};">
+                        {% if evento.tipo == 'evaluacion' %}Evaluación{% else %}Tarea{% endif %}
+                    </span>
+                </div>
+                <h4 class="event-title">{{ evento.titulo }}</h4>
+                <span class="event-asignatura">📚 {{ evento.asignatura }}</span>
+                <span class="event-fecha">📅 {{ evento.fecha|date:"l d \d\e F" }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📆</div>
+        <h3 class="empty-title">Sin eventos próximos</h3>
+        <p class="empty-text">
+            {% if not estudiante_seleccionado %}
+            No se encontraron pupilos vinculados a tu cuenta.
+            {% else %}
+            No hay evaluaciones ni tareas programadas en los próximos 30 días para {{ estudiante_seleccionado.nombre }}.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .calendario-container {
+        padding: 24px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 20px;
+    }
+
+    .header-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .back-link {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        color: #3b82f6;
+    }
+
+    .page-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .student-selector {
+        background: white;
+        padding: 14px 20px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .student-selector label {
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    .student-selector select {
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        flex: 1;
+    }
+
+    .selected-student {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .student-badge {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 1rem;
+    }
+
+    .event-count {
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .events-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .event-card {
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        display: flex;
+        align-items: stretch;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .event-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .event-date-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 16px 14px;
+        min-width: 60px;
+        background: #f8fafc;
+    }
+
+    .event-day {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1;
+    }
+
+    .event-month {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+
+    .event-divider {
+        width: 4px;
+        flex-shrink: 0;
+    }
+
+    .event-content {
+        padding: 14px 18px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .event-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .event-icon {
+        font-size: 1.1rem;
+    }
+
+    .event-tipo-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .event-title {
+        margin: 0;
+        font-size: 1rem;
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .event-asignatura {
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+
+    .event-fecha {
+        font-size: 0.75rem;
+        color: #9ca3af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 12px;
+    }
+
+    .empty-title {
+        font-size: 1.1rem;
+        color: #374151;
+        margin: 0 0 6px;
+    }
+
+    .empty-text {
+        color: #6b7280;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+        .calendario-container {
+            padding: 12px;
+        }
+
+        .event-date-col {
+            min-width: 50px;
+            padding: 12px 10px;
+        }
+    }
+</style>
+
+<script>
+    function cambiarEstudiante(estudianteId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('pagina', 'calendario_pupilo');
+        url.searchParams.set('estudiante_id', estudianteId);
+        window.location.href = url.toString();
+    }
+</script>

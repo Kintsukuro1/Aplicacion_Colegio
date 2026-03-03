@@ -1,0 +1,371 @@
+{% extends 'base_app.html' %}
+{% load static %}
+
+{% block page_title %}Inicio{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'academico/css/estudiante/inicio.css' %}">
+<style>
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .course-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .btn-continue-learning:hover {
+        background: #ff8a00 !important;
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 138, 0, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Banner de Bienvenida -->
+<div class="welcome-banner mb-xl" style="background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%); color: white; padding: 2rem 2.5rem; border-radius: 20px; box-shadow: 0 6px 20px rgba(255, 138, 0, 0.2); margin-bottom: 2rem;">
+    <div class="welcome-content">
+        <p style="font-size: 0.95rem; opacity: 0.9; margin-bottom: 0.5rem;">{{ now|date:"l, j \d\e F \d\e Y" }}</p>
+        <h1 style="font-size: 2.2rem; font-weight: 700; margin: 0.3rem 0 0.8rem 0;">
+            ¡Buen{% if now.hour < 12 %}os días{% elif now.hour < 19 %}as tardes{% else %}as noches{% endif %}, {{ nombre_usuario }}! 👋
+        </h1>
+        {% if tareas_pendientes and tareas_pendientes > 0 %}
+        <p style="font-size: 1rem; opacity: 0.95;">
+            Tienes <strong>{{ tareas_pendientes }}</strong> tarea{{ tareas_pendientes|pluralize }} pendiente{{ tareas_pendientes|pluralize }}. ¡Sigue así!
+        </p>
+        {% else %}
+        <p style="font-size: 1rem; opacity: 0.95;">
+            ¡Excelente! No tienes tareas pendientes 🎉
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-xl">
+    {% include 'common/components/stat_card.html' with icon="fas fa-book" title="Clases Hoy" value=clases_hoy|default:"0" color="primary" hoverable=True %}
+    
+    <div class="card card-compact transition hover:scale-105">
+        <div class="card-body">
+            <div class="flex items-center justify-between">
+                <div style="flex: 1;">
+                    <p class="text-sm text-secondary mb-xs">Tareas Pendientes</p>
+                    <h3 class="text-3xl font-bold">{{ tareas_pendientes|default:"0" }}</h3>
+                    {% if tareas_urgentes > 0 %}
+                    <p class="text-xs text-warning mt-xs">
+                        <i class="fas fa-exclamation-triangle"></i> {{ tareas_urgentes }} urgente{{ tareas_urgentes|pluralize }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="stat-icon" style="background-color: var(--color-warning);">
+                    <i class="fas fa-tasks"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card card-compact transition hover:scale-105">
+        <div class="card-body">
+            <div class="flex items-center justify-between">
+                <div style="flex: 1;">
+                    <p class="text-sm text-secondary mb-xs">Promedio General</p>
+                    <h3 class="text-3xl font-bold">{{ promedio_general|default:"0.0"|floatformat:1 }}</h3>
+                    <div class="progress mt-sm" style="height: 6px;">
+                        <div class="progress-bar progress-bar-success" style="width: {{ promedio_general|default:0|floatformat:0 }}0%"></div>
+                    </div>
+                </div>
+                <div class="stat-icon" style="background-color: var(--color-success);">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card card-compact transition hover:scale-105">
+        <div class="card-body">
+            <div class="flex items-center justify-between">
+                <div style="flex: 1;">
+                    <p class="text-sm text-secondary mb-xs">Asistencia</p>
+                    <h3 class="text-3xl font-bold">{{ porcentaje_asistencia|default:"100"|floatformat:0 }}%</h3>
+                    {% if porcentaje_asistencia >= 85 %}
+                    <p class="text-xs text-success mt-xs">
+                        <i class="fas fa-check-circle"></i> Excelente
+                    </p>
+                    {% elif porcentaje_asistencia >= 75 %}
+                    <p class="text-xs text-warning mt-xs">
+                        <i class="fas fa-exclamation-triangle"></i> Regular
+                    </p>
+                    {% else %}
+                    <p class="text-xs text-error mt-xs">
+                        <i class="fas fa-times-circle"></i> Baja
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="stat-icon" style="background-color: var(--color-secondary);">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CLASES ACTUALES -->
+{% if clases_activas %}
+<section class="mb-xl">
+    <div class="section-header">
+        <h2 style="margin: 0; color: #2c3e50; font-size: 1.5rem; font-weight: 600;">Clases Actuales</h2>
+        <a href="{% url 'dashboard' %}?pagina=mis_clases" style="color: #ff8a00; text-decoration: none; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease;">
+            Ver Todo →
+        </a>
+    </div>
+    
+    <div class="course-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; margin-top: 24px;">
+        {% for clase in clases_activas %}
+        <div class="course-card" style="background: white; padding: 20px; border-radius: 16px; border: 1px solid #e8e4df; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); transition: all 0.3s ease; cursor: pointer;">
+            <div class="course-img {{ clase.gradiente }}" style="height: 140px; border-radius: 12px; margin-bottom: 16px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <span style="background: white; color: #2c3e50; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    {{ clase.codigo }}
+                </span>
+            </div>
+            <h3 style="margin: 0 0 8px 0; color: #2c3e50; font-size: 1.1rem; font-weight: 600;">
+                {{ clase.asignatura }}
+            </h3>
+            <p style="color: #6c757d; font-size: 0.9rem; margin: 0 0 16px 0;">
+                {{ clase.profesor }}
+            </p>
+            <div style="margin: 12px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: #6c757d;">Progreso</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: #ff8a00;">{{ clase.progreso }}%</span>
+                </div>
+                <div class="progress" style="background: #e8e4df; height: 6px; border-radius: 6px; overflow: hidden;">
+                    <span style="display: block; height: 100%; background: #ff8a00; border-radius: 6px; transition: width 0.3s ease; width: {{ clase.progreso }}%;"></span>
+                </div>
+            </div>
+            <a href="{% url 'ver_detalle_clase' clase.id_clase %}" class="btn-continue-learning" style="width: 100%; display: inline-block; text-align: center; padding: 12px; border-radius: 10px; border: none; background: #f8f8f8; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; color: #555; text-decoration: none;">
+                Continuar Aprendiendo
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- SECCIÓN ACADÉMICA -->
+<div class="mb-xl">
+    <div class="section-header mb-md">
+        <div class="section-icon" style="background-color: var(--color-primary);">
+            <i class="fas fa-graduation-cap"></i>
+        </div>
+        <h2 class="text-2xl font-bold">Mis Estudios</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(102, 126, 234, 0.1); color: var(--color-primary);">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Mis Clases</h3>
+                <p class="text-sm text-secondary mb-md">Ver horarios y materiales de clase</p>
+                <a href="{% url 'dashboard' %}?pagina=mis_clases" class="btn btn-primary btn-sm">
+                    Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(246, 173, 85, 0.1); color: var(--color-warning);">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Tareas</h3>
+                <p class="text-sm text-secondary mb-md">Ver tareas pendientes y entregas</p>
+                <a href="{% url 'ver_tareas_estudiante' %}" class="btn btn-primary btn-sm">
+                    Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(72, 187, 120, 0.1); color: var(--color-success);">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Calendario</h3>
+                <p class="text-sm text-secondary mb-md">Organiza tus evaluaciones y tareas</p>
+                <a href="{% url 'calendario_tareas_estudiante' %}" class="btn btn-primary btn-sm">
+                    Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RENDIMIENTO -->
+<div class="mb-xl">
+    <div class="section-header mb-md">
+        <div class="section-icon" style="background-color: var(--color-success);">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <h2 class="text-2xl font-bold">Mi Rendimiento</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(102, 126, 234, 0.1); color: var(--color-primary);">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Evaluaciones</h3>
+                <p class="text-sm text-secondary mb-md">Consultar evaluaciones realizadas</p>
+                <a href="{% url 'dashboard' %}?pagina=mis_evaluaciones" class="btn btn-outline btn-sm">
+                    Ver <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(72, 187, 120, 0.1); color: var(--color-success);">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Calificaciones</h3>
+                <p class="text-sm text-secondary mb-md">Ver todas tus notas y promedios</p>
+                <a href="{% url 'dashboard' %}?pagina=mis_notas" class="btn btn-outline btn-sm">
+                    Ver <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(66, 153, 225, 0.1); color: var(--color-info);">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Asistencia</h3>
+                <p class="text-sm text-secondary mb-md">Revisar tu registro de asistencia</p>
+                <a href="{% url 'mi_asistencia_estudiante' %}" class="btn btn-outline btn-sm">
+                    Ver <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body text-center">
+                <div class="icon-circle" style="background-color: rgba(139, 92, 246, 0.1); color: var(--color-secondary);">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-xs">Estadísticas</h3>
+                <p class="text-sm text-secondary mb-md">Gráficos de tu progreso académico</p>
+                <a href="{% url 'dashboard_graficos' %}" class="btn btn-outline btn-sm">
+                    Ver <i class="fas fa-arrow-right ml-xs"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- COMUNICACIÓN -->
+<div class="mb-xl">
+    <div class="section-header mb-md">
+        <div class="section-icon" style="background-color: var(--color-secondary);">
+            <i class="fas fa-comments"></i>
+        </div>
+        <h2 class="text-2xl font-bold">Comunicación</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-md">
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center gap-md">
+                    <div class="stat-icon-large" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-error);">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 class="text-lg font-semibold mb-xs">Comunicados</h3>
+                        <p class="text-sm text-secondary mb-sm">Leer avisos y comunicados importantes</p>
+                        <a href="{% url 'comunicados:lista' %}" class="btn btn-primary btn-sm">
+                            Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center gap-md">
+                    <div class="stat-icon-large" style="background-color: rgba(102, 126, 234, 0.1); color: var(--color-primary);">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 class="text-lg font-semibold mb-xs">Mensajes</h3>
+                        <p class="text-sm text-secondary mb-sm">Comunicarte con profesores</p>
+                        {% url 'mensajeria:bandeja_mensajes' as mensajes_url %}
+                        <a href="{% if mensajes_url %}{{ mensajes_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="btn btn-primary btn-sm">
+                            Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MIS DOCUMENTOS -->
+<div class="mb-xl">
+    <div class="section-header mb-md">
+        <div class="section-icon" style="background-color: var(--color-warning);">
+            <i class="fas fa-folder-open"></i>
+        </div>
+        <h2 class="text-2xl font-bold">Mis Documentos</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-md">
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center gap-md">
+                    <div class="stat-icon-large" style="background-color: rgba(246, 173, 85, 0.1); color: var(--color-warning);">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 class="text-lg font-semibold mb-xs">Certificados</h3>
+                        <p class="text-sm text-secondary mb-sm">Descargar certificados oficiales</p>
+                        <a href="{% url 'dashboard' %}?pagina=mis_certificados" class="btn btn-outline btn-sm">
+                            Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card transition hover:shadow-lg">
+            <div class="card-body">
+                <div class="flex items-center gap-md">
+                    <div class="stat-icon-large" style="background-color: rgba(139, 92, 246, 0.1); color: var(--color-secondary);">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 class="text-lg font-semibold mb-xs">Mi Perfil</h3>
+                        <p class="text-sm text-secondary mb-sm">Ver y editar tu información</p>
+                        <a href="{% url 'dashboard' %}?pagina=perfil" class="btn btn-outline btn-sm">
+                            Acceder <i class="fas fa-arrow-right ml-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{% static 'academico/js/estudiante/inicio.js' %}"></script>
+{% endblock %}

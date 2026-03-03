@@ -1,0 +1,292 @@
+.content-wrapper {
+    padding: 2rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.estudiante-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.estudiante-selector label {
+    font-weight: 600;
+    color: #666;
+}
+
+.estudiante-selector select {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    min-width: 250px;
+}
+
+.estudiante-info-card {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.estudiante-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    border: 3px solid white;
+}
+
+.estudiante-datos {
+    flex: 1;
+}
+
+.estudiante-datos h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.75rem;
+}
+
+.estudiante-datos p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.promedio-general {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.promedio-general label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.9;
+}
+
+.promedio-general .promedio-valor {
+    font-size: 3rem;
+    font-weight: bold;
+}
+
+.asignaturas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.asignatura-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.asignatura-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.asignatura-header {
+    padding: 1.5rem;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.asignatura-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.asignatura-codigo {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.asignatura-promedio {
+    padding: 1.5rem;
+    background: #f9fafb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.asignatura-promedio label {
+    font-weight: 600;
+    color: #666;
+}
+
+.asignatura-promedio span {
+    font-size: 1.75rem;
+    font-weight: bold;
+}
+
+.promedio-valor-7,
+.promedio-valor-6 {
+    color: #22c55e;
+}
+
+.promedio-valor-5 {
+    color: #3b82f6;
+}
+
+.promedio-valor-4 {
+    color: #ef4444;
+}
+
+.evaluaciones-lista {
+    padding: 1.5rem;
+}
+
+.evaluaciones-lista h4 {
+    margin: 0 0 1rem 0;
+    color: #666;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.evaluacion-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    transition: background 0.2s;
+}
+
+.evaluacion-item:hover {
+    background: #f3f4f6;
+}
+
+.evaluacion-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.evaluacion-nombre {
+    font-weight: 600;
+    color: #333;
+}
+
+.evaluacion-fecha {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.evaluacion-nota {
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    background: white;
+    min-width: 60px;
+    text-align: center;
+}
+
+.nota-7,
+.nota-6 {
+    color: #22c55e;
+    border: 2px solid #22c55e;
+}
+
+.nota-5 {
+    color: #3b82f6;
+    border: 2px solid #3b82f6;
+}
+
+.nota-4,
+.nota-3 {
+    color: #ef4444;
+    border: 2px solid #ef4444;
+}
+
+.evaluacion-ponderacion {
+    font-size: 0.85rem;
+    color: #666;
+    background: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+}
+
+.sin-datos {
+    padding: 2rem;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+    font-size: 5rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: #666;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .estudiante-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .asignaturas-grid {
+        grid-template-columns: 1fr;
+    }
+}

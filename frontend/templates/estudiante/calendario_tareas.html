@@ -1,0 +1,438 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/estudiante/calendario_tareas.css' %}">
+
+<div class="academic-schedule-container">
+    {# Header Section #}
+    <div class="schedule-header">
+        {# Left: Title and Description #}
+        <div class="schedule-title-section">
+            <h1 class="schedule-title">Academic Schedule</h1>
+            <p class="schedule-subtitle">Manage your deadlines, exams, and holidays.</p>
+        </div>
+
+        {# Center: Month Navigation #}
+        <div class="month-navigation">
+            <button class="btn-nav-arrow" onclick="cambiarMes(-1)">
+                <span>‹</span>
+            </button>
+            <h2 class="current-month" id="currentMonth">May 2024</h2>
+            <button class="btn-nav-arrow" onclick="cambiarMes(1)">
+                <span>›</span>
+            </button>
+        </div>
+
+        {# Right: Action Buttons #}
+        <div class="schedule-actions">
+            <button class="btn-action btn-today" onclick="irAHoy()">Today</button>
+            <button class="btn-action btn-filter" onclick="toggleFilter()">
+                <span class="icon">⚙</span> Filter
+            </button>
+            <button class="btn-action btn-add-event" onclick="addEvent()">
+                <span class="icon">+</span> Add Event
+            </button>
+        </div>
+    </div>
+
+    {# Main Content Layout #}
+    <div class="schedule-layout">
+        {# Calendar Grid #}
+        <div class="calendar-section">
+            <div class="calendar-grid" id="calendarGrid">
+                {# Encabezados de días #}
+                <div class="calendar-header">SUN</div>
+                <div class="calendar-header">MON</div>
+                <div class="calendar-header">TUE</div>
+                <div class="calendar-header">WED</div>
+                <div class="calendar-header">THU</div>
+                <div class="calendar-header">FRI</div>
+                <div class="calendar-header">SAT</div>
+                
+                {# Los días se generarán dinámicamente con JavaScript #}
+            </div>
+
+            {# Export Button #}
+            <div class="calendar-footer">
+                <button class="btn-export" onclick="exportCalendar()">
+                    <span class="icon">⬇</span> Export Calendar
+                </button>
+            </div>
+        </div>
+
+        {# Right Sidebar: This Month's Events #}
+        <div class="events-sidebar">
+            <div class="sidebar-header-section">
+                <h3 class="sidebar-title">This Month's Events</h3>
+                <a href="#" class="view-all-link" onclick="viewAllEvents(event)">View All</a>
+            </div>
+            <div class="events-list" id="eventsList">
+                <div class="empty-state-sidebar">
+                    <span class="icon">📋</span>
+                    <p>No upcoming events</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Modal para ver detalle de evento/tarea #}
+<div id="modalTarea" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTareaTitle"></h2>
+            <span class="close" onclick="cerrarModalTarea()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalTareaBody">
+        </div>
+    </div>
+</div>
+
+<script>
+{% block page_scripts %}
+{{ tareas_json|json_script:"tareas-data" }}
+<script>
+// Datos de tareas (pasados desde Django)
+const tareasData = JSON.parse(document.getElementById('tareas-data').textContent);
+
+// Variables globales
+let currentDate = new Date();
+let currentYear = currentDate.getFullYear();
+let currentMonth = currentDate.getMonth();
+let selectedDay = null;
+
+// Si hay tareas, inicializar en el mes de la primera tarea
+if (tareasData && tareasData.length > 0) {
+    const primeraTarea = tareasData[0];
+    if (primeraTarea.fecha_entrega_date) {
+        const fechaParts = primeraTarea.fecha_entrega_date.split('-');
+        currentYear = parseInt(fechaParts[0]);
+        currentMonth = parseInt(fechaParts[1]) - 1; // 0-based
+        console.log('Initializing calendar to task month:', currentYear, currentMonth);
+    }
+}
+
+// Colores para diferentes tipos de eventos
+const eventColors = {
+    'pendiente': '#ffd93d',
+    'entregada': '#ff8a00', 
+    'corregida': '#51cf66',
+    'vencida': '#ff6b6b',
+    'evaluacion': '#667eea',
+    'estudio': '#ffd93d'
+};
+
+// Función para renderizar el calendario
+function renderCalendar(year, month) {
+    const calendarGrid = document.getElementById('calendarGrid');
+    
+    // Mantener encabezados
+    const headers = calendarGrid.querySelectorAll('.calendar-header');
+    calendarGrid.innerHTML = '';
+    headers.forEach(header => calendarGrid.appendChild(header));
+    
+    // Primer y último día del mes
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Domingo es el primer día (0=domingo, 6=sábado)
+    let startDay = firstDay.getDay();
+    
+    const totalDays = lastDay.getDate();
+    
+    // Actualizar título del mes
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
+    
+    // Días del mes anterior (espacios en blanco)
+    for (let i = 0; i < startDay; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day empty';
+        calendarGrid.appendChild(emptyDay);
+    }
+    
+    // Días del mes actual
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let day = 1; day <= totalDays; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        const currentDayDate = new Date(year, month, day);
+        currentDayDate.setHours(0, 0, 0, 0);
+        
+        // Marcar día actual
+        if (currentDayDate.getTime() === today.getTime()) {
+            dayElement.classList.add('today');
+        }
+        
+        // Número del día
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
+        
+        // Buscar tareas para este día
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const tareasDelDia = tareasData.filter(t => t.fecha_entrega_date === dateStr);
+        
+        if (tareasDelDia.length > 0) {
+            dayElement.classList.add('has-tasks');
+            
+            // Contenedor de tareas
+            const tasksContainer = document.createElement('div');
+            tasksContainer.className = 'day-events';
+            
+            // Mostrar hasta 2 tareas como pills
+            tareasDelDia.slice(0, 2).forEach((tarea, index) => {
+                const eventPill = document.createElement('div');
+                eventPill.className = `event-pill event-${tarea.estado}`;
+                eventPill.textContent = tarea.titulo.substring(0, 10) + '...';
+                eventPill.title = tarea.titulo;
+                eventPill.onclick = (e) => {
+                    e.stopPropagation();
+                    mostrarDetalleTarea(tarea);
+                };
+                tasksContainer.appendChild(eventPill);
+            });
+            
+            dayElement.appendChild(tasksContainer);
+        }
+        
+        // Click handler
+        dayElement.onclick = () => mostrarTareasDelDia(year, month, day, tareasDelDia);
+        
+        calendarGrid.appendChild(dayElement);
+    }
+    
+    // Actualizar sidebar de eventos del mes
+    renderMonthEvents(year, month);
+}
+
+// Función para renderizar eventos del mes en la sidebar
+function renderMonthEvents(year, month) {
+    const eventsList = document.getElementById('eventsList');
+    eventsList.innerHTML = '';
+    
+    // Filtrar tareas del mes actual
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const tareasDelMes = tareasData.filter(t => t.fecha_entrega_date && t.fecha_entrega_date.startsWith(monthStr));
+    
+    if (tareasDelMes.length === 0) {
+        eventsList.innerHTML = `
+            <div class="empty-state-sidebar">
+                <span class="icon">📋</span>
+                <p>No upcoming events</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Ordenar por fecha
+    tareasDelMes.sort((a, b) => {
+        return new Date(a.fecha_entrega_date) - new Date(b.fecha_entrega_date);
+    });
+    
+    // Mostrar eventos
+    tareasDelMes.forEach(tarea => {
+        const eventItem = document.createElement('div');
+        eventItem.className = 'event-item';
+        eventItem.onclick = () => mostrarDetalleTarea(tarea);
+        
+        const fecha = new Date(tarea.fecha_entrega_date + 'T00:00:00');
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        
+        eventItem.innerHTML = `
+            <div class="event-date-badge">
+                <div class="event-month">${monthNames[fecha.getMonth()]}</div>
+                <div class="event-day">${String(fecha.getDate()).padStart(2, '0')}</div>
+            </div>
+            <div class="event-details">
+                <div class="event-title">${tarea.titulo}</div>
+                <div class="event-meta">
+                    <span class="event-time">🕐 ${tarea.fecha_entrega_time}</span>
+                    <span class="event-location">📍 ${tarea.asignatura}</span>
+                </div>
+            </div>
+        `;
+        
+        eventsList.appendChild(eventItem);
+    });
+}
+
+// Función para mostrar tareas del día (al hacer click en un día)
+function mostrarTareasDelDia(year, month, day, tareas) {
+    if (tareas.length === 0) {
+        return;
+    }
+    
+    // Si hay solo una tarea, mostrar directamente
+    if (tareas.length === 1) {
+        mostrarDetalleTarea(tareas[0]);
+        return;
+    }
+    
+    // Si hay múltiples, podríamos mostrar un modal con la lista
+    mostrarDetalleTarea(tareas[0]);
+}
+
+// Función para obtener badge de estado
+function getEstadoBadge(estado, icono, texto) {
+    const badge = document.createElement('span');
+    badge.className = `badge-estado badge-${estado}`;
+    badge.textContent = `${icono} ${texto}`;
+    return badge;
+}
+
+// Función para mostrar detalle de tarea en modal
+function mostrarDetalleTarea(tarea) {
+    const modal = document.getElementById('modalTarea');
+    const title = document.getElementById('modalTareaTitle');
+    const body = document.getElementById('modalTareaBody');
+    
+    title.textContent = tarea.titulo || '';
+
+    const estadoBadge = getEstadoBadge(tarea.estado, tarea.icono_estado, tarea.texto_estado);
+
+    body.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.className = 'tarea-detalle';
+
+    const addRow = (label, valueElement) => {
+        const row = document.createElement('div');
+        row.className = 'detalle-row';
+        const strong = document.createElement('strong');
+        strong.textContent = label;
+        row.appendChild(strong);
+        row.appendChild(valueElement);
+        container.appendChild(row);
+    };
+
+    const asignaturaSpan = document.createElement('span');
+    asignaturaSpan.textContent = `📚 ${tarea.asignatura || ''}`;
+    addRow('Asignatura:', asignaturaSpan);
+
+    const fechaSpan = document.createElement('span');
+    fechaSpan.textContent = `📅 ${tarea.fecha_entrega_full || ''}`;
+    addRow('Fecha de entrega:', fechaSpan);
+
+    addRow('Estado:', estadoBadge);
+
+    if (tarea.calificacion) {
+        const calificacionSpan = document.createElement('span');
+        calificacionSpan.className = 'calificacion-grande';
+        calificacionSpan.textContent = tarea.calificacion;
+        addRow('Calificación:', calificacionSpan);
+    }
+
+    const instruccionesBlock = document.createElement('div');
+    instruccionesBlock.className = 'detalle-instrucciones';
+    const instruccionesLabel = document.createElement('strong');
+    instruccionesLabel.textContent = 'Instrucciones:';
+    const instruccionesP = document.createElement('p');
+    instruccionesP.textContent = tarea.instrucciones || '';
+    instruccionesBlock.appendChild(instruccionesLabel);
+    instruccionesBlock.appendChild(instruccionesP);
+    container.appendChild(instruccionesBlock);
+
+    if (tarea.archivo_instrucciones) {
+        const archivoRow = document.createElement('div');
+        archivoRow.className = 'detalle-row';
+        const archivoLabel = document.createElement('strong');
+        archivoLabel.textContent = 'Archivo adjunto:';
+        const link = document.createElement('a');
+        link.textContent = '📎 Descargar';
+        link.download = '';
+        const href = String(tarea.archivo_instrucciones);
+        if (!href.trim().toLowerCase().startsWith('javascript:')) {
+            link.href = href;
+        } else {
+            link.href = '#';
+        }
+        archivoRow.appendChild(archivoLabel);
+        archivoRow.appendChild(link);
+        container.appendChild(archivoRow);
+    }
+
+    const acciones = document.createElement('div');
+    acciones.className = 'detalle-acciones';
+    const verTodas = document.createElement('a');
+    verTodas.href = '/estudiante/tareas/';
+    verTodas.className = 'btn-primary';
+    verTodas.textContent = 'Ver todas las tareas';
+    acciones.appendChild(verTodas);
+    container.appendChild(acciones);
+
+    body.appendChild(container);
+    
+    modal.style.display = 'block';
+}
+
+// Funciones de navegación
+function cambiarMes(direction) {
+    currentMonth += direction;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    } else if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    renderCalendar(currentYear, currentMonth);
+}
+
+function irAHoy() {
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    renderCalendar(currentYear, currentMonth);
+}
+
+function toggleFilter() {
+    alert('Filter functionality coming soon!');
+}
+
+function addEvent() {
+    alert('Add event functionality - redirect to create task');
+    // window.location.href = '/estudiante/tareas/crear/';
+}
+
+function viewAllEvents(e) {
+    e.preventDefault();
+    window.location.href = '{% url "dashboard" %}?pagina=tareas';
+}
+
+function exportCalendar() {
+    alert('Export calendar functionality coming soon!');
+}
+
+function cerrarModalTarea() {
+    document.getElementById('modalTarea').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalTarea');
+    if (event.target == modal) {
+        cerrarModalTarea();
+    }
+}
+
+// Inicializar calendario al cargar
+window.addEventListener('load', function() {
+    // Pequeño delay para asegurar que todo esté renderizado
+    setTimeout(function() {
+        if (document.getElementById('calendarGrid')) {
+            renderCalendar(currentYear, currentMonth);
+        } else {
+            console.warn('Calendar grid not found, retrying...');
+            setTimeout(function() {
+                if (document.getElementById('calendarGrid')) {
+                    renderCalendar(currentYear, currentMonth);
+                }
+            }, 100);
+        }
+    }, 50);
+});
+</script>

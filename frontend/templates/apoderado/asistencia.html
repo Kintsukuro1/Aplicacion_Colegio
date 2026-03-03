@@ -1,0 +1,130 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'css/apoderado/asistencia.css' %}">
+
+<div class="content-wrapper">
+  <div class="page-header">
+    <div>
+      <h2>📅 Asistencia</h2>
+      <p class="text-muted">Últimos registros (90 días aprox.).</p>
+    </div>
+
+    {% if estudiantes %}
+      <form method="get" action="{% url 'dashboard' %}" class="estudiante-selector">
+        <input type="hidden" name="pagina" value="asistencia">
+        <label for="estudiante_id">Estudiante</label>
+        <select id="estudiante_id" name="estudiante_id" onchange="this.form.submit()">
+          <option value="">Seleccionar estudiante</option>
+          {% for e in estudiantes %}
+            <option value="{{ e.id }}" {% if estudiante_seleccionado and e.id == estudiante_seleccionado.id %}selected{% endif %}>
+              {% if e.get_full_name %}{{ e.get_full_name }}{% else %}{{ e.email|default:"-" }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if not estudiantes %}
+    <div class="empty-state">
+      <span class="empty-icon">👥</span>
+      <h3>No hay estudiantes asociados</h3>
+      <p>Cuando existan pupilos asociados, podrás ver su asistencia aquí.</p>
+    </div>
+  {% elif not estudiante_seleccionado %}
+    <div class="empty-state">
+      <span class="empty-icon">🎓</span>
+      <h3>Selecciona un estudiante</h3>
+      <p>Usa el selector superior para continuar.</p>
+    </div>
+  {% else %}
+
+    {% with nombre_est=estudiante_seleccionado.get_full_name|default:estudiante_seleccionado.email|default:"?" %}
+      <div class="estudiante-info-card">
+        <div class="estudiante-avatar">{{ nombre_est|first|upper }}</div>
+        <div class="estudiante-datos">
+          <h2>{{ nombre_est }}</h2>
+          <p>Resumen de asistencia</p>
+        </div>
+      </div>
+    {% endwith %}
+
+    <div class="asistencia-resumen">
+      <div class="resumen-card resumen-presente">
+        <div class="resumen-icon">✅</div>
+        <div class="resumen-content">
+          <label>Presentes</label>
+          <div class="resumen-valor">{{ estadisticas.presentes|default:0 }}</div>
+        </div>
+      </div>
+      <div class="resumen-card resumen-ausente">
+        <div class="resumen-icon">❌</div>
+        <div class="resumen-content">
+          <label>Ausentes</label>
+          <div class="resumen-valor">{{ estadisticas.ausentes|default:0 }}</div>
+        </div>
+      </div>
+      <div class="resumen-card resumen-tarde">
+        <div class="resumen-icon">⏰</div>
+        <div class="resumen-content">
+          <label>Atrasos</label>
+          <div class="resumen-valor">{{ estadisticas.atrasos|default:0 }}</div>
+        </div>
+      </div>
+      <div class="resumen-card resumen-justificada">
+        <div class="resumen-icon">📝</div>
+        <div class="resumen-content">
+          <label>Justificadas</label>
+          <div class="resumen-valor">{{ estadisticas.justificadas|default:0 }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="asistencia-por-fecha">
+      <h3>Registros</h3>
+
+      {% if registros_por_fecha %}
+        {% for fecha, registros in registros_por_fecha.items %}
+          <div class="fecha-grupo">
+            <div class="fecha-header">
+              <h4>{{ fecha|date:"d/m/Y" }}</h4>
+              <div class="fecha-resumen">{{ registros|length }} registro(s)</div>
+            </div>
+
+            <div class="registros-lista">
+              {% for r in registros %}
+                <div class="registro-item">
+                  <div class="registro-asignatura">
+                    <strong>
+                      {% if r.clase and r.clase.asignatura %}{{ r.clase.asignatura.nombre }}{% else %}-{% endif %}
+                    </strong>
+                    <div class="registro-profesor">
+                      {% if r.clase and r.clase.profesor %}
+                        {% if r.clase.profesor.get_full_name %}{{ r.clase.profesor.get_full_name }}{% else %}{{ r.clase.profesor.email|default:"-" }}{% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="estado-badge estado-{{ r.estado }}">{{ r.get_estado_display|default:r.estado }}</div>
+
+                  {% if r.observacion %}
+                    <div class="registro-observaciones">{{ r.observacion }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <span class="empty-icon">📭</span>
+          <h3>Sin registros</h3>
+          <p>No hay registros de asistencia para mostrar.</p>
+        </div>
+      {% endif %}
+    </div>
+
+  {% endif %}
+</div>

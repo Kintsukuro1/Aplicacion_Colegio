@@ -1,0 +1,155 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Profesor</title>
+    <link rel="stylesheet" href="{% static 'css/profesor/perfil' %}">
+</head>
+
+<div class="perfil-container">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>👨‍💼 Mi Perfil</h1>
+        <p>Administra tu información personal y configuración de cuenta</p>
+    </div>
+
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mensaje-box {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% endif %}">
+                <span style="font-size: 20px;">{% if message.tags == 'success' %}✔{% else %}✖{% endif %}</span>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-value">{{ estadisticas.total_asignaturas|default:0 }}</div>
+            <div class="stat-label">Asignaturas</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📝</div>
+            <div class="stat-value">{{ estadisticas.total_evaluaciones|default:0 }}</div>
+            <div class="stat-label">Evaluaciones Creadas</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">👨‍🎓</div>
+            <div class="stat-value">{{ estadisticas.total_estudiantes|default:0 }}</div>
+            <div class="stat-label">Estudiantes Evaluados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-value">{{ estadisticas.total_planificaciones|default:0 }}</div>
+            <div class="stat-label">Planificaciones</div>
+        </div>
+    </div>
+
+    <div class="perfil-grid">
+        <!-- Columna izquierda: Información personal -->
+        <div>
+            <!-- Avatar -->
+            <div class="avatar-section">
+                <div class="avatar">
+                    {{ user.nombre.0|upper }}{{ user.apellido_paterno.0|upper }}
+                </div>
+                <div class="avatar-name">{{ user.get_full_name }}</div>
+                <div class="avatar-role">Profesor</div>
+            </div>
+
+            <!-- Información no editable -->
+            <div class="card">
+                <h2>📋 Información Personal</h2>
+                
+                <div class="info-item">
+                    <span class="info-label">RUT</span>
+                    <span class="info-value">{{ user.rut }}</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Nombre Completo</span>
+                    <span class="info-value">{{ user.get_full_name }}</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Estado de Cuenta</span>
+                    <span class="info-value">
+                        {% if user.is_active %}
+                            <span class="badge badge-success">✔ Activo</span>
+                        {% else %}
+                            <span class="badge badge-warning">Inactivo</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna derecha: Edición de perfil y contraseña -->
+        <div>
+            <!-- Formulario de edición -->
+            <div class="card">
+                <h2>✏️ Editar Información de Contacto</h2>
+                <form method="POST" action="{% url 'actualizar_perfil_profesor' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" 
+                               value="{{ user.email }}" 
+                               required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="telefono">Teléfono</label>
+                        <input type="text" id="telefono" name="telefono" 
+                               value="{{ user.telefono|default:'' }}" 
+                               placeholder="+56 9 1234 5678">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="direccion">Dirección</label>
+                        <input type="text" id="direccion" name="direccion" 
+                               value="{{ user.direccion|default:'' }}" 
+                               placeholder="Calle, número, comuna">
+                    </div>
+                    
+                    <button type="submit" name="actualizar_perfil" class="btn btn-primary">
+                        💾 Guardar Cambios
+                    </button>
+                </form>
+            </div>
+
+            <!-- Formulario de cambio de contraseña -->
+            <div class="card" style="margin-top: 25px;">
+                <h2>🔒 Cambiar Contraseña</h2>
+                <form method="POST" action="{% url 'cambiar_password_profesor' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="password_actual">Contraseña Actual</label>
+                        <input type="password" id="password_actual" name="password_actual" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password_nueva">Nueva Contraseña</label>
+                        <input type="password" id="password_nueva" name="password_nueva" 
+                               minlength="6" required>
+                        <small>Mínimo 6 caracteres</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password_confirmar">Confirmar Nueva Contraseña</label>
+                        <input type="password" id="password_confirmar" name="password_confirmar" 
+                               minlength="6" required>
+                    </div>
+                    
+                    <button type="submit" name="cambiar_password" class="btn btn-primary">
+                        🔒 Cambiar Contraseña
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

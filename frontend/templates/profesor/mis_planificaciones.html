@@ -1,0 +1,152 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="page-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 style="margin: 0; color: #1e293b; font-size: 1.8rem;">📅 Mis Planificaciones</h1>
+            <p style="margin: 0; color: #64748b; font-size: 1rem;">Gestiona y envía tus planificaciones de clase</p>
+        </div>
+        <a href="#" class="btn-primary"
+            style="background: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s;">
+            <span style="font-size: 1.2rem;">+</span> Nueva Planificación
+        </a>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="estadisticas-planificaciones"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #94a3b8;">
+            <div style="font-size: 2rem;">📝</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #475569;">{{ stats.BORRADOR }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Borradores</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #3b82f6;">
+            <div style="font-size: 2rem;">📤</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #3b82f6;">{{ stats.ENVIADA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Enviadas</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #10b981;">
+            <div style="font-size: 2rem;">✅</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #10b981;">{{ stats.APROBADA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Aprobadas</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #ef4444;">
+            <div style="font-size: 2rem;">❌</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #ef4444;">{{ stats.RECHAZADA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Rechazadas</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Planificaciones -->
+    <div class="planificaciones-lista" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% for plan in planificaciones %}
+        <div class="plan-card"
+            style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid {% if plan.estado == 'APROBADA' %}#10b981{% elif plan.estado == 'RECHAZADA' %}#ef4444{% elif plan.estado == 'ENVIADA' %}#3b82f6{% else %}#94a3b8{% endif %}; transition: all 0.2s;">
+
+            <div class="plan-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="plan-badge"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
+                    {{ plan.clase }}
+                </div>
+                <span class="badge-estado" style="padding: 0.3rem 0.7rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+                    {% if plan.estado == 'APROBADA' %}background: #dcfce7; color: #16a34a;
+                    {% elif plan.estado == 'RECHAZADA' %}background: #fee2e2; color: #dc2626;
+                    {% elif plan.estado == 'ENVIADA' %}background: #dbeafe; color: #2563eb;
+                    {% else %}background: #f1f5f9; color: #475569;{% endif %}">
+                    {{ plan.estado_display }}
+                </span>
+            </div>
+
+            <h3 style="color: #1e3a8a; margin: 0 0 0.75rem 0; font-size: 1.25rem;">{{ plan.titulo }}</h3>
+
+            <div class="plan-meta"
+                style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; color: #64748b; font-size: 0.9rem;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">🗓️</span> Inicio: {{ plan.fecha_inicio|date:"d/m/Y" }}
+                </span>
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">🏁</span> Fin: {{ plan.fecha_fin|date:"d/m/Y" }}
+                </span>
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">⏳</span> Actualizado: {{ plan.fecha_actualizacion|date:"d/m/Y H:i" }}
+                </span>
+            </div>
+
+            {% if plan.observaciones and plan.estado == 'RECHAZADA' %}
+            <div class="observaciones-box"
+                style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <strong style="color: #dc2626; display: block; margin-bottom: 0.5rem;">📝 Observaciones del
+                    Coordinador:</strong>
+                <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">{{ plan.observaciones }}</p>
+            </div>
+            {% endif %}
+
+            <div class="plan-acciones"
+                style="display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                <a href="#" class="btn-ver"
+                    style="padding: 0.5rem 1rem; background: #f1f5f9; color: #475569; border-radius: 6px; font-weight: 500; text-decoration: none; transition: background 0.2s;">📄
+                    Ver Detalles</a>
+                {% if plan.estado == 'BORRADOR' or plan.estado == 'RECHAZADA' %}
+                <a href="#" class="btn-editar"
+                    style="padding: 0.5rem 1rem; background: #eff6ff; color: #2563eb; border-radius: 6px; font-weight: 500; text-decoration: none; transition: background 0.2s;">✏️
+                    Editar</a>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div
+            style="text-align: center; padding: 3rem; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; color: #64748b;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📂</div>
+            <p style="font-size: 1.1rem;">No tienes planificaciones registradas.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .plan-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary:hover {
+        background: #2563eb !important;
+    }
+
+    .btn-ver:hover {
+        background: #e2e8f0 !important;
+    }
+
+    .btn-editar:hover {
+        background: #dbeafe !important;
+    }
+
+    @media (max-width: 768px) {
+        .estadisticas-planificaciones {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'css/profesor/asistencia.css' %}">
+
+<div class="asistencia-container">
+    <!-- Encabezado y Estadísticas -->
+    <div class="header-section">
+        <div class="titulo-modulo">
+            <i class="fas fa-clipboard-check"></i>
+            <h2>Registro de Asistencia</h2>
+        </div>
+        
+        {% if stats_clase %}
+        <div class="estadisticas-grid">
+            <div class="stat-card blue">
+                <div class="stat-icon">
+                    ✅
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats_clase.presentes|default:0 }}</span>
+                    <span class="stat-label">Presentes (30 días)</span>
+                </div>
+            </div>
+            
+            <div class="stat-card red">
+                <div class="stat-icon">
+                    ❌
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats_clase.ausentes|default:0 }}</span>
+                    <span class="stat-label">Ausentes</span>
+                </div>
+            </div>
+            
+            <div class="stat-card orange">
+                <div class="stat-icon">
+                    ⏰
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats_clase.tardanzas|default:0 }}</span>
+                    <span class="stat-label">Tardanzas</span>
+                </div>
+            </div>
+            
+            <div class="stat-card green">
+                <div class="stat-icon">
+                    📊
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats_clase.porcentaje_asistencia|default:0 }}%</span>
+                    <span class="stat-label">% Asistencia</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filtros y Selección -->
+    <div class="filtros-section">
+        <form method="GET" action="{% url 'dashboard' %}" class="filtros-form" id="formFiltros">
+            <input type="hidden" name="pagina" value="asistencia">
+            
+            <div class="filtro-group">
+                <label for="clase_id">
+                    <i class="fas fa-chalkboard"></i> Clase
+                </label>
+                <select id="clase_id" name="clase_id" required onchange="document.getElementById('formFiltros').submit()">
+                    <option value="">-- Seleccione una clase --</option>
+                    {% for clase in clases %}
+                        <option value="{{ clase.id }}" {% if filtro_clase_id == clase.id|stringformat:"s" %}selected{% endif %}>
+                            {{ clase.curso.nombre }} - {{ clase.asignatura.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filtro-group">
+                <label for="fecha">
+                    <i class="fas fa-calendar"></i> Fecha
+                </label>
+                <input type="date" id="fecha" name="fecha" value="{{ filtro_fecha }}" max="{{ fecha_hoy }}" onchange="document.getElementById('formFiltros').submit()">
+            </div>
+            
+            <div class="filtro-actions">
+                <button type="submit" class="btn-filtrar">
+                    <i class="fas fa-filter"></i> Cargar
+                </button>
+                <a href="{% url 'dashboard' %}?pagina=asistencia" class="btn-limpiar">
+                    <i class="fas fa-times"></i> Limpiar
+                </a>
+            </div>
+        </form>
+        
+        {% if clase_seleccionada %}
+        <div class="info-clase">
+            <strong>📚 Clase:</strong> {{ clase_seleccionada.curso.nombre }} - {{ clase_seleccionada.asignatura.nombre }}
+            <span class="separador">|</span>
+            <strong>📅 Fecha:</strong> {{ filtro_fecha }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Tabla de Asistencia -->
+    {% if clase_seleccionada %}
+    <div class="tabla-container">
+        {% if estudiantes_con_asistencia %}
+        <form method="POST" action="{% url 'dashboard' %}?pagina=asistencia" id="formAsistencia">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="registrar_asistencia">
+            <input type="hidden" name="clase_id" value="{{ clase_seleccionada.id }}">
+            <input type="hidden" name="fecha" value="{{ filtro_fecha }}">
+            
+            <div class="acciones-rapidas">
+                <button type="button" class="btn-accion-rapida" onclick="marcarTodos('P')">
+                    <i class="fas fa-check-circle"></i> Marcar Todos Presentes
+                </button>
+                <button type="submit" class="btn-guardar-asistencia">
+                    <i class="fas fa-save"></i> Guardar Asistencia
+                </button>
+            </div>
+            
+            <table class="tabla-asistencia">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Estudiante</th>
+                        <th>RUT</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in estudiantes_con_asistencia %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <div class="estudiante-info">
+                                <div class="avatar-small">
+                                    {{ item.estudiante.nombre.0 }}{{ item.estudiante.apellido_paterno.0 }}
+                                </div>
+                                <span>{{ item.estudiante.get_full_name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ item.estudiante.rut|default:"—" }}</td>
+                        <td>
+                            <div class="estados-grupo">
+                                <label class="radio-estado estado-presente" title="Presente">
+                                    <input type="radio" name="estado_{{ item.estudiante.id }}" value="P" {% if item.estado == 'P' %}checked{% endif %}>
+                                    <span class="radio-custom">✅ P</span>
+                                </label>
+                                <label class="radio-estado estado-ausente" title="Ausente">
+                                    <input type="radio" name="estado_{{ item.estudiante.id }}" value="A" {% if item.estado == 'A' %}checked{% endif %}>
+                                    <span class="radio-custom">❌ A</span>
+                                </label>
+                                <label class="radio-estado estado-tardanza" title="Tardanza">
+                                    <input type="radio" name="estado_{{ item.estudiante.id }}" value="T" {% if item.estado == 'T' %}checked{% endif %}>
+                                    <span class="radio-custom">⏰ T</span>
+                                </label>
+                                <label class="radio-estado estado-justificada" title="Justificada">
+                                    <input type="radio" name="estado_{{ item.estudiante.id }}" value="J" {% if item.estado == 'J' %}checked{% endif %}>
+                                    <span class="radio-custom">📝 J</span>
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            {% if item.asistencia %}
+                                <button type="button" class="btn-observacion" onclick="abrirModalObservacion(this)"
+                                    data-asistencia-id="{{ item.asistencia.id_asistencia }}"
+                                    data-estudiante="{{ item.estudiante.get_full_name }}"
+                                    data-observaciones="{{ item.asistencia.observaciones|default:'' }}">
+                                    <i class="fas fa-comment"></i>
+                                    {% if item.asistencia.observaciones %}
+                                        <span class="badge-obs">1</span>
+                                    {% endif %}
+                                </button>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users-slash"></i>
+            <p>No hay estudiantes asignados a este curso</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-hand-pointer"></i>
+        <p>Seleccione una clase y fecha para registrar asistencia</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Observaciones -->
+<div id="modalObservacion" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Observaciones de Asistencia</h3>
+            <button class="btn-close-modal" onclick="cerrarModal('modalObservacion')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form method="POST" action="{% url 'dashboard' %}?pagina=asistencia">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="actualizar_observacion">
+            <input type="hidden" name="asistencia_id" id="observacionAsistenciaId">
+            
+            <p class="info-estudiante">
+                <strong>Estudiante:</strong> <span id="observacionEstudiante"></span>
+            </p>
+            
+            <div class="form-group">
+                <label for="observaciones">Observaciones</label>
+                <textarea id="observaciones" name="observaciones" rows="4" placeholder="Ingrese observaciones sobre la asistencia..."></textarea>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-cancelar" onclick="cerrarModal('modalObservacion')">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="submit" class="btn-guardar">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Marcar todos con el mismo estado
+function marcarTodos(estado) {
+    const radios = document.querySelectorAll(`input[type="radio"][value="${estado}"]`);
+    radios.forEach(radio => {
+        radio.checked = true;
+    });
+}
+
+// Abrir modal de observaciones
+function abrirModalObservacion(button) {
+    const data = button.dataset;
+    
+    document.getElementById('observacionAsistenciaId').value = data.asistenciaId;
+    document.getElementById('observacionEstudiante').textContent = data.estudiante;
+    document.getElementById('observaciones').value = data.observaciones;
+    document.getElementById('modalObservacion').style.display = 'flex';
+}
+
+// Cerrar modal
+function cerrarModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
+    });
+});
+
+// Cerrar modal con tecla ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+});
+
+// Confirmar antes de salir si hay cambios sin guardar
+let formModificado = false;
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        formModificado = true;
+    });
+});
+
+const formAsistencia = document.getElementById('formAsistencia');
+if (formAsistencia) {
+    formAsistencia.addEventListener('submit', () => {
+        formModificado = false;
+    });
+}
+
+window.addEventListener('beforeunload', (e) => {
+    if (formModificado) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>

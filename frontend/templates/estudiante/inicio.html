@@ -1,0 +1,302 @@
+<!-- DASHBOARD PRINCIPAL - ESTUDIANTE -->
+<div class="estudiante-dashboard">
+    <div class="welcome-banner">
+        <div class="welcome-content">
+            <h1>¡Bienvenido, {{ nombre_usuario }}! 👋</h1>
+            <p class="welcome-date">{{ year }} - Portal Académico</p>
+        </div>
+    </div>
+
+    <!-- Resumen Rápido -->
+    <div class="quick-stats">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">📚</div>
+            <div class="stat-info">
+                <h3>Clases Hoy</h3>
+                <p class="stat-number">{{ clases_hoy|default:"0" }}</p>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">📝</div>
+            <div class="stat-info">
+                <h3>Tareas Pendientes</h3>
+                <p class="stat-number">{{ tareas_pendientes|default:"0" }}</p>
+            </div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <h3>Promedio General</h3>
+                <p class="stat-number">{{ promedio_general|default:"0.0"|floatformat:1 }}</p>
+            </div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <h3>Asistencia</h3>
+                <p class="stat-number">{{ porcentaje_asistencia|default:"100"|floatformat:0 }}%</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN ACADÉMICA -->
+    <div class="section-header">
+        <h2><span class="section-icon">📚</span> Mis Estudios</h2>
+    </div>
+    <div class="modules-grid">
+        <div class="module-card">
+            <div class="module-icon">📖</div>
+            <h3>Mis Clases</h3>
+            <p>Ver horarios y materiales de clase</p>
+            <a href="{% url 'dashboard' %}?pagina=mis_clases" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">📋</div>
+            <h3>Tareas</h3>
+            <p>Ver tareas pendientes y entregas</p>
+            <a href="{% url 'ver_tareas_estudiante' %}" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">🗓️</div>
+            <h3>Calendario</h3>
+            <p>Organiza tus evaluaciones y tareas</p>
+            <a href="{% url 'calendario_tareas_estudiante' %}" class="btn-module">Acceder</a>
+        </div>
+    </div>
+
+    <!-- RENDIMIENTO -->
+    <div class="section-header">
+        <h2><span class="section-icon">📊</span> Mi Rendimiento</h2>
+    </div>
+    <div class="modules-grid">
+        <div class="module-card">
+            <div class="module-icon">📝</div>
+            <h3>Evaluaciones</h3>
+            <p>Consultar evaluaciones realizadas</p>
+            <a href="{% url 'dashboard' %}?pagina=mis_evaluaciones" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">🎯</div>
+            <h3>Calificaciones</h3>
+            <p>Ver todas tus notas y promedios</p>
+            <a href="{% url 'dashboard' %}?pagina=mis_notas" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">✅</div>
+            <h3>Asistencia</h3>
+            <p>Revisar tu registro de asistencia</p>
+            <a href="{% url 'mi_asistencia_estudiante' %}" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">📈</div>
+            <h3>Estadísticas</h3>
+            <p>Gráficos de tu progreso académico</p>
+            <a href="{% url 'dashboard_graficos' %}" class="btn-module">Acceder</a>
+        </div>
+    </div>
+
+    <!-- COMUNICACIÓN -->
+    <div class="section-header">
+        <h2><span class="section-icon">💬</span> Comunicación</h2>
+    </div>
+    <div class="modules-grid">
+        <div class="module-card">
+            <div class="module-icon">📢</div>
+            <h3>Comunicados</h3>
+            <p>Leer avisos y comunicados importantes</p>
+            <a href="{% url 'comunicados:lista' %}" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">✉️</div>
+            <h3>Mensajes</h3>
+            <p>Comunicarte con profesores</p>
+            {% url 'mensajeria:bandeja_mensajes' as mensajes_url %}
+            <a href="{% if mensajes_url %}{{ mensajes_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="btn-module">Acceder</a>
+        </div>
+    </div>
+
+    <!-- DOCUMENTOS -->
+    <div class="section-header">
+        <h2><span class="section-icon">📄</span> Mis Documentos</h2>
+    </div>
+    <div class="modules-grid">
+        <div class="module-card">
+            <div class="module-icon">🎓</div>
+            <h3>Certificados</h3>
+            <p>Descargar certificados oficiales</p>
+            <a href="{% url 'dashboard' %}?pagina=mis_certificados" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">👤</div>
+            <h3>Mi Perfil</h3>
+            <p>Ver y editar tu información</p>
+            <a href="{% url 'dashboard' %}?pagina=perfil" class="btn-module">Acceder</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.estudiante-dashboard {
+    padding: 20px;
+}
+
+.welcome-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 40px;
+    margin-bottom: 30px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.welcome-content h1 {
+    margin: 0 0 10px 0;
+    font-size: 2.2em;
+}
+
+.welcome-date {
+    font-size: 1.1em;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid;
+    transition: transform 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.stat-primary { border-color: #667eea; }
+.stat-warning { border-color: #f6ad55; }
+.stat-success { border-color: #48bb78; }
+.stat-info { border-color: #4299e1; }
+
+.stat-icon {
+    font-size: 2.5em;
+}
+
+.stat-info h3 {
+    margin: 0;
+    font-size: 0.9em;
+    color: #718096;
+}
+
+.stat-number {
+    margin: 5px 0 0 0;
+    font-size: 2em;
+    font-weight: bold;
+    color: #2d3748;
+}
+
+.section-header {
+    margin: 40px 0 20px 0;
+}
+
+.section-header h2 {
+    color: #2d3748;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-icon {
+    font-size: 1.2em;
+}
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.module-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+    border: 2px solid #e2e8f0;
+}
+
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    border-color: #667eea;
+}
+
+.module-icon {
+    font-size: 3em;
+    margin-bottom: 15px;
+}
+
+.module-card h3 {
+    color: #2d3748;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.module-card p {
+    color: #718096;
+    font-size: 0.9em;
+    margin-bottom: 20px;
+    min-height: 40px;
+}
+
+.btn-module {
+    display: inline-block;
+    padding: 10px 25px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-module:hover {
+    background: #5568d3;
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .quick-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .welcome-banner {
+        padding: 25px;
+    }
+    
+    .welcome-content h1 {
+        font-size: 1.6em;
+    }
+    
+    .estudiante-dashboard {
+        padding: 10px;
+    }
+}
+</style>

@@ -1,0 +1,127 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/psicologo_orientador/inicio.css' %}">
+
+<!-- DASHBOARD PRINCIPAL - PSICÓLOGO ORIENTADOR -->
+
+<div class="psicologo-dashboard">
+    <div class="welcome-banner">
+        <div class="welcome-content">
+            <h1>¡Bienvenido/a, {{ nombre_usuario }}! 🧠</h1>
+            <p class="welcome-date">{{ year }} - Orientación y Bienestar</p>
+        </div>
+    </div>
+
+    <div class="quick-stats">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">🗣️</div>
+            <div class="stat-info">
+                <h3>Entrevistas (Semana)</h3>
+                <p class="stat-number">{{ entrevistas_semana|default:"0" }}</p>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">🔔</div>
+            <div class="stat-info">
+                <h3>Seguimientos Pendientes</h3>
+                <p class="stat-number">{{ seguimientos_pendientes|default:"0" }}</p>
+            </div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-icon">🔄</div>
+            <div class="stat-info">
+                <h3>Derivaciones Activas</h3>
+                <p class="stat-number">{{ derivaciones_activas|default:"0" }}</p>
+            </div>
+        </div>
+        <div class="stat-card {% if total_alertas %}stat-danger{% else %}stat-success{% endif %}">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+                <h3>Alertas Tempranas</h3>
+                <p class="stat-number">{{ total_alertas|default:"0" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas Tempranas -->
+    {% if alumnos_inasistencia or alumnos_anotaciones %}
+    <div class="section-header">
+        <h2><span class="section-icon">🚨</span> Alertas Tempranas (último mes)</h2>
+    </div>
+
+    {% if alumnos_inasistencia %}
+    <div class="module-card" style="margin-bottom: 1rem;">
+        <div class="module-card-header">
+            <h3>📉 Alta Inasistencia (≥3 ausencias)</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Inasistencias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alumno in alumnos_inasistencia %}
+                    <tr>
+                        <td>{{ alumno.estudiante__last_name }}, {{ alumno.estudiante__first_name }}</td>
+                        <td><span class="badge badge-danger">{{ alumno.ausencias }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if alumnos_anotaciones %}
+    <div class="module-card" style="margin-bottom: 1rem;">
+        <div class="module-card-header">
+            <h3>📝 Anotaciones Negativas Recurrentes (≥2)</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Anotaciones Negativas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alumno in alumnos_anotaciones %}
+                    <tr>
+                        <td>{{ alumno.estudiante__last_name }}, {{ alumno.estudiante__first_name }}</td>
+                        <td><span class="badge badge-warning">{{ alumno.negativas }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="section-header">
+        <h2><span class="section-icon">📋</span> Módulos</h2>
+    </div>
+    <div class="modules-grid">
+        <div class="module-card">
+            <div class="module-icon">🗣️</div>
+            <h3>Entrevistas</h3>
+            <p>Registrar y consultar entrevistas de orientación</p>
+            <a href="{% url 'dashboard' %}?pagina=entrevistas" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">🔄</div>
+            <h3>Derivaciones</h3>
+            <p>Gestionar derivaciones a profesionales externos</p>
+            <a href="{% url 'dashboard' %}?pagina=derivaciones" class="btn-module">Acceder</a>
+        </div>
+        <div class="module-card">
+            <div class="module-icon">📋</div>
+            <h3>Ficha Estudiante</h3>
+            <p>Vista integral 360° con notas, asistencia, anotaciones y entrevistas</p>
+            <a href="{% url 'dashboard' %}?pagina=ficha_estudiante" class="btn-module">Acceder</a>
+        </div>
+    </div>
+</div>
