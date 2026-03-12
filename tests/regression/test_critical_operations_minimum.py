@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from backend.apps.academico.services.attendance_service import AttendanceService
-from backend.apps.accounts.models import Role, User
+from backend.apps.accounts.models import PerfilProfesor, Role, User
 from backend.apps.core.services.ciclo_academico_service import CicloAcademicoService
 from backend.apps.core.services.clase_service import ClaseService
 from backend.apps.core.services.curso_service import CursoService
@@ -103,6 +103,8 @@ def _create_ready_school_context(*, rbd: int, suffix: str):
         rbd=colegio.rbd,
         is_active=True,
     )
+    # PerfilProfesor is required by integrity check (_count_broken_relationships)
+    PerfilProfesor.objects.create(user=profesor)
 
     estudiante = _create_user(
         email=f'estudiante_{suffix.lower()}@test.cl',
