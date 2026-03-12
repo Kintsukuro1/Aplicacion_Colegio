@@ -8,7 +8,16 @@ Compatible con estructura backend/apps/
 from pathlib import Path
 import os
 import sys
-from distutils.util import strtobool
+try:
+    from distutils.util import strtobool
+except ModuleNotFoundError:  # Python 3.12+ eliminó distutils
+    def strtobool(value: str) -> int:
+        normalized = str(value).strip().lower()
+        if normalized in ('y', 'yes', 't', 'true', 'on', '1'):
+            return 1
+        if normalized in ('n', 'no', 'f', 'false', 'off', '0'):
+            return 0
+        raise ValueError(f'Invalid truth value: {value!r}')
 from decouple import config
 
 
