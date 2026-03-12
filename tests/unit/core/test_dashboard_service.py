@@ -176,18 +176,18 @@ class TestDashboardServiceDelegatedMethods:
         mock_ctx.assert_called_once_with(request.GET, user, 'inicio', 555)
 
     @pytest.mark.parametrize(
-        'method_name,service_target,action',
+        'method_name,service_target,action,fail_on_integrity',
         [
-            ('get_gestionar_estudiantes_context', 'get_gestionar_estudiantes_context', 'DASHBOARD_GET_GESTIONAR_ESTUDIANTES_CONTEXT'),
-            ('get_gestionar_cursos_context', 'get_gestionar_cursos_context', 'DASHBOARD_GET_GESTIONAR_CURSOS_CONTEXT'),
-            ('get_gestionar_profesores_context', 'get_gestionar_profesores_context', 'DASHBOARD_GET_GESTIONAR_PROFESORES_CONTEXT'),
-            ('get_gestionar_asignaturas_context', 'get_gestionar_asignaturas_context', 'DASHBOARD_GET_GESTIONAR_ASIGNATURAS_CONTEXT'),
-            ('get_admin_notas_context', 'get_admin_notas_context', 'DASHBOARD_GET_ADMIN_NOTAS_CONTEXT'),
-            ('get_admin_libro_clases_context', 'get_admin_libro_clases_context', 'DASHBOARD_GET_ADMIN_LIBRO_CLASES_CONTEXT'),
-            ('get_admin_reportes_context', 'get_admin_reportes_context', 'DASHBOARD_GET_ADMIN_REPORTES_CONTEXT'),
+            ('get_gestionar_estudiantes_context', 'get_gestionar_estudiantes_context', 'DASHBOARD_GET_GESTIONAR_ESTUDIANTES_CONTEXT', False),
+            ('get_gestionar_cursos_context', 'get_gestionar_cursos_context', 'DASHBOARD_GET_GESTIONAR_CURSOS_CONTEXT', False),
+            ('get_gestionar_profesores_context', 'get_gestionar_profesores_context', 'DASHBOARD_GET_GESTIONAR_PROFESORES_CONTEXT', False),
+            ('get_gestionar_asignaturas_context', 'get_gestionar_asignaturas_context', 'DASHBOARD_GET_GESTIONAR_ASIGNATURAS_CONTEXT', False),
+            ('get_admin_notas_context', 'get_admin_notas_context', 'DASHBOARD_GET_ADMIN_NOTAS_CONTEXT', True),
+            ('get_admin_libro_clases_context', 'get_admin_libro_clases_context', 'DASHBOARD_GET_ADMIN_LIBRO_CLASES_CONTEXT', True),
+            ('get_admin_reportes_context', 'get_admin_reportes_context', 'DASHBOARD_GET_ADMIN_REPORTES_CONTEXT', True),
         ],
     )
-    def test_admin_request_delegates(self, method_name, service_target, action):
+    def test_admin_request_delegates(self, method_name, service_target, action, fail_on_integrity):
         user = Mock()
         request = Mock(GET={'q': '1'})
         with patch.object(DashboardService, '_validate_school_integrity') as mock_integrity, patch(
@@ -197,8 +197,12 @@ class TestDashboardServiceDelegatedMethods:
             result = getattr(DashboardService, method_name)(user, request, 999)
 
         assert result == {'ok': method_name}
-        mock_integrity.assert_called_once_with(999, action)
-        mock_admin.assert_called_once_with(user, request.GET, 999)
+        if not fail_on_integrity:
+            mock_integrity.assert_called_once_with(999, action, fail_on_integrity=False)
+            mock_admin.assert_called_once_with(user, request.GET, 999, fail_on_integrity=False)
+        else:
+            mock_integrity.assert_called_once_with(999, action)
+            mock_admin.assert_called_once_with(user, request.GET, 999)
 
     def test_get_gestionar_ciclos_context_delegates(self):
         user = Mock()
@@ -209,7 +213,7 @@ class TestDashboardServiceDelegatedMethods:
         ) as mock_admin:
             result = DashboardService.get_gestionar_ciclos_context(user, request_get_params, 999)
         assert result == {'ok': 'ciclos'}
-        mock_integrity.assert_called_once_with(999, 'DASHBOARD_GET_GESTIONAR_CICLOS_CONTEXT')
+        mock_integrity.assert_called_once_with(999, 'DASHBOARD_GET_GESTIONAR_CICLOS_CONTEXT', fail_on_integrity=False)
         mock_admin.assert_called_once_with(user, request_get_params, 999)
 
 

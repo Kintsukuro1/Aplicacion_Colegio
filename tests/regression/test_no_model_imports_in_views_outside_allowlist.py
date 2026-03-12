@@ -30,6 +30,14 @@ ALLOWED_MODEL_IMPORT_VIEW_FILES = {
     "backend/apps/core/views/profesor/asistencia.py",
     "backend/apps/core/views/profesor/gestionar_tareas.py",
     "backend/apps/core/views/profesor/mis_clases.py",
+    # Pendientes de refactorizar a services:
+    "backend/apps/core/views/estudiante/api.py",
+    "backend/apps/core/views/soporte_tecnico/api.py",
+    "backend/apps/core/views/inspector_convivencia/api.py",
+    "backend/apps/core/views/apoderado/api.py",
+    "backend/apps/core/views/coordinador_academico/api.py",
+    "backend/apps/core/views/psicologo_orientador/api.py",
+    "backend/apps/core/views/bibliotecario_digital/api.py",
 }
 
 

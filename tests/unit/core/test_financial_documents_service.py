@@ -52,11 +52,9 @@ def test_create_boleta_creates_record_and_audit(mock_boleta, mock_auditoria):
     result = FinancialDocumentsService.create_boleta(
         user=user,
         estudiante=estudiante,
-        cuota=cuota,
+        pago=cuota,
         numero_boleta='B-100',
         monto_total='120000',
-        fecha_emision='2026-04-01',
-        estado='emitida',
         detalle='Detalle',
         ip_address='127.0.0.1',
         user_agent='pytest',

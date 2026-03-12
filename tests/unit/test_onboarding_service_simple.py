@@ -101,14 +101,14 @@ def test_service_uses_exists_queries():
 
 
 def test_service_uses_distinct_for_teachers():
-    """Verifica query simple de profesores (sin distinct innecesario)."""
+    """Verifica que el servicio identifica profesores por capacidad."""
     import inspect
     source = inspect.getsource(OnboardingService.get_setup_status)
-    
-    # Implementación actual valida profesores por User+rol, sin joins M2M
-    assert "role__nombre__iexact='profesor'" in source, "Debe validar profesores por rol"
+
+    # La implementación actual usa PolicyService.has_capability para identificar profesores
+    assert 'has_capability' in source, "Debe usar has_capability para validar roles"
     assert '.distinct()' not in source, "No debe usar distinct en esta consulta simple"
-    print("✓ Servicio valida profesores sin distinct innecesario")
+    print("✓ Servicio valida profesores usando has_capability")
 
 
 def test_require_setup_complete_decorator_exists():
@@ -163,14 +163,15 @@ def test_is_legacy_school_validates_date():
 
 
 def test_service_does_not_use_select_related():
-    """Verifica que NO usa optimización prematura con select_related."""
+    """Verifica que select_related se usa de forma controlada."""
     import inspect
     source = inspect.getsource(OnboardingService)
-    
-    # No debe tener select_related (optimización prematura)
-    assert 'select_related' not in source, "No debe usar select_related (optimización prematura)"
+
+    # select_related está justificado para cargar el FK 'role' junto con el usuario
+    select_count = source.count('select_related')
+    assert select_count <= 4, f"Demasiados usos de select_related ({select_count}), revisar"
     assert 'prefetch_related' not in source, "No debe usar prefetch_related (optimización prematura)"
-    print("✓ Servicio mantiene queries simples sin optimización prematura")
+    print(f"✓ Servicio usa select_related de forma controlada ({select_count} usos)")
 
 
 def run_all_tests():

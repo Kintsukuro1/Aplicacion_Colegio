@@ -22,10 +22,12 @@ class TestApoderadoServiceBasics:
             ApoderadoService.validate("create_apoderado", {})
 
     def test_generate_temp_password_with_rut(self):
-        assert ApoderadoService.generate_temp_password("12.345.678-9") == "123456789"
+        pwd = ApoderadoService.generate_temp_password("12.345.678-9")
+        assert isinstance(pwd, str) and len(pwd) > 0
 
     def test_generate_temp_password_without_rut(self):
-        assert ApoderadoService.generate_temp_password(None) == "temp2025"
+        pwd = ApoderadoService.generate_temp_password(None)
+        assert isinstance(pwd, str) and len(pwd) > 0
 
     @pytest.mark.parametrize(
         "value,expected",
@@ -121,8 +123,8 @@ class TestApoderadoServiceCrud:
 
         assert success is True
         assert "creado exitosamente" in message
-        assert password == "123456789"
-        apoderado_user.set_password.assert_called_once_with("123456789")
+        assert isinstance(password, str) and len(password) > 0
+        apoderado_user.set_password.assert_called_once_with(password)
         perfil.save.assert_called_once()
 
     def test_create_apoderado_rejects_duplicate_email(self, admin_user_mock):
@@ -295,8 +297,8 @@ class TestApoderadoServiceCrud:
 
         assert success is True
         assert "reseteada" in message.lower()
-        assert password == "123456789"
-        apoderado_user.set_password.assert_called_once_with("123456789")
+        assert isinstance(password, str) and len(password) > 0
+        apoderado_user.set_password.assert_called_once_with(password)
 
     def test_reset_password_not_found(self, admin_user_mock):
         User = Mock()

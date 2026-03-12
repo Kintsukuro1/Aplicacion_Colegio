@@ -10,7 +10,7 @@
             {% url 'matriculas:mi_estado_cuenta' as estado_cuenta_url %}
             {% url 'matriculas:mis_pagos' as mis_pagos_url %}
             {% if 'inicio' in paginas_habilitadas %}
-            <li {% if pagina_actual=='inicio' %}class="active" {% endif %}>
+            <li {% if pagina_actual == 'inicio' %}class="active" {% endif %}>
                 <a href="{% url 'dashboard' %}?pagina=inicio">
                     <span class="icon">🏠</span>
                     <span>Inicio</span>
