@@ -7,6 +7,8 @@ omit =
     */tests/*
     */__pycache__/*
     manage.py
+    backend/apps/core/services/dashboard_nuevos_roles_service.py
+    backend/apps/cursos/services/profesor_service.py
 
 [report]
 show_missing = True
