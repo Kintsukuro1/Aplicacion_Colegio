@@ -1,0 +1,216 @@
+.content-wrapper {
+    padding: 2rem;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.page-header .subtitle {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+}
+
+.resumen-asistencia {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-numero {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+.filtro-mes {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filtro-mes form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.filtro-mes label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.filtro-mes input[type="month"] {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.historico-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.historico-section h2 {
+    font-size: 1.25rem;
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.dia-item.presente {
+    background: #d4edda;
+    border: 2px solid #28a745;
+}
+
+.dia-item.ausente {
+    background: #f8d7da;
+    border: 2px solid #dc3545;
+}
+
+.dia-item.tarde {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+}
+
+.dia-item.fin-semana {
+    background: #e9ecef;
+    opacity: 0.5;
+}
+
+.dia-numero {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.dia-nombre {
+    font-size: 0.75rem;
+    color: #7f8c8d;
+}
+
+.estado {
+    font-size: 1.25rem;
+    margin-top: 0.25rem;
+}
+
+.tabla-asistencia {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-asistencia thead {
+    background: #f8f9fa;
+}
+
+.tabla-asistencia th {
+    padding: 1rem;
+    text-align: left;
+    color: #2c3e50;
+    font-weight: 600;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tabla-asistencia td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    color: #495057;
+}
+
+.tabla-asistencia tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.mensaje-vacio {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge.p {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge.a {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge.t {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge.j {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Backwards compatibility */
+.badge.presente {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge.ausente {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge.tarde {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge.justificada {
+    background: #d1ecf1;
+    color: #0c5460;
+}

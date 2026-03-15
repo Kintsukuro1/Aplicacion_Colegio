@@ -1,0 +1,245 @@
+from django.urls import path
+from django.urls import include
+from rest_framework.routers import DefaultRouter
+
+from backend.apps.api.auth import (
+    AuditedTokenRefreshView,
+    AuditedTokenVerifyView,
+    ColegioTokenObtainPairView,
+    LogoutView,
+)
+from backend.apps.api.upload_views import upload_image
+from backend.apps.api.apoderado_views import (
+    apoderado_comunicados,
+    apoderado_crear_justificativo,
+    apoderado_mis_pupilos,
+    apoderado_pagos_estado,
+    apoderado_pupilo_anotaciones,
+    apoderado_pupilo_asistencia,
+    apoderado_pupilo_notas,
+)
+from backend.apps.api.domain_views import (
+    AnotacionConvivenciaViewSet,
+    ComunicadoViewSet,
+    ConversacionViewSet,
+    DerivacionExternaViewSet,
+    EntrevistaOrientacionViewSet,
+    EstadoCuentaViewSet,
+    JustificativoInasistenciaViewSet,
+    PagoHistorialViewSet,
+)
+from backend.apps.api.notifications_views import (
+    device_deactivate,
+    device_register,
+    notifications_list,
+    notifications_mark_all_read,
+    notifications_mark_read,
+    notifications_summary,
+    notifications_sse_stream,
+)
+from backend.apps.api.resources_views import (
+    ApoderadoViewSet,
+    AsignaturaViewSet,
+    CicloAcademicoViewSet,
+    CursoViewSet,
+    MatriculaViewSet,
+    StudentViewSet,
+    TeacherAttendanceViewSet,
+    TeacherClassViewSet,
+    TeacherEvaluationViewSet,
+    TeacherGradeViewSet,
+    dashboard_summary,
+    ministerial_monthly_report,
+    student_my_attendance,
+    student_my_classes,
+    student_my_grades,
+    student_my_profile,
+)
+from backend.apps.api.views import api_health, me, operational_metrics
+from backend.apps.core.views.coordinador_academico.api import (
+    actualizar_estado_planificacion as legacy_coordinador_actualizar_planificacion,
+    listar_planificaciones as legacy_coordinador_listar_planificaciones,
+)
+from backend.apps.core.views.estudiante.api import (
+    entregar_tarea as legacy_estudiante_entregar_tarea,
+)
+from backend.apps.core.views.soporte_tecnico.api import (
+    actualizar_ticket as legacy_soporte_actualizar_ticket,
+    crear_ticket as legacy_soporte_crear_ticket,
+    reset_password as legacy_soporte_reset_password,
+)
+from backend.apps.core.views.inspector_convivencia.api import (
+    actualizar_justificativo as legacy_inspector_actualizar_justificativo,
+    crear_anotacion as legacy_inspector_crear_anotacion,
+    listar_estudiantes as legacy_inspector_listar_estudiantes,
+    listar_justificativos as legacy_inspector_listar_justificativos,
+    registrar_atraso as legacy_inspector_registrar_atraso,
+)
+from backend.apps.core.views.psicologo_orientador.api import (
+    actualizar_derivacion as legacy_psicologo_actualizar_derivacion,
+    crear_derivacion as legacy_psicologo_crear_derivacion,
+    crear_entrevista as legacy_psicologo_crear_entrevista,
+    listar_estudiantes as legacy_psicologo_listar_estudiantes,
+    toggle_pie_status as legacy_psicologo_toggle_pie,
+)
+from backend.apps.core.views.bibliotecario_digital.api import (
+    crear_prestamo as legacy_bibliotecario_crear_prestamo,
+    crear_recurso as legacy_bibliotecario_crear_recurso,
+    listar_prestamos as legacy_bibliotecario_listar_prestamos,
+    listar_recursos as legacy_bibliotecario_listar_recursos,
+    listar_usuarios as legacy_bibliotecario_listar_usuarios,
+    registrar_devolucion as legacy_bibliotecario_registrar_devolucion,
+    toggle_publicar_recurso as legacy_bibliotecario_toggle_publicar_recurso,
+)
+from backend.apps.core.views.asesor_financiero.pagos_api import (
+    listar_pagos as legacy_asesor_financiero_listar_pagos,
+)
+
+app_name = 'api'
+
+router = DefaultRouter()
+router.register(r'estudiantes', StudentViewSet, basename='api-estudiantes')
+router.register(r'cursos', CursoViewSet, basename='api-cursos')
+router.register(r'asignaturas', AsignaturaViewSet, basename='api-asignaturas')
+router.register(r'ciclos-academicos', CicloAcademicoViewSet, basename='api-ciclos-academicos')
+router.register(r'matriculas', MatriculaViewSet, basename='api-matriculas')
+router.register(r'apoderados', ApoderadoViewSet, basename='api-apoderados')
+router.register(r'profesor/clases', TeacherClassViewSet, basename='api-profesor-clases')
+router.register(r'profesor/asistencias', TeacherAttendanceViewSet, basename='api-profesor-asistencias')
+router.register(r'profesor/evaluaciones', TeacherEvaluationViewSet, basename='api-profesor-evaluaciones')
+router.register(r'profesor/calificaciones', TeacherGradeViewSet, basename='api-profesor-calificaciones')
+router.register(r'comunicados', ComunicadoViewSet, basename='api-comunicados')
+router.register(r'mensajeria/conversaciones', ConversacionViewSet, basename='api-mensajeria-conversaciones')
+router.register(r'convivencia/anotaciones', AnotacionConvivenciaViewSet, basename='api-convivencia-anotaciones')
+router.register(r'orientacion/entrevistas', EntrevistaOrientacionViewSet, basename='api-orientacion-entrevistas')
+router.register(r'orientacion/derivaciones', DerivacionExternaViewSet, basename='api-orientacion-derivaciones')
+router.register(r'justificativos', JustificativoInasistenciaViewSet, basename='api-justificativos')
+router.register(r'finanzas/pagos', PagoHistorialViewSet, basename='api-finanzas-pagos')
+router.register(r'finanzas/estados-cuenta', EstadoCuentaViewSet, basename='api-finanzas-estados-cuenta')
+
+urlpatterns = [
+    path('health/', api_health, name='health'),
+    path('ops/metrics/', operational_metrics, name='operational_metrics'),
+    path('me/', me, name='me_root'),
+    path('auth/token/', ColegioTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', AuditedTokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/token/verify/', AuditedTokenVerifyView.as_view(), name='token_verify'),
+    path('auth/logout/', LogoutView.as_view(), name='logout'),
+    path('auth/me/', me, name='me'),
+    path('notificaciones/', notifications_list, name='notifications_list'),
+    path('notificaciones/resumen/', notifications_summary, name='notifications_summary'),
+    path('notificaciones/marcar-todas-leidas/', notifications_mark_all_read, name='notifications_mark_all_read'),
+    path('notificaciones/<int:notification_id>/marcar-leida/', notifications_mark_read, name='notifications_mark_read'),
+    path('notificaciones/dispositivos/registrar/', device_register, name='notifications_device_register'),
+    path('notificaciones/dispositivos/<int:device_id>/desactivar/', device_deactivate, name='notifications_device_deactivate'),
+    path('notificaciones/stream/', notifications_sse_stream, name='notifications_sse_stream'),
+    path('dashboard/resumen/', dashboard_summary, name='dashboard_summary'),
+    path(
+        'reportes/ministeriales/resumen-mensual/',
+        ministerial_monthly_report,
+        name='ministerial_monthly_report',
+    ),
+    path('uploads/image/', upload_image, name='upload_image'),
+    path('estudiante/mi-perfil/', student_my_profile, name='student_my_profile'),
+    path('estudiante/mis-clases/', student_my_classes, name='student_my_classes'),
+    path('estudiante/mis-notas/', student_my_grades, name='student_my_grades'),
+    path('estudiante/mi-asistencia/', student_my_attendance, name='student_my_attendance'),
+    path('estudiante/tareas/entregar/', legacy_estudiante_entregar_tarea, name='legacy_estudiante_entregar_tarea'),
+    path('apoderado/mis-pupilos/', apoderado_mis_pupilos, name='apoderado_mis_pupilos'),
+    path('apoderado/pupilo/<int:student_id>/notas/', apoderado_pupilo_notas, name='apoderado_pupilo_notas'),
+    path('apoderado/pupilo/<int:student_id>/asistencia/', apoderado_pupilo_asistencia, name='apoderado_pupilo_asistencia'),
+    path('apoderado/pupilo/<int:student_id>/anotaciones/', apoderado_pupilo_anotaciones, name='apoderado_pupilo_anotaciones'),
+    path('apoderado/justificativos/', apoderado_crear_justificativo, name='apoderado_crear_justificativo'),
+    path('apoderado/comunicados/', apoderado_comunicados, name='apoderado_comunicados'),
+    path('apoderado/pagos/estado/', apoderado_pagos_estado, name='apoderado_pagos_estado'),
+    path('coordinador/planificaciones/', legacy_coordinador_listar_planificaciones, name='legacy_coordinador_listar_planificaciones'),
+    path(
+        'coordinador/planificaciones/<int:planificacion_id>/estado/',
+        legacy_coordinador_actualizar_planificacion,
+        name='legacy_coordinador_actualizar_planificacion',
+    ),
+    path('soporte/tickets/crear/', legacy_soporte_crear_ticket, name='legacy_soporte_crear_ticket'),
+    path('asesor-financiero/pagos/', legacy_asesor_financiero_listar_pagos, name='legacy_asesor_financiero_listar_pagos'),
+    path(
+        'soporte/tickets/<int:ticket_id>/estado/',
+        legacy_soporte_actualizar_ticket,
+        name='legacy_soporte_actualizar_ticket',
+    ),
+    path(
+        'soporte/tickets/<int:ticket_id>/actualizar/',
+        legacy_soporte_actualizar_ticket,
+        name='legacy_soporte_actualizar_ticket_alias_actualizar',
+    ),
+    path(
+        'soporte/usuarios/<int:user_id>/reset_password/',
+        legacy_soporte_reset_password,
+        name='legacy_soporte_reset_password',
+    ),
+    path(
+        'soporte/usuarios/<int:user_id>/reset-password/',
+        legacy_soporte_reset_password,
+        name='legacy_soporte_reset_password_alias_hyphen',
+    ),
+    path('inspector/estudiantes/', legacy_inspector_listar_estudiantes, name='legacy_inspector_listar_estudiantes'),
+    path('inspector/justificativos/', legacy_inspector_listar_justificativos, name='legacy_inspector_listar_justificativos'),
+    path('inspector/anotaciones/crear/', legacy_inspector_crear_anotacion, name='legacy_inspector_crear_anotacion'),
+    path(
+        'inspector/justificativos/<int:justificativo_id>/estado/',
+        legacy_inspector_actualizar_justificativo,
+        name='legacy_inspector_actualizar_justificativo',
+    ),
+    path(
+        'inspector/justificativos/<int:justificativo_id>/revisar/',
+        legacy_inspector_actualizar_justificativo,
+        name='legacy_inspector_actualizar_justificativo_alias_revisar',
+    ),
+    path(
+        'inspector/asistencia/registrar_atraso/',
+        legacy_inspector_registrar_atraso,
+        name='legacy_inspector_registrar_atraso',
+    ),
+    path(
+        'inspector/atrasos/registrar/',
+        legacy_inspector_registrar_atraso,
+        name='legacy_inspector_registrar_atraso_alias_atrasos',
+    ),
+    path('psicologo/estudiantes/', legacy_psicologo_listar_estudiantes, name='legacy_psicologo_listar_estudiantes'),
+    path('psicologo/entrevistas/crear/', legacy_psicologo_crear_entrevista, name='legacy_psicologo_crear_entrevista'),
+    path('psicologo/derivaciones/crear/', legacy_psicologo_crear_derivacion, name='legacy_psicologo_crear_derivacion'),
+    path(
+        'psicologo/derivaciones/<int:derivacion_id>/',
+        legacy_psicologo_actualizar_derivacion,
+        name='legacy_psicologo_actualizar_derivacion',
+    ),
+    path(
+        'psicologo/derivaciones/<int:derivacion_id>/actualizar/',
+        legacy_psicologo_actualizar_derivacion,
+        name='legacy_psicologo_actualizar_derivacion_alias_actualizar',
+    ),
+    path(
+        'psicologo/estudiantes/<int:estudiante_id>/pie/',
+        legacy_psicologo_toggle_pie,
+        name='legacy_psicologo_toggle_pie',
+    ),
+    path('bibliotecario/recursos/', legacy_bibliotecario_listar_recursos, name='legacy_bibliotecario_listar_recursos'),
+    path('bibliotecario/usuarios/', legacy_bibliotecario_listar_usuarios, name='legacy_bibliotecario_listar_usuarios'),
+    path('bibliotecario/prestamos/', legacy_bibliotecario_listar_prestamos, name='legacy_bibliotecario_listar_prestamos'),
+    path('bibliotecario/recursos/crear/', legacy_bibliotecario_crear_recurso, name='legacy_bibliotecario_crear_recurso'),
+    path(
+        'bibliotecario/recursos/<int:recurso_id>/publicar/',
+        legacy_bibliotecario_toggle_publicar_recurso,
+        name='legacy_bibliotecario_toggle_publicar_recurso',
+    ),
+    path('bibliotecario/prestamos/crear/', legacy_bibliotecario_crear_prestamo, name='legacy_bibliotecario_crear_prestamo'),
+    path(
+        'bibliotecario/prestamos/<int:prestamo_id>/devolver/',
+        legacy_bibliotecario_registrar_devolucion,
+        name='legacy_bibliotecario_registrar_devolucion',
+    ),
+    path(
+        'bibliotecario/prestamos/<int:prestamo_id>/devolucion/',
+        legacy_bibliotecario_registrar_devolucion,
+        name='legacy_bibliotecario_registrar_devolucion_alias_devolucion',
+    ),
+    path('', include(router.urls)),
+]

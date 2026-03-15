@@ -1,0 +1,65 @@
+<div class="content-wrapper">
+    <div class="page-header">
+        <h1>📊 Tareas Consolidadas</h1>
+        <p class="subtitle">Visión general del estado de las tareas en tus cursos</p>
+    </div>
+
+    <!-- Lista de Tareas Consolidadas -->
+    <div class="tareas-lista" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% for tarea in tareas %}
+        <div class="tarea-card {% if tarea.vencida %}vencida{% endif %}"
+            style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid {% if tarea.vencida %}#ef4444{% else %}#3b82f6{% endif %}; transition: all 0.2s;">
+            <div class="tarea-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="tarea-badge"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                    {{ tarea.clase }}
+                </div>
+                {% if tarea.vencida %}
+                <span
+                    style="padding: 0.3rem 0.7rem; background: #fee2e2; color: #dc2626; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">Finalizada</span>
+                {% else %}
+                <span
+                    style="padding: 0.3rem 0.7rem; background: #dcfce7; color: #16a34a; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">En
+                    Curso</span>
+                {% endif %}
+            </div>
+
+            <h3 style="color: #1e3a8a; margin: 0 0 1rem 0; font-size: 1.25rem;">{{ tarea.titulo }}</h3>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #64748b; margin-bottom: 0.5rem;">
+                        <span>Entregas: {{ tarea.entregadas }} / {{ tarea.total_estudiantes }}</span>
+                        <span>{{ tarea.porcentaje_entrega }}%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                        <div
+                            style="height: 100%; background: {% if tarea.porcentaje_entrega >= 80 %}#10b981{% elif tarea.porcentaje_entrega >= 50 %}#f59e0b{% else %}#ef4444{% endif %}; width: {{ tarea.porcentaje_entrega }}%;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tarea-meta"
+                style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; color: #64748b;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">📅</span> Vencimiento: {{ tarea.fecha_entrega|date:"d/m/Y H:i" }}
+                </span>
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span
+                        style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: {% if tarea.es_publica %}#10b981{% else %}#94a3b8{% endif %};"></span>
+                    {{ tarea.es_publica|yesno:"Pública,Oculta" }}
+                </span>
+            </div>
+        </div>
+        {% empty %}
+        <div
+            style="text-align: center; padding: 3rem; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; color: #64748b;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+            <p style="font-size: 1.1rem;">No tienes tareas registradas en tus cursos activos.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>

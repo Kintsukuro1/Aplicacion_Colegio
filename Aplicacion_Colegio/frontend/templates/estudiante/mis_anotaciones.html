@@ -1,0 +1,99 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="page-header">
+        <h1>📝 Mis Anotaciones</h1>
+        <p class="subtitle">Revisa tu historial de convivencia escolar</p>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="estadisticas-anotaciones"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #3b82f6;">
+            <div style="font-size: 2rem;">📋</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #1e3a8a;">{{ total }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Total</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #10b981;">
+            <div style="font-size: 2rem;">🌟</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #10b981;">{{ stats.POSITIVA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Positivas</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #f59e0b;">
+            <div style="font-size: 2rem;">ℹ️</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #f59e0b;">{{ stats.NEUTRA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Obsevaciones</span>
+            </div>
+        </div>
+        <div class="stat-box"
+            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #ef4444;">
+            <div style="font-size: 2rem;">⚠️</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 1.75rem; font-weight: 700; color: #ef4444;">{{ stats.NEGATIVA }}</span>
+                <span style="font-size: 0.9rem; color: #64748b;">Negativas</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Anotaciones -->
+    <div class="anotaciones-lista" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% for anotacion in anotaciones %}
+        <div class="anotacion-card"
+            style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid {% if anotacion.tipo_raw == 'POSITIVA' %}#10b981{% elif anotacion.tipo_raw == 'NEGATIVA' %}#ef4444{% else %}#f59e0b{% endif %}; transition: all 0.2s;">
+            <div class="anotacion-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="tipo-badge"
+                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: {% if anotacion.tipo_raw == 'POSITIVA' %}linear-gradient(135deg, #10b981 0%, #059669 100%){% elif anotacion.tipo_raw == 'NEGATIVA' %}linear-gradient(135deg, #ef4444 0%, #dc2626 100%){% else %}linear-gradient(135deg, #f59e0b 0%, #d97706 100%){% endif %};">
+                    {{ anotacion.tipo }} - {{ anotacion.categoria }}
+                </div>
+                <span style="color: #64748b; font-size: 0.9rem;">{{ anotacion.fecha|date:"d/m/Y H:i" }}</span>
+            </div>
+
+            <div class="anotacion-contenido"
+                style="color: #475569; line-height: 1.6; margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                {{ anotacion.descripcion }}
+            </div>
+
+            <div class="anotacion-meta"
+                style="display: flex; flex-wrap: wrap; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; color: #64748b;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">👤</span> Registrado por: <strong>{{ anotacion.registrado_por }}</strong>
+                </span>
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="icon">⚖️</span> Gravedad: {{ anotacion.gravedad }}
+                </span>
+            </div>
+        </div>
+        {% empty %}
+        <div
+            style="text-align: center; padding: 3rem; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; color: #64748b;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+            <p style="font-size: 1.1rem;">No tienes ninguna anotación registrada.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .anotacion-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 768px) {
+        .estadisticas-anotaciones {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+</style>
+{% endblock %}

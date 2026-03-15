@@ -1,0 +1,109 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'css/apoderado/notas.css' %}">
+
+<div class="content-wrapper">
+  <div class="page-header">
+    <div>
+      <h2>📊 Notas y Calificaciones</h2>
+      <p class="text-muted">Selecciona un estudiante para ver sus notas.</p>
+    </div>
+
+    {% if estudiantes %}
+      <form method="get" action="{% url 'dashboard' %}" class="estudiante-selector">
+        <input type="hidden" name="pagina" value="notas">
+        <label for="estudiante_id">Estudiante</label>
+        <select id="estudiante_id" name="estudiante_id" onchange="this.form.submit()">
+          <option value="">Seleccionar estudiante</option>
+          {% for e in estudiantes %}
+            <option value="{{ e.id }}" {% if estudiante_seleccionado and e.id == estudiante_seleccionado.id %}selected{% endif %}>
+              {% if e.get_full_name %}{{ e.get_full_name }}{% else %}{{ e.email|default:"-" }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if not estudiantes %}
+    <div class="empty-state">
+      <span class="empty-icon">👥</span>
+      <h3>No hay estudiantes asociados</h3>
+      <p>Cuando existan pupilos asociados, podrás ver sus notas aquí.</p>
+    </div>
+  {% elif not estudiante_seleccionado %}
+    <div class="empty-state">
+      <span class="empty-icon">🎓</span>
+      <h3>Selecciona un estudiante</h3>
+      <p>Usa el selector superior para continuar.</p>
+    </div>
+  {% else %}
+    {% with nombre_est=estudiante_seleccionado.get_full_name|default:estudiante_seleccionado.email|default:"?" %}
+      <div class="estudiante-info-card">
+        <div class="estudiante-avatar">{{ nombre_est|first|upper }}</div>
+        <div class="estudiante-datos">
+          <h2>{{ nombre_est }}</h2>
+          <p>Resumen de calificaciones</p>
+        </div>
+        <div class="promedio-general">
+          <label>Promedio general</label>
+          {% if promedio_general %}
+            {% with pg=promedio_general|floatformat:0 %}
+              <div class="promedio-valor promedio-valor-{{ pg }}">{{ promedio_general|floatformat:1 }}</div>
+            {% endwith %}
+          {% else %}
+            <div class="promedio-valor">-</div>
+          {% endif %}
+        </div>
+      </div>
+    {% endwith %}
+
+    {% if notas_por_asignatura %}
+      <div class="asignaturas-grid">
+        {% for item in notas_por_asignatura %}
+          <div class="asignatura-card">
+            <div class="asignatura-header">
+              <h3>{{ item.asignatura.nombre|default:item.asignatura }}</h3>
+              {% if item.asignatura.codigo %}<span class="asignatura-codigo">{{ item.asignatura.codigo }}</span>{% endif %}
+            </div>
+
+            <div class="asignatura-promedio">
+              <label>Promedio</label>
+              {% if item.promedio %}
+                {% with pr=item.promedio|floatformat:0 %}
+                  <span class="promedio-valor-{{ pr }}">{{ item.promedio|floatformat:1 }}</span>
+                {% endwith %}
+              {% else %}
+                <span>-</span>
+              {% endif %}
+            </div>
+
+            <div class="evaluaciones-lista">
+              <h4>Evaluaciones</h4>
+              {% for ev in item.evaluaciones %}
+                {% with ne=ev.nota|floatformat:0 %}
+                  <div class="evaluacion-item">
+                    <div class="evaluacion-info">
+                      <span class="evaluacion-nombre">{{ ev.nombre }}</span>
+                      <span class="evaluacion-fecha">{{ ev.fecha_evaluacion|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="evaluacion-nota nota-{{ ne }}">{{ ev.nota|floatformat:1 }}</div>
+                    <div class="evaluacion-ponderacion">{{ ev.ponderacion|floatformat:0 }}%</div>
+                  </div>
+                {% endwith %}
+              {% empty %}
+                <div class="sin-datos">Sin calificaciones registradas.</div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        <h3>Sin datos</h3>
+        <p>No hay calificaciones para mostrar.</p>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

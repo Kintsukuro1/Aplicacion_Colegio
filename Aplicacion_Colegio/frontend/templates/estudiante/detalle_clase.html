@@ -1,0 +1,331 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ asignatura.nombre }} - Detalle</title>
+    <link rel="stylesheet" href="{% static 'css/estudiante/detalle_clase.css' %}">
+</head>
+<body>
+    <div class="course-detail-container">
+        {# Back Button #}
+        <div class="back-section">
+            <a href="{% url 'dashboard' %}?pagina=mis_clases" class="back-button">
+                <span>←</span> Volver a Mis Clases
+            </a>
+        </div>
+
+        {# Hero Banner with Course Info #}
+        <div class="course-hero gradient-{{ clase.asignatura.codigo|slice:":3"|lower|default:"blue" }}">
+            <div class="hero-background"></div>
+            <div class="hero-content">
+                <div class="course-badges">
+                    <span class="badge-code">{{ asignatura.codigo|default:"N/A" }}</span>
+                    <span class="badge-semester">{{ curso.ciclo_academico.nombre|default:"2024" }}</span>
+                </div>
+                <h1 class="course-hero-title">{{ asignatura.nombre }}</h1>
+                <p class="course-hero-description">
+                    {% if asignatura.descripcion %}
+                        {{ asignatura.descripcion|truncatewords:20 }}
+                    {% else %}
+                        Explora los contenidos, materiales y actividades de este curso.
+                    {% endif %}
+                </p>
+                
+                {# Progress Bar #}
+                <div class="hero-progress">
+                    <div class="progress-label-row">
+                        <span class="progress-label">PROGRESO DEL CURSO</span>
+                        <span class="progress-value">{{ progreso|default:"0" }}% COMPLETADO</span>
+                    </div>
+                    <div class="progress-bar-hero">
+                        <div class="progress-fill-hero" style="width: {{ progreso|default:"0" }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Main Content Layout #}
+        <div class="course-layout">
+            {# Left Column - Main Content #}
+            <div class="course-main">
+                {# Navigation Tabs #}
+                <div class="course-tabs">
+                    <button class="tab-btn active" data-tab="syllabus">
+                        <span class="tab-icon">📋</span> Programa
+                    </button>
+                    <button class="tab-btn" data-tab="materials">
+                        <span class="tab-icon">📚</span> Materiales
+                    </button>
+                    <button class="tab-btn" data-tab="assignments">
+                        <span class="tab-icon">📝</span> Tareas
+                    </button>
+                    <button class="tab-btn" data-tab="grades">
+                        <span class="tab-icon">⭐</span> Calificaciones
+                    </button>
+                </div>
+
+                {# Tab Content: Syllabus #}
+                <div class="tab-content active" id="tab-syllabus">
+                    <section class="content-section">
+                        <h2 class="section-title">Acerca de este Curso</h2>
+                        <p class="section-text">
+                            {% if asignatura.descripcion %}
+                                {{ asignatura.descripcion }}
+                            {% else %}
+                                Este curso cubre los conceptos fundamentales y las habilidades necesarias para dominar {{ asignatura.nombre }}.
+                            {% endif %}
+                        </p>
+                        
+                        <div class="course-tags">
+                            <span class="tag">{{ asignatura.nombre }}</span>
+                            <span class="tag">{{ curso.nivel|default:"Educación Básica" }}</span>
+                            {% if asignatura.codigo %}
+                            <span class="tag">Código {{ asignatura.codigo }}</span>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="content-section">
+                        <div class="section-header-row">
+                            <h2 class="section-title">Programación del Curso</h2>
+                            <a href="#" class="link-download">Descargar Programa Completo →</a>
+                        </div>
+
+                        {# Week/Unit Accordion #}
+                        <div class="course-schedule">
+                            {# Example Week 1 - Completed #}
+                            <div class="schedule-week completed">
+                                <div class="week-header" onclick="toggleWeek(this)">
+                                    <div class="week-info">
+                                        <span class="week-status-icon">✓</span>
+                                        <div>
+                                            <h3 class="week-title">Semana 1: Introducción al Curso</h3>
+                                            <p class="week-subtitle">Completado el 15 de Enero</p>
+                                        </div>
+                                    </div>
+                                    <span class="week-toggle">▼</span>
+                                </div>
+                                <div class="week-content">
+                                    <div class="activity-item done">
+                                        <span class="activity-icon">📖</span>
+                                        <span class="activity-title">Lectura: Introducción a {{ asignatura.nombre }}</span>
+                                        <span class="activity-status done-badge">Completado</span>
+                                    </div>
+                                    <div class="activity-item done">
+                                        <span class="activity-icon">🎥</span>
+                                        <span class="activity-title">Video: Conceptos Fundamentales</span>
+                                        <span class="activity-status done-badge">Completado</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Example Week 2 - In Progress #}
+                            <div class="schedule-week in-progress">
+                                <div class="week-header" onclick="toggleWeek(this)">
+                                    <div class="week-info">
+                                        <span class="week-status-icon orange">⏱</span>
+                                        <div>
+                                            <h3 class="week-title">Semana 2: Desarrollo de Competencias</h3>
+                                            <p class="week-subtitle">En Progreso - 2 Actividades Pendientes</p>
+                                        </div>
+                                    </div>
+                                    <span class="week-toggle">▼</span>
+                                </div>
+                                <div class="week-content" style="display: block;">
+                                    <div class="activity-item done">
+                                        <span class="activity-icon">📖</span>
+                                        <span class="activity-title">Lectura: Teorías y Modelos</span>
+                                        <span class="activity-status done-badge">Completado</span>
+                                    </div>
+                                    <div class="activity-item pending">
+                                        <span class="activity-icon">📄</span>
+                                        <span class="activity-title">Presentación: Aplicaciones Prácticas</span>
+                                        <span class="activity-status start-badge">Iniciar</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                {# Tab Content: Materials #}
+                <div class="tab-content" id="tab-materials">
+                    <section class="content-section">
+                        <h2 class="section-title">Materiales del Curso</h2>
+                        
+                        {% if materiales %}
+                        <div class="materials-list">
+                            {% for material in materiales %}
+                            <div class="material-card">
+                                <div class="material-icon-large">📄</div>
+                                <div class="material-details">
+                                    <h3 class="material-title">{{ material.titulo }}</h3>
+                                    <p class="material-meta">{{ material.get_tamanio_legible }} • {{ material.fecha_creacion|date:"d M Y" }}</p>
+                                </div>
+                                <a href="{{ material.archivo.url }}" class="btn-download" download>
+                                    <span>⬇</span> Descargar
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>No hay materiales disponibles aún.</p>
+                        </div>
+                        {% endif %}
+                    </section>
+                </div>
+
+                {# Tab Content: Assignments #}
+                <div class="tab-content" id="tab-assignments">
+                    <section class="content-section">
+                        <h2 class="section-title">Tareas y Evaluaciones</h2>
+                        
+                        {% if tareas %}
+                        <div class="assignments-list">
+                            {% for item in tareas %}
+                            <div class="assignment-card {% if item.entrega %}submitted{% endif %}">
+                                <div class="assignment-header">
+                                    <h3 class="assignment-title">{{ item.tarea.titulo }}</h3>
+                                    <span class="assignment-status {{ item.estado }}">{{ item.texto_estado }}</span>
+                                </div>
+                                <p class="assignment-description">{{ item.tarea.descripcion|truncatewords:20 }}</p>
+                                <div class="assignment-footer">
+                                    <span class="assignment-date">
+                                        Fecha límite: {{ item.tarea.fecha_entrega|date:"d/m/Y H:i" }}
+                                    </span>
+                                    {% if not item.entrega %}
+                                    <a href="#" class="btn-submit">Entregar Tarea</a>
+                                    {% else %}
+                                    <span class="submitted-badge">✓ Entregada</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>No hay tareas pendientes en este momento.</p>
+                        </div>
+                        {% endif %}
+                    </section>
+                </div>
+
+                {# Tab Content: Grades #}
+                <div class="tab-content" id="tab-grades">
+                    <section class="content-section">
+                        <h2 class="section-title">Libro de Calificaciones</h2>
+                        <p>Las calificaciones se mostrarán aquí cuando el profesor las publique.</p>
+                    </section>
+                </div>
+            </div>
+
+            {# Right Column - Sidebar #}
+            <aside class="course-sidebar">
+                {# Professor Card #}
+                <div class="sidebar-card professor-card">
+                    <div class="professor-avatar">
+                        <span class="avatar-initials">{{ profesor.nombre|first }}{{ profesor.apellido_paterno|first }}</span>
+                    </div>
+                    <h3 class="professor-name">{{ profesor.get_full_name }}</h3>
+                    <p class="professor-title">PROFESOR DE {{ asignatura.nombre|upper }}</p>
+                    
+                    <div class="professor-actions">
+                        <a href="mailto:{{ profesor.email }}" class="btn-action email">
+                            <span>📧</span> Email
+                        </a>
+                        <button class="btn-action office" onclick="alert('Función de consultoría próximamente')">
+                            <span>📅</span> Consultoría
+                        </button>
+                    </div>
+                </div>
+
+                {# Office Hours #}
+                <div class="sidebar-card">
+                    <h3 class="sidebar-card-title">HORARIOS DE ATENCIÓN</h3>
+                    {% if horarios_por_dia %}
+                    <div class="office-hours">
+                        {% for dia, info in horarios_por_dia.items %}
+                        <div class="office-hour-item">
+                            <span class="hour-day">{{ dia|slice:":3" }}</span>
+                            <span class="hour-time">{{ info.hora_inicio }} - {{ info.hora_fin }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="sidebar-empty">Consultar con el profesor</p>
+                    {% endif %}
+                </div>
+
+                {# Upcoming Deadlines #}
+                <div class="sidebar-card">
+                    <h3 class="sidebar-card-title">PRÓXIMAS FECHAS</h3>
+                    {% if evaluaciones_proximas %}
+                    <div class="deadlines-list">
+                        {% for evaluacion in evaluaciones_proximas %}
+                        <div class="deadline-item {% if forloop.first %}critical{% endif %}">
+                            <div class="deadline-dot"></div>
+                            <div class="deadline-content">
+                                <h4 class="deadline-title">{{ evaluacion.titulo }}</h4>
+                                <p class="deadline-meta">{{ evaluacion.fecha_evaluacion|date:"d M Y" }}</p>
+                            </div>
+                            {% if forloop.first %}
+                            <span class="deadline-badge critical">Crítico</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="sidebar-empty">No hay fechas próximas</p>
+                    {% endif %}
+                </div>
+
+                {# Quick Resources #}
+                <div class="sidebar-card">
+                    <h3 class="sidebar-card-title">RECURSOS RÁPIDOS</h3>
+                    <div class="quick-resources">
+                        <a href="#" class="resource-link">📚 Bibliografía del Curso</a>
+                        <a href="#" class="resource-link">💬 Foro de Discusión</a>
+                        <a href="#" class="resource-link">❓ Preguntas Frecuentes</a>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // Tab Switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding content
+                const tabName = this.dataset.tab;
+                document.getElementById('tab-' + tabName).classList.add('active');
+            });
+        });
+
+        // Week Accordion
+        function toggleWeek(header) {
+            const week = header.parentElement;
+            const content = week.querySelector('.week-content');
+            const toggle = header.querySelector('.week-toggle');
+            
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            } else {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+{% load static %}
+{% load custom_filters %}
+
+<link rel="stylesheet" href="{% static 'css/admin_escolar/gestionar_estudiantes.css' %}">
+
+<div class="estudiantes-container">
+    <!-- Encabezado -->
+    <div class="header-section">
+        <div class="titulo-modulo">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <h2>Gestión de Profesores</h2>
+        </div>
+        
+        <div class="estadisticas-grid">
+            <div class="stat-card blue">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_profesores|default:0 }}</span>
+                    <span class="stat-label">Total Profesores</span>
+                </div>
+            </div>
+            
+            <div class="stat-card green">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ profesores_activos|default:0 }}</span>
+                    <span class="stat-label">Activos</span>
+                </div>
+            </div>
+            
+            <div class="stat-card purple">
+                <div class="stat-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_clases|default:0 }}</span>
+                    <span class="stat-label">Clases Asignadas</span>
+                </div>
+            </div>
+            
+            <div class="stat-card orange">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_horas|default:0 }}</span>
+                    <span class="stat-label">Horas Semanales</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="filtros-section">
+        <form method="GET" action="{% url 'dashboard' %}" class="filtros-form">
+            <input type="hidden" name="pagina" value="gestionar_profesores">
+            
+            <div class="filtros-grid">
+                <div class="filtro-item">
+                    <label>Buscar:</label>
+                    <input type="text" 
+                           name="buscar" 
+                           placeholder="Nombre, RUT o email..." 
+                           value="{{ request.GET.buscar }}"
+                           class="input-buscar">
+                </div>
+                
+                <div class="filtro-item">
+                    <label>Estado:</label>
+                    <select name="estado" class="select-filtro">
+                        <option value="">Todos</option>
+                        <option value="Activo" {% if request.GET.estado == 'Activo' %}selected{% endif %}>Activo</option>
+                        <option value="Inactivo" {% if request.GET.estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+                        <option value="Licencia" {% if request.GET.estado == 'Licencia' %}selected{% endif %}>Con Licencia</option>
+                    </select>
+                </div>
+                
+                <div class="filtro-item">
+                    <label>Asignatura:</label>
+                    <select name="asignatura" class="select-filtro">
+                        <option value="">Todas</option>
+                        {% for asignatura in asignaturas %}
+                        <option value="{{ asignatura.id_asignatura }}" 
+                                {% if request.GET.asignatura|stringformat:"s" == asignatura.id_asignatura|stringformat:"s" %}selected{% endif %}>
+                            {{ asignatura.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filtro-acciones">
+                    <button type="submit" class="btn-filtrar">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <a href="{% url 'dashboard' %}?pagina=gestionar_profesores" class="btn-limpiar">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </div>
+            </div>
+        </form>
+        
+        <button onclick="abrirModalCrear()" class="btn-nuevo-estudiante">
+            <i class="fas fa-user-plus"></i> Nuevo Profesor
+        </button>
+    </div>
+
+    <!-- Tabla de Profesores -->
+    <div class="tabla-container">
+        {% if profesores %}
+        <table class="tabla-estudiantes">
+            <thead>
+                <tr>
+                    <th>RUT</th>
+                    <th>Nombre Completo</th>
+                    <th>Email</th>
+                    <th>Asignaturas</th>
+                    <th>Clases</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for profesor in profesores %}
+                <tr>
+                    <td>{{ profesor.rut }}</td>
+                    <td>
+                        <div class="nombre-estudiante">
+                            <strong>{{ profesor.get_full_name }}</strong>
+                        </div>
+                    </td>
+                    <td>{{ profesor.email }}</td>
+                    <td>
+                        {{ profesor.clases_impartidas.all|asignaturas_unicas }}
+                    </td>
+                    <td>
+                        <span class="badge badge-blue">{{ profesor.clases_count|default:0 }} clases</span>
+                    </td>
+                    <td>
+                        {% if profesor.perfil_profesor %}
+                            {% if profesor.perfil_profesor.estado_laboral == 'Activo' %}
+                                <span class="badge badge-green">Activo</span>
+                            {% elif profesor.perfil_profesor.estado_laboral == 'Licencia' %}
+                                <span class="badge badge-orange">Licencia</span>
+                            {% else %}
+                                <span class="badge badge-gray">{{ profesor.perfil_profesor.estado_laboral }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-gray">Sin perfil</span>
+                        {% endif %}
+                    </td>
+                    <td class="acciones">
+                        <button onclick="verProfesor({{ profesor.id }})" 
+                                class="btn-accion btn-ver" 
+                                title="Ver detalles">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="editarProfesor({{ profesor.id }})" 
+                                class="btn-accion btn-editar" 
+                                title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <a href="{% url 'dashboard' %}?pagina=disponibilidad&profesor={{ profesor.id }}"
+                           class="btn-accion btn-calendario"
+                           title="Disponibilidad">
+                            <i class="fas fa-calendar-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Paginación -->
+        {% if profesores.has_other_pages %}
+        <div class="paginacion">
+            {% if profesores.has_previous %}
+                <a href="?pagina=gestionar_profesores&page={{ profesores.previous_page_number }}" class="btn-pagina">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </a>
+            {% endif %}
+            
+            <span class="pagina-actual">
+                Página {{ profesores.number }} de {{ profesores.paginator.num_pages }}
+            </span>
+            
+            {% if profesores.has_next %}
+                <a href="?pagina=gestionar_profesores&page={{ profesores.next_page_number }}" class="btn-pagina">
+                    Siguiente <i class="fas fa-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="mensaje-vacio">
+            <i class="fas fa-user-slash"></i>
+            <p>No hay profesores registrados</p>
+            <button onclick="abrirModalCrear()" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Agregar Primer Profesor
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function verProfesor(id) {
+    alert('Ver detalles del profesor ' + id);
+    // TODO: Implementar modal de detalles
+}
+
+function editarProfesor(id) {
+    alert('Editar profesor ' + id);
+    // TODO: Implementar modal de edición
+}
+
+function abrirModalCrear() {
+    alert('Crear nuevo profesor');
+    // TODO: Implementar modal de creación
+}
+</script>

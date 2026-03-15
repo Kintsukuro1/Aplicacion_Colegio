@@ -1,0 +1,1024 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/profesor/detalle_clase.css' %}">
+{% csrf_token %}
+
+<style>
+.anuncio-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-left: 4px solid #667eea;
+    transition: all 0.3s ease;
+}
+
+.anuncio-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.anuncio-card.anclado {
+    border-left-color: #f59e0b;
+    background: linear-gradient(to right, #fffbeb 0%, white 20px);
+}
+</style>
+
+<div class="content-wrapper">
+    {# Breadcrumb #}
+    <div class="breadcrumb">
+        <a href="{% url 'dashboard' %}?pagina=mis_clases">← Volver a Mis Clases</a>
+        <div style="margin-left: auto; display: flex; gap: 10px;">
+            {% if es_profesor %}
+                {% if not ver_como_alumno %}
+                <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-ver-como-alumno">
+                    📋 Tareas
+                </a>
+                <a href="{% url 'ver_detalle_clase' clase.id %}?ver_como_alumno=1" class="btn-ver-como-alumno">
+                    👁️ Ver como alumno
+                </a>
+                {% else %}
+                <a href="{% url 'ver_detalle_clase' clase.id %}" class="btn-ver-como-alumno" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    👨‍🏫 Volver a vista profesor
+                </a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {# Header de la Clase #}
+    <div class="clase-header-banner" style="border-left: 5px solid {{ asignatura.color }}">
+        <div class="clase-header-content">
+            <div class="clase-icon-large" style="background-color: {{ asignatura.color }}20; color: {{ asignatura.color }}">
+                📖
+            </div>
+            <div class="clase-info">
+                <h1 class="clase-titulo">{{ asignatura.nombre }}</h1>
+                <div class="clase-meta">
+                    <span class="meta-item">
+                        <span class="icon">🎓</span>
+                        {{ curso.nombre }}
+                    </span>
+                    <span class="meta-item">
+                        <span class="icon">👨‍🏫</span>
+                        {{ profesor.get_full_name }}
+                    </span>
+                    {% if asignatura.codigo %}
+                    <span class="meta-item">
+                        <span class="icon">📋</span>
+                        {{ asignatura.codigo }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Tabs de Navegación #}
+    <div class="tabs-navigation">
+        <button class="tab-button active" data-tab="materiales">
+            <span class="icon">📎</span>
+            Materiales
+            <span class="badge">{{ total_materiales }}</span>
+        </button>
+        <button class="tab-button" data-tab="tareas">
+            <span class="icon">📝</span>
+            Tareas
+            <span class="badge">{{ total_tareas }}</span>
+        </button>
+        {% if es_profesor and not ver_como_alumno %}
+        <button class="tab-button" data-tab="entregas">
+            <span class="icon">📤</span>
+            Entregas
+            <span class="badge">{{ total_entregas_pendientes }}</span>
+        </button>
+        {% endif %}
+        <button class="tab-button" data-tab="calendario">
+            <span class="icon">📅</span>
+            Calendario
+        </button>
+        {% if es_profesor and not ver_como_alumno %}
+        <button class="tab-button" data-tab="asistencia">
+            <span class="icon">📋</span>
+            Asistencia
+        </button>
+        {% endif %}
+        <button class="tab-button" data-tab="anuncios">
+            <span class="icon">📢</span>
+            Anuncios
+            <span class="badge">{{ total_anuncios }}</span>
+        </button>
+        <button class="tab-button" data-tab="calificaciones">
+            <span class="icon">📊</span>
+            Libro de calificaciones
+        </button>
+        {% if es_profesor and not ver_como_alumno %}
+        <button class="tab-button" data-tab="mensajes">
+            <span class="icon">💬</span>
+            Mensajes
+        </button>
+        {% endif %}
+    </div>
+
+    {# Contenido Principal #}
+    <div class="clase-content-layout">
+        
+        {# Columna Principal - Contenido #}
+        <div class="main-column">
+            
+            {# Tab: Materiales #}
+            <div class="tab-content active" id="tab-materiales">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">📎 Materiales de Clase</h2>
+                    {% if es_profesor and not ver_como_alumno %}
+                    <button class="btn-primary" onclick="mostrarModalSubir()">➕ Subir Material</button>
+                    {% endif %}
+                </div>
+                
+                {% if materiales %}
+                <div class="materiales-lista">
+                    {% for material in materiales %}
+                    <div class="material-item {% if not material.es_publico %}material-privado{% endif %}">
+                        <div class="material-icon">{{ material.get_icono }}</div>
+                        <div class="material-info">
+                            <div class="material-titulo">
+                                {{ material.titulo }}
+                                {% if not material.es_publico %}<span class="badge-privado">🔒 Privado</span>{% endif %}
+                            </div>
+                            {% if material.descripcion %}
+                            <div class="material-descripcion">{{ material.descripcion }}</div>
+                            {% endif %}
+                            <div class="material-meta">
+                                <span>{{ material.get_tamanio_legible }}</span>
+                                <span>•</span>
+                                <span>{{ material.fecha_creacion|date:"d/m/Y" }}</span>
+                                <span>•</span>
+                                <span>{{ material.subido_por.get_full_name }}</span>
+                            </div>
+                        </div>
+                        <div class="material-acciones">
+                            {% if es_profesor and not ver_como_alumno %}
+                            <div class="dropdown-menu-container">
+                                <button class="btn-icon dropdown-toggle" onclick="toggleDropdown(this)" title="Opciones">
+                                    ⚙️
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="{{ material.archivo.url }}" class="dropdown-item" download>
+                                        Descargar
+                                    </a>
+                                    <form method="post" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="cambiar_visibilidad">
+                                        <input type="hidden" name="material_id" value="{{ material.id_material }}">
+                                        <button type="submit" class="dropdown-item">
+                                            {% if material.es_publico %}Hacer privado{% else %}Hacer público{% endif %}
+                                        </button>
+                                    </form>
+                                    <form method="post" style="margin: 0;" onsubmit="return confirm('¿Eliminar este material?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="accion" value="eliminar_material">
+                                        <input type="hidden" name="material_id" value="{{ material.id_material }}">
+                                        <button type="submit" class="dropdown-item dropdown-item-danger">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% else %}
+                            <a href="{{ material.archivo.url }}" class="btn-icon" download title="Descargar">
+                                ⬇️
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📎</span>
+                    <p>No hay materiales disponibles</p>
+                    {% if es_profesor and not ver_como_alumno %}
+                    <button class="btn-primary" onclick="mostrarModalSubir()" style="margin-top: 15px;">➕ Subir primer material</button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Tareas #}
+            <div class="tab-content" id="tab-tareas">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">📝 Tareas de la Clase</h2>
+                    {% if es_profesor and not ver_como_alumno %}
+                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary">➕ Crear Tarea</a>
+                    {% endif %}
+                </div>
+                
+                {% if tareas %}
+                <div class="tareas-lista">
+                    {% for item in tareas %}
+                    <div class="tarea-card-inline">
+                        <div class="tarea-info">
+                            <h3 class="tarea-titulo">{{ item.tarea.titulo }}</h3>
+                            <div class="tarea-meta">
+                                <span>📅 {{ item.tarea.fecha_entrega|date:"d/m/Y H:i" }}</span>
+                                {% if es_profesor %}
+                                <span>•</span>
+                                <span>📤 {{ item.entregas_count }} entregas</span>
+                                {% else %}
+                                <span>•</span>
+                                {% if item.estado == 'corregida' %}
+                                <span class="badge badge-estado badge-corregida">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% if item.entrega.calificacion %}
+                                <span class="calificacion-grande">{{ item.entrega.calificacion }}</span>
+                                {% endif %}
+                                {% elif item.estado == 'entregada' %}
+                                <span class="badge badge-estado badge-entregada">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% elif item.estado == 'atrasada' %}
+                                <span class="badge badge-estado badge-atrasada">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% else %}
+                                <span class="badge badge-estado badge-pendiente">{{ item.icono_estado }} {{ item.texto_estado }}</span>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                            <div class="tarea-instrucciones-short">
+                                {{ item.tarea.instrucciones|truncatewords:20 }}
+                            </div>
+                        </div>
+                        <div class="tarea-acciones">
+                            {% if es_profesor and not ver_como_alumno %}
+                            <a href="{% url 'ver_entregas_tarea' item.tarea.id_tarea %}" class="btn-secondary-small">
+                                Ver entregas
+                            </a>
+                            {% else %}
+                            <a href="{% url 'ver_tareas_estudiante' %}" class="btn-secondary-small">
+                                Ver detalle
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📝</span>
+                    <p>No hay tareas publicadas</p>
+                    {% if es_profesor and not ver_como_alumno %}
+                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary" style="margin-top: 15px;">➕ Crear primera tarea</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Entregas (solo profesor) #}
+            {% if es_profesor and not ver_como_alumno %}
+            <div class="tab-content" id="tab-entregas">
+                <h2 class="section-title">📤 Entregas Pendientes de Revisión</h2>
+                
+                {% if entregas_pendientes %}
+                <div class="entregas-lista">
+                    {% for entrega in entregas_pendientes %}
+                    <div class="entrega-card">
+                        <div class="entrega-header">
+                            <div class="estudiante-info">
+                                <div class="estudiante-avatar">👤</div>
+                                <div>
+                                    <div class="estudiante-nombre">{{ entrega.estudiante.get_full_name }}</div>
+                                    <div class="tarea-nombre">{{ entrega.tarea.titulo }}</div>
+                                </div>
+                            </div>
+                            <div class="entrega-fecha">
+                                <span class="fecha-label">Entregado:</span>
+                                <span class="fecha-value">{{ entrega.fecha_entrega|date:"d/m/Y H:i" }}</span>
+                            </div>
+                        </div>
+                        <div class="entrega-acciones">
+                            {% if entrega.archivo %}
+                            <a href="{{ entrega.archivo.url }}" class="btn-secondary-small" download>
+                                ⬇️ Descargar
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'ver_entregas_tarea' entrega.tarea.id_tarea %}" class="btn-primary-small">
+                                Calificar
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">✅</span>
+                    <p>No hay entregas pendientes de revisión</p>
+                    <small style="color: #6c757d; display: block; margin-top: 8px;">
+                        ¡Todo está al día!
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+            
+            {# Tab: Mensajes (solo profesor) #}
+            <div class="tab-content" id="tab-mensajes">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">💬 Mensajes con Estudiantes</h2>
+                </div>
+                
+                <iframe src="{% url 'mensajes_clase' clase.id %}" 
+                        style="width: 100%; min-height: 600px; border: none; border-radius: 8px; background: white;">
+                </iframe>
+            </div>
+            {% endif %}
+
+            {# Tab: Calendario #}
+            <div class="tab-content" id="tab-calendario">
+                <h2 class="section-title">Calendario de Clases</h2>
+                <div class="horario-semanal">
+                    {% for dia, bloques in horarios_por_dia.items %}
+                    <div class="dia-card">
+                        <div class="dia-titulo">{{ dia }}</div>
+                        <div class="bloques-container">
+                            {% for bloque in bloques %}
+                            <div class="bloque-horario">
+                                <span class="bloque-num">Bloque {{ bloque.bloque_numero }}</span>
+                                <span class="bloque-time">{{ bloque.hora_inicio }} - {{ bloque.hora_fin }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state-small">
+                        <span class="icon">⏰</span>
+                        <p>No hay horarios asignados</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Tab: Asistencia (solo profesor) #}
+            {% if es_profesor and not ver_como_alumno %}
+            <div class="tab-content" id="tab-asistencia">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">📋 Asistencia de la Clase</h2>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-secondary">
+                            📊 Ver Reportes
+                        </a>
+                        <a href="{% url 'registro_asistencia_clase' clase.id %}" class="btn-primary">
+                            ✅ Registrar Asistencia
+                        </a>
+                    </div>
+                </div>
+                
+                <div style="padding: 30px; background: white; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">📋</div>
+                    <h3 style="color: #1e293b; margin-bottom: 10px;">Gestión de Asistencia</h3>
+                    <p style="color: #64748b; margin-bottom: 25px;">
+                        Registra la asistencia diaria de tus estudiantes y consulta los reportes mensuales.
+                    </p>
+                    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                        <a href="{% url 'registro_asistencia_clase' clase.id %}" class="btn-primary" style="text-decoration: none;">
+                            ✅ Registrar Asistencia Hoy
+                        </a>
+                        <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-secondary" style="text-decoration: none;">
+                            📊 Ver Reportes del Mes
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# Tab: Anuncios #}
+            <div class="tab-content" id="tab-anuncios">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">📢 Anuncios de la Clase</h2>
+                    {% if es_profesor and not ver_como_alumno %}
+                    <button class="btn-primary" onclick="mostrarModalAnuncio()">➕ Nuevo Anuncio</button>
+                    {% endif %}
+                </div>
+                
+                <div id="anuncios-container">
+                    {% if anuncios %}
+                        {% for anuncio in anuncios %}
+                        <div class="anuncio-card {% if anuncio.anclado %}anclado{% endif %}" data-anuncio-id="{{ anuncio.id_anuncio }}">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px;">
+                                    {% if anuncio.anclado %}📌{% endif %}
+                                    {{ anuncio.titulo }}
+                                </h3>
+                                <span style="color: #6b7280; font-size: 0.875rem;">
+                                    {{ anuncio.fecha_creacion|date:"d/m/Y H:i" }}
+                                </span>
+                            </div>
+                            <div style="color: #4b5563; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap;">{{ anuncio.contenido }}</div>
+                            {% if anuncio.archivo_adjunto %}
+                            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; display: inline-block; margin-bottom: 12px;">
+                                <a href="{{ anuncio.archivo_adjunto.url }}" download style="color: #3b82f6; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                    📎 <span>Descargar archivo adjunto</span>
+                                </a>
+                            </div>
+                            {% endif %}
+                            {% if es_profesor and not ver_como_alumno %}
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px;">
+                                <button onclick="editarAnuncio({{ anuncio.id_anuncio }})" style="padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✏️ Editar</button>
+                                <form method="post" action="{% url 'eliminar_anuncio' anuncio.id_anuncio %}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de eliminar este anuncio?')">
+                                    {% csrf_token %}
+                                    <button type="submit" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">🗑️ Eliminar</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <span style="font-size: 4rem; display: block; margin-bottom: 16px;">📢</span>
+                        <p style="color: #6b7280; font-size: 1.1rem;">No hay anuncios publicados</p>
+                        {% if es_profesor and not ver_como_alumno %}
+                        <button class="btn-primary" onclick="mostrarModalAnuncio()" style="margin-top: 20px;">➕ Crear primer anuncio</button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Tab: Calificaciones #}
+            <div class="tab-content" id="tab-calificaciones">
+                <h2 class="section-title">Libro de calificaciones</h2>
+                {% if evaluaciones_proximas %}
+                <div class="calificaciones-lista">
+                    {% for evaluacion in evaluaciones_proximas %}
+                    <div class="calificacion-item">
+                        <span class="cal-nombre">{{ evaluacion.titulo }}</span>
+                        <span class="cal-fecha">{{ evaluacion.fecha_evaluacion|date:"d/m/Y" }}</span>
+                        <span class="cal-nota">-</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-small">
+                    <span class="icon">📊</span>
+                    <p>No hay calificaciones registradas</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Tab: Mensajes #}
+            <div class="tab-content" id="tab-mensajes">
+                <div class="section-header-with-action">
+                    <h2 class="section-title">💬 Mensajes con Estudiantes</h2>
+                </div>
+                
+                <iframe src="{% url 'mensajes_clase' clase.id %}" 
+                        style="width: 100%; min-height: 600px; border: none; border-radius: 8px; background: white;">
+                </iframe>
+            </div>
+
+            {# Tab: Grupos #}
+            <div class="tab-content" id="tab-grupos">
+                <h2 class="section-title">Grupos</h2>
+                <div class="empty-state-small">
+                    <span class="icon">👥</span>
+                    <p>No hay grupos creados</p>
+                </div>
+            </div>
+
+        </div>
+
+        {# Columna Lateral - Información #}
+        <aside class="sidebar-column">
+            
+            {# Profesor del Curso #}
+            <div class="info-card">
+                <h3 class="info-card-title">Profesores del curso</h3>
+                <div class="profesor-info">
+                    <div class="profesor-avatar">
+                        <span class="avatar-icon">👨‍🏫</span>
+                    </div>
+                    <div class="profesor-datos">
+                        <div class="profesor-nombre">{{ profesor.get_full_name }}</div>
+                        <div class="profesor-rol">PROFESOR</div>
+                        <a href="mailto:{{ profesor.email }}" class="profesor-contacto">
+                            <span class="icon">📧</span>
+                            Enviar mensaje
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {# Detalles y Acciones #}
+            <div class="info-card">
+                <h3 class="info-card-title">Detalles y acciones</h3>
+                <div class="detalles-lista">
+                    <div class="detalle-item">
+                        <span class="detalle-icon">👥</span>
+                        <a href="#" class="detalle-link">Ver a los participantes de su curso</a>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-icon">📚</span>
+                        <a href="#" class="detalle-link">Ver herramientas del curso y de la institución</a>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Lista</span>
+                        <div class="detalle-info">
+                            <div class="detalle-desc">Total de estudiantes: {{ total_estudiantes }}</div>
+                            <a href="#" class="detalle-link-small">Ver a los participantes de su curso</a>
+                        </div>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Class Collaborate</span>
+                        <div class="detalle-info">
+                            <a href="#" class="detalle-link-button">Unirse a la sesión</a>
+                        </div>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Libros y herramientas</span>
+                        <div class="detalle-info">
+                            <a href="#" class="detalle-link-small">Ver herramientas del curso y de la institución</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+    </div>
+</div>
+
+{# Modal para subir material #}
+{% if es_profesor and not ver_como_alumno %}
+<div id="modalSubirMaterial" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📤 Subir Material</h2>
+            <span class="close" onclick="cerrarModalSubir()">&times;</span>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="form-subir-material">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="subir_material">
+            
+            <div class="form-group">
+                <label for="titulo">Título del material *</label>
+                <input type="text" id="titulo" name="titulo" required maxlength="200" 
+                       placeholder="Ej: Guía de Ejercicios Capítulo 3">
+            </div>
+            
+            <div class="form-group">
+                <label for="descripcion">Descripción (opcional)</label>
+                <textarea id="descripcion" name="descripcion" rows="3" 
+                          placeholder="Descripción del material..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo_archivo">Tipo de archivo</label>
+                <select id="tipo_archivo" name="tipo_archivo">
+                    <option value="documento">📄 Documento</option>
+                    <option value="presentacion">📊 Presentación</option>
+                    <option value="video">🎥 Video</option>
+                    <option value="audio">🎵 Audio</option>
+                    <option value="imagen">🖼️ Imagen</option>
+                    <option value="otro">📎 Otro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="archivo">Archivo *</label>
+                <input type="file" id="archivo" name="archivo" required 
+                       accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.mp3,.zip,.rar,.7z,.odt,.ods,.csv">
+                <small class="file-info">
+                    <strong>Tamaño máximo:</strong> 50 MB<br>
+                    <strong>Formatos permitidos:</strong> Documentos (PDF, Word, Excel, PowerPoint), Imágenes (JPG, PNG, GIF), 
+                    Videos (MP4), Audio (MP3), Archivos comprimidos (ZIP, RAR, 7Z)
+                </small>
+            </div>
+            
+            <div class="form-group-checkbox">
+                <input type="checkbox" id="es_publico" name="es_publico" value="1" checked>
+                <label for="es_publico">
+                    👁️ Visible para estudiantes
+                    <small>Si no está marcado, solo tú podrás ver este material</small>
+                </label>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="cerrarModalSubir()">Cancelar</button>
+                <button type="submit" class="btn-primary">📤 Subir Material</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    animation: slideDown 0.3s;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1a202c;
+}
+
+.close {
+    font-size: 2rem;
+    font-weight: 300;
+    color: #a0aec0;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close:hover {
+    color: #1a202c;
+}
+
+.form-subir-material {
+    padding: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="file"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #718096;
+    font-size: 0.85rem;
+}
+
+.form-group-checkbox {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.form-group-checkbox input[type="checkbox"] {
+    margin-top: 2px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.form-group-checkbox label {
+    flex: 1;
+    cursor: pointer;
+}
+
+.form-group-checkbox label small {
+    display: block;
+    color: #718096;
+    font-size: 0.85rem;
+    margin-top: 3px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+}
+
+.btn-secondary:hover {
+    background: #f7fafc;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { 
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Estilos adicionales para materiales */
+.section-header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header-with-action h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #1a202c;
+}
+
+.materiales-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.material-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.2s;
+}
+
+.material-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.material-item.material-privado {
+    background: #fef5e7;
+    border-color: #f9b115;
+}
+
+.material-icon {
+    font-size: 2rem;
+}
+
+.material-info {
+    flex: 1;
+}
+
+.material-titulo {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge-privado {
+    font-size: 0.75rem;
+    background: #fbbf24;
+    color: #78350f;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.material-descripcion {
+    color: #4a5568;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.material-meta {
+    font-size: 0.85rem;
+    color: #718096;
+    display: flex;
+    gap: 8px;
+}
+
+.material-acciones {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon {
+    padding: 8px 12px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+    text-decoration: none;
+}
+
+.btn-icon:hover {
+    background: #edf2f7;
+}
+
+.btn-icon.btn-danger:hover {
+    background: #fed7d7;
+    border-color: #fc8181;
+}
+
+/* Dropdown Menu Styles */
+.dropdown-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 5px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 160px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    background: white;
+    border: none;
+    text-align: left;
+    color: #2d3748;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.dropdown-item:hover {
+    background: #f7fafc;
+}
+
+.dropdown-item-danger {
+    color: #e53e3e;
+}
+
+.dropdown-item-danger:hover {
+    background: #fff5f5;
+}
+
+.btn-ver-como-alumno {
+    margin-left: auto;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-ver-como-alumno:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+</style>
+
+<script>
+// Manejo de Tabs
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            
+            // Remover clase active de todos los botones y contenidos
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Agregar clase active al botón clickeado
+            this.classList.add('active');
+            
+            // Mostrar el contenido correspondiente
+            const targetContent = document.getElementById('tab-' + tabName);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+});
+
+// Funciones para modal de subir material
+function mostrarModalSubir() {
+    document.getElementById('modalSubirMaterial').style.display = 'block';
+}
+
+function cerrarModalSubir() {
+    document.getElementById('modalSubirMaterial').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalSubirMaterial');
+    if (event.target == modal) {
+        cerrarModalSubir();
+    }
+}
+
+// Manejo de menú desplegable
+function toggleDropdown(button) {
+    event.stopPropagation();
+    
+    // Cerrar todos los otros dropdowns
+    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+        if (menu !== button.nextElementSibling) {
+            menu.classList.remove('show');
+        }
+    });
+    
+    // Toggle del dropdown actual
+    const menu = button.nextElementSibling;
+    menu.classList.toggle('show');
+}
+
+// Cerrar dropdowns al hacer clic fuera
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-menu-container')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    }
+});
+</script>

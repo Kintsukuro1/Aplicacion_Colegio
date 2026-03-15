@@ -1,0 +1,179 @@
+<link rel="stylesheet" href="{% static 'estudiante/css/financiamiento.css' %}">
+
+<div class="content-wrapper">
+    <div class="page-header">
+        <h1>💳 Financiamiento</h1>
+        <p class="subtitle">Estado de pagos y cuotas</p>
+    </div>
+
+    <div class="financiamiento-container">
+        
+        {# Resumen de Cuenta #}
+        <div class="resumen-cuenta">
+            <div class="cuenta-card">
+                <h2>📊 Resumen de Cuenta</h2>
+                <div class="cuenta-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Anual</span>
+                        <span class="stat-value">$1.200.000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Pagado</span>
+                        <span class="stat-value pagado">$900.000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Pendiente</span>
+                        <span class="stat-value pendiente">$300.000</span>
+                    </div>
+                </div>
+                <div class="progreso-pago">
+                    <div class="progreso-bar">
+                        <div class="progreso-fill" style="width: 75%"></div>
+                    </div>
+                    <span class="progreso-texto">75% pagado</span>
+                </div>
+            </div>
+        </div>
+
+        {# Cuotas Mensuales #}
+        <div class="cuotas-section">
+            <h2>📅 Cuotas Mensuales</h2>
+            
+            <div class="cuotas-grid">
+                
+                {# Cuota Pagada #}
+                <div class="cuota-card pagada">
+                    <div class="cuota-header">
+                        <span class="cuota-mes">Marzo 2025</span>
+                        <span class="badge-estado pagada">✅ Pagada</span>
+                    </div>
+                    <div class="cuota-info">
+                        <div class="cuota-monto">$100.000</div>
+                        <div class="cuota-detalles">
+                            <p><strong>Fecha de pago:</strong> 05/03/2025</p>
+                            <p><strong>Método:</strong> Transferencia</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cuota-card pagada">
+                    <div class="cuota-header">
+                        <span class="cuota-mes">Abril 2025</span>
+                        <span class="badge-estado pagada">✅ Pagada</span>
+                    </div>
+                    <div class="cuota-info">
+                        <div class="cuota-monto">$100.000</div>
+                        <div class="cuota-detalles">
+                            <p><strong>Fecha de pago:</strong> 08/04/2025</p>
+                            <p><strong>Método:</strong> Transferencia</p>
+                        </div>
+                    </div>
+                </div>
+
+                {# Cuota Pendiente #}
+                <div class="cuota-card pendiente">
+                    <div class="cuota-header">
+                        <span class="cuota-mes">Diciembre 2025</span>
+                        <span class="badge-estado pendiente">⏳ Pendiente</span>
+                    </div>
+                    <div class="cuota-info">
+                        <div class="cuota-monto">$100.000</div>
+                        <div class="cuota-detalles">
+                            <p><strong>Vencimiento:</strong> 10/12/2025</p>
+                            <p><strong>Días restantes:</strong> 6 días</p>
+                        </div>
+                    </div>
+                    <a href="#" class="btn-pagar">Pagar Ahora</a>
+                </div>
+
+                {# Cuota Vencida #}
+                <div class="cuota-card vencida">
+                    <div class="cuota-header">
+                        <span class="cuota-mes">Noviembre 2025</span>
+                        <span class="badge-estado vencida">❌ Vencida</span>
+                    </div>
+                    <div class="cuota-info">
+                        <div class="cuota-monto">$100.000</div>
+                        <div class="cuota-detalles">
+                            <p><strong>Vencimiento:</strong> 10/11/2025</p>
+                            <p><strong>Mora:</strong> $5.000</p>
+                        </div>
+                    </div>
+                    <a href="#" class="btn-pagar urgente">Pagar Urgente</a>
+                </div>
+
+            </div>
+        </div>
+
+        {# Métodos de Pago #}
+        <div class="metodos-pago-section">
+            <h2>💳 Métodos de Pago</h2>
+            
+            <div class="metodos-grid">
+                <div class="metodo-card">
+                    <span class="metodo-icon">🏦</span>
+                    <h3>Transferencia Bancaria</h3>
+                    <p>Banco Estado</p>
+                    <p><strong>Cuenta Corriente:</strong> 123-456-789</p>
+                    <p><strong>RUT:</strong> 76.123.456-7</p>
+                </div>
+
+                <div class="metodo-card">
+                    <span class="metodo-icon">💳</span>
+                    <h3>Pago en Línea</h3>
+                    <p>Webpay, Tarjetas de Crédito/Débito</p>
+                    <a href="#" class="btn-metodo">Pagar Online</a>
+                </div>
+
+                <div class="metodo-card">
+                    <span class="metodo-icon">🏫</span>
+                    <h3>Pago Presencial</h3>
+                    <p>Secretaría del Colegio</p>
+                    <p>Lunes a Viernes: 8:00 - 16:00</p>
+                </div>
+            </div>
+        </div>
+
+        {# Historial de Pagos #}
+        <div class="historial-section">
+            <h2>📋 Historial de Pagos</h2>
+            
+            <table class="tabla-historial">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Concepto</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Comprobante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>08/04/2025</td>
+                        <td>Cuota Abril</td>
+                        <td>$100.000</td>
+                        <td>Transferencia</td>
+                        <td><a href="#" class="btn-descargar">📄 Ver</a></td>
+                    </tr>
+                    <tr>
+                        <td>05/03/2025</td>
+                        <td>Cuota Marzo</td>
+                        <td>$100.000</td>
+                        <td>Transferencia</td>
+                        <td><a href="#" class="btn-descargar">📄 Ver</a></td>
+                    </tr>
+                    <tr>
+                        <td>01/03/2025</td>
+                        <td>Matrícula 2025</td>
+                        <td>$200.000</td>
+                        <td>Efectivo</td>
+                        <td><a href="#" class="btn-descargar">📄 Ver</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+

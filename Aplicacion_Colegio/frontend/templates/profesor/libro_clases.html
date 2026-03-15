@@ -1,0 +1,185 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/profesor/libro_clases.css' %}">
+
+<div class="content-wrapper">
+    <div class="page-header">
+        <h1>📖 Libro de Clases</h1>
+        <p class="subtitle">Matriz completa de calificaciones por clase</p>
+    </div>
+
+    <div class="libro-container">
+        
+        {# Filtros #}
+        <div class="filtros-section">
+            <form method="GET" class="filtros-form">
+                <input type="hidden" name="pagina" value="libro_clases">
+                <div class="filtro-item">
+                    <label for="clase_id">Seleccionar Clase:</label>
+                    <select name="clase_id" id="clase_id" onchange="this.form.submit()">
+                        <option value="">-- Seleccione una clase --</option>
+                        {% for clase in clases %}
+                            <option value="{{ clase.id }}" {% if filtro_clase_id|stringformat:"s" == clase.id|stringformat:"s" %}selected{% endif %}>
+                                {{ clase.curso.nombre }} - {{ clase.asignatura.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        {% if clase_seleccionada %}
+        
+        {# Información de la Clase #}
+        <div class="info-clase">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Curso:</span>
+                    <span class="info-value">{{ clase_seleccionada.curso.nombre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Asignatura:</span>
+                    <span class="info-value">{{ clase_seleccionada.asignatura.nombre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Profesor:</span>
+                    <span class="info-value">{{ clase_seleccionada.profesor.get_full_name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Promedio General:</span>
+                    <span class="info-value {% if promedio_general >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
+                        {{ promedio_general|default:"0.0" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {# Estadísticas Rápidas #}
+        <div class="stats-rapidas">
+            <div class="stat-card">
+                <span class="stat-icon">👨‍🎓</span>
+                <div class="stat-info">
+                    <span class="stat-numero">{{ total_estudiantes }}</span>
+                    <span class="stat-label">Estudiantes</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">📝</span>
+                <div class="stat-info">
+                    <span class="stat-numero">{{ total_evaluaciones }}</span>
+                    <span class="stat-label">Evaluaciones</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">📊</span>
+                <div class="stat-info">
+                    <span class="stat-numero">{{ promedio_general|default:"0.0" }}</span>
+                    <span class="stat-label">Promedio Curso</span>
+                </div>
+            </div>
+        </div>
+
+        {% if evaluaciones %}
+        {# Tabla Matriz de Calificaciones #}
+        <div class="tabla-container">
+            <div class="tabla-scroll">
+                <table class="tabla-libro">
+                    <thead>
+                        <tr>
+                            <th class="col-numero">#</th>
+                            <th class="col-estudiante">Estudiante</th>
+                            {% for evaluacion in evaluaciones %}
+                            <th class="col-evaluacion" title="{{ evaluacion.nombre }} - {{ evaluacion.fecha_evaluacion|date:'d/m/Y' }} ({{ evaluacion.ponderacion }}%)">
+                                <div class="eval-header">
+                                    <span class="eval-nombre">{{ evaluacion.nombre|truncatechars:15 }}</span>
+                                    <span class="eval-fecha">{{ evaluacion.fecha_evaluacion|date:"d/m" }}</span>
+                                    <span class="eval-pond">{{ evaluacion.ponderacion }}%</span>
+                                </div>
+                            </th>
+                            {% endfor %}
+                            <th class="col-promedio">Promedio</th>
+                            <th class="col-estado">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in matriz_calificaciones %}
+                        <tr>
+                            <td class="col-numero">{{ forloop.counter }}</td>
+                            <td class="col-estudiante">
+                                {{ fila.estudiante.apellido_paterno }} {{ fila.estudiante.apellido_materno }}, {{ fila.estudiante.nombre }}
+                            </td>
+                            {% for nota in fila.notas %}
+                            <td class="col-nota">
+                                {% if nota %}
+                                    <span class="nota {% if nota >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
+                                        {{ nota }}
+                                    </span>
+                                {% else %}
+                                    <span class="nota-vacia">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="col-promedio">
+                                {% if fila.promedio %}
+                                    <span class="promedio {% if fila.promedio >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
+                                        {{ fila.promedio }}
+                                    </span>
+                                {% else %}
+                                    <span class="promedio-vacio">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-estado">
+                                <span class="badge badge-{{ fila.estado|lower|cut:' ' }}">{{ fila.estado }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        {# Fila de promedios por evaluación #}
+                        <tr class="fila-promedios">
+                            <td colspan="2" class="label-promedios">Promedio por Evaluación:</td>
+                            {% for promedio in promedios_evaluaciones %}
+                            <td class="col-nota">
+                                {% if promedio %}
+                                    <span class="promedio-eval {% if promedio >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
+                                        {{ promedio }}
+                                    </span>
+                                {% else %}
+                                    <span class="promedio-vacio">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td colspan="2"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Botones de Acción #}
+        <div class="acciones-libro">
+            <button type="button" class="btn-exportar" onclick="window.print()">
+                <span class="icon">🖨️</span>
+                Imprimir
+            </button>
+            <button type="button" class="btn-exportar btn-excel" onclick="alert('Funcionalidad de exportación a Excel próximamente')">
+                <span class="icon">📊</span>
+                Exportar a Excel
+            </button>
+        </div>
+
+        {% else %}
+        <div class="mensaje-vacio">
+            <span class="icon">📝</span>
+            <p>No hay evaluaciones registradas para esta clase.</p>
+            <p class="hint">Crea evaluaciones desde el módulo "Evaluaciones y Notas".</p>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="mensaje-inicial">
+            <span class="icon">📖</span>
+            <p>Selecciona una clase para ver el libro de calificaciones.</p>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
