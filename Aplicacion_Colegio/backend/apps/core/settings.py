@@ -8,16 +8,10 @@ Compatible con estructura backend/apps/
 from pathlib import Path
 import os
 import sys
-<<<<<<< HEAD
-try:
-    from distutils.util import strtobool
-except ModuleNotFoundError:  # Python 3.12+ eliminó distutils
-=======
 from datetime import timedelta
 try:
     from distutils.util import strtobool
 except ModuleNotFoundError:  # Python 3.12+ no incluye distutils
->>>>>>> fceac4d (WIP local antes de sincronizar main)
     def strtobool(value: str) -> int:
         normalized = str(value).strip().lower()
         if normalized in ('y', 'yes', 't', 'true', 'on', '1'):

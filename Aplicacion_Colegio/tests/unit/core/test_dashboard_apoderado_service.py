@@ -39,13 +39,14 @@ class TestDashboardApoderadoService:
 
     def test_execute_get_apoderado_context_inicio(self):
         user = Mock(id=10, rbd_colegio=444)
-        cursor = Mock()
-        cursor.fetchall.return_value = [(1, 'Ana', 'Pérez', 'López', 'ana@test.cl')]
+        estudiante = SimpleNamespace(id=1, nombre='Ana', apellido_paterno='Pérez', apellido_materno='López', email='ana@test.cl')
+        relacion = SimpleNamespace(estudiante=estudiante)
+        manager = Mock()
+        manager.select_related.return_value.filter.return_value.order_by.return_value = [relacion]
 
-        user_model = Mock(side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
         with patch('backend.apps.core.services.dashboard_apoderado_service.IntegrityService.validate_school_integrity_or_raise') as mock_integrity, patch(
-            'django.db.connection.cursor', return_value=cursor
-        ), patch('backend.apps.accounts.models.User', user_model):
+            'backend.apps.accounts.models.RelacionApoderadoEstudiante.objects', manager
+        ):
             result = DashboardApoderadoService._execute_get_apoderado_context(
                 {'user': user, 'pagina_solicitada': 'inicio'}
             )
@@ -57,11 +58,11 @@ class TestDashboardApoderadoService:
 
     def test_execute_get_apoderado_context_notas_delegates(self):
         user = Mock(id=10, rbd_colegio=None)
-        cursor = Mock()
-        cursor.fetchall.return_value = []
+        manager = Mock()
+        manager.select_related.return_value.filter.return_value.order_by.return_value = []
 
-        with patch('django.db.connection.cursor', return_value=cursor), patch(
-            'backend.apps.accounts.models.User', Mock(side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
+        with patch(
+            'backend.apps.accounts.models.RelacionApoderadoEstudiante.objects', manager
         ), patch.object(
             DashboardApoderadoService,
             '_get_apoderado_notas_context',
@@ -76,7 +77,9 @@ class TestDashboardApoderadoService:
 
     def test_execute_get_apoderado_context_handles_exception(self):
         user = Mock(id=10, rbd_colegio=None)
-        with patch('django.db.connection.cursor', side_effect=Exception('db')):
+        manager = Mock()
+        manager.select_related.side_effect = Exception('db')
+        with patch('backend.apps.accounts.models.RelacionApoderadoEstudiante.objects', manager):
             result = DashboardApoderadoService._execute_get_apoderado_context(
                 {'user': user, 'pagina_solicitada': 'inicio'}
             )

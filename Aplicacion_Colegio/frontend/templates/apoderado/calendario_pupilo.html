@@ -15,8 +15,7 @@
         <label for="selectEstudiante">Seleccionar pupilo:</label>
         <select id="selectEstudiante" onchange="cambiarEstudiante(this.value)">
             {% for est in estudiantes %}
-            <option value="{{ est.id }}" {% if estudiante_seleccionado and estudiante_seleccionado.id==est.id
-                %}selected{% endif %}>
+            <option value="{{ est.id }}" {% if estudiante_seleccionado and estudiante_seleccionado.id == est.id %}selected{% endif %}>
                 {{ est.nombre }} {{ est.apellido_paterno }}
             </option>
             {% endfor %}

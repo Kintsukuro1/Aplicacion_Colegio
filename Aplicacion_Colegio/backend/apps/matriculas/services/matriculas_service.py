@@ -488,6 +488,8 @@ class MatriculasService:
         Returns:
             Dict: Datos del estado de cuenta o {'error': mensaje}
         """
+        from ..models import Cuota
+
         user = params['user']
         estudiante_seleccionado = params.get('estudiante_seleccionado')
 
@@ -535,8 +537,11 @@ class MatriculasService:
             )
             # Permitir ver datos históricos pero advertir
             
-        # Obtener cuotas
-        cuotas = matricula.cuotas.all().order_by('anio', 'mes', 'numero_cuota')
+        # Obtener cuotas con query explícita para evitar inconsistencias del reverse manager tenant-aware
+        cuotas = Cuota.objects.filter(
+            matricula=matricula,
+            matricula__colegio_id=escuela_rbd,
+        ).order_by('anio', 'mes', 'numero_cuota')
 
         # Calcular totales
         total_arancel = cuotas.aggregate(total=Sum('monto_original'))['total'] or 0

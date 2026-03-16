@@ -43,10 +43,7 @@ class DashboardApoderadoService:
     @staticmethod
     def _execute_get_apoderado_context(params: dict):
         """Get context specific for apoderado role"""
-        from django.db import connection
-        from backend.apps.accounts.models import User
-        from backend.apps.academico.models import Calificacion, Evaluacion, Asistencia
-        from backend.apps.cursos.models import Asignatura, Clase
+        from backend.apps.accounts.models import RelacionApoderadoEstudiante
 
         user = params['user']
         pagina_solicitada = params['pagina_solicitada']
@@ -61,23 +58,27 @@ class DashboardApoderadoService:
             )
         
         try:
-            # Get estudiantes asociados al apoderado
-            cursor = connection.cursor()
-            cursor.execute('''
-                SELECT u.id, u.nombre, u.apellido_paterno, u.apellido_materno, u.email
-                FROM user u
-                INNER JOIN relacion_apoderado_estudiante r ON u.id = r.estudiante_id
-                WHERE r.apoderado_id = %s AND r.activa = 1
-            ''', [user.id])
-            
-            estudiantes_data = cursor.fetchall()
+            # Obtener pupilos usando la relación correcta: RelacionApoderadoEstudiante.apoderado -> Apoderado.user
+            relaciones_qs = (
+                RelacionApoderadoEstudiante.objects
+                .select_related('estudiante', 'apoderado', 'apoderado__user')
+                .filter(
+                    apoderado__user=user,
+                    apoderado__activo=True,
+                    activa=True,
+                    estudiante__is_active=True,
+                )
+                .order_by('prioridad_contacto', 'estudiante__apellido_paterno', 'estudiante__nombre')
+            )
+
+            # Mantener orden y evitar duplicados de estudiante por múltiples relaciones
             estudiantes = []
-            for est_data in estudiantes_data:
-                estudiante = User(id=est_data[0], nombre=est_data[1], 
-                                apellido_paterno=est_data[2], 
-                                apellido_materno=est_data[3], 
-                                email=est_data[4])
-                estudiantes.append(estudiante)
+            seen_ids = set()
+            for relacion in relaciones_qs:
+                estudiante = relacion.estudiante
+                if estudiante.id not in seen_ids:
+                    seen_ids.add(estudiante.id)
+                    estudiantes.append(estudiante)
             
             # Common context for all apoderado pages
             context.update({
@@ -159,7 +160,6 @@ class DashboardApoderadoService:
     def _get_apoderado_notas_context(user, estudiantes, estudiante_id_param):
         """Helper: Get notas context for apoderado"""
         from backend.apps.academico.models import Calificacion
-        from backend.apps.cursos.models import Clase
         from collections import defaultdict
         
         # Select student
@@ -179,64 +179,75 @@ class DashboardApoderadoService:
         notas_por_asignatura = []
         promedio_general = None
         
-        if estudiante_seleccionado and hasattr(estudiante_seleccionado, 'perfil_estudiante'):
-            curso = estudiante_seleccionado.perfil_estudiante.curso_actual
-            
-            if curso:
-                clases = list(Clase.objects.filter(
-                    curso=curso,
-                    activo=True
-                ).select_related('asignatura'))
+        if estudiante_seleccionado:
+            calificaciones = Calificacion.objects.filter(
+                estudiante=estudiante_seleccionado,
+                evaluacion__activa=True
+            ).select_related(
+                'evaluacion',
+                'evaluacion__clase',
+                'evaluacion__clase__asignatura',
+            ).order_by('evaluacion__clase__asignatura__nombre', '-evaluacion__fecha_evaluacion')
 
-                clase_ids = [getattr(clase, 'id_clase', getattr(clase, 'id', None)) for clase in clases]
-                calificaciones = Calificacion.objects.filter(
-                    estudiante=estudiante_seleccionado,
-                    evaluacion__clase_id__in=clase_ids,
-                    evaluacion__activa=True
-                ).select_related(
-                    'evaluacion',
-                    'evaluacion__clase',
-                ).order_by('evaluacion__clase_id', '-evaluacion__fecha_evaluacion')
+            calificaciones_por_asignatura = defaultdict(list)
+            asignaturas_by_key = {}
 
-                calificaciones_por_clase = defaultdict(list)
-                for calif in calificaciones:
-                    clase_id = getattr(calif.evaluacion, 'clase_id', None)
-                    if clase_id is not None:
-                        calificaciones_por_clase[clase_id].append(calif)
-                
-                total_promedio = 0
-                count_asignaturas = 0
-                
-                for clase in clases:
-                    clase_id = getattr(clase, 'id_clase', getattr(clase, 'id', None))
-                    calificaciones_clase = calificaciones_por_clase.get(clase_id, [])
-                    
-                    evaluaciones_list = []
-                    suma_notas = 0
-                    for calif in calificaciones_clase:
-                        evaluaciones_list.append({
-                            'nombre': calif.evaluacion.nombre,
-                            'fecha_evaluacion': calif.evaluacion.fecha_evaluacion,
-                            'nota': calif.nota,
-                            'ponderacion': calif.evaluacion.ponderacion,
-                        })
-                        suma_notas += calif.nota
-                    
-                    promedio_asignatura = None
-                    total_calif = len(calificaciones_clase)
-                    if total_calif > 0:
-                        promedio_asignatura = round(suma_notas / total_calif, 1)
-                        total_promedio += promedio_asignatura
-                        count_asignaturas += 1
-                    
-                    notas_por_asignatura.append({
-                        'asignatura': clase.asignatura,
-                        'promedio': promedio_asignatura,
-                        'evaluaciones': evaluaciones_list,
+            for calif in calificaciones:
+                clase = getattr(calif.evaluacion, 'clase', None)
+                asignatura = getattr(clase, 'asignatura', None)
+                clase_id = getattr(calif.evaluacion, 'clase_id', None)
+                asignatura_id = getattr(asignatura, 'id_asignatura', getattr(asignatura, 'id', None)) if asignatura else None
+
+                asignatura_id_valido = isinstance(asignatura_id, (int, str))
+                clase_id_valido = isinstance(clase_id, (int, str))
+
+                if asignatura_id_valido:
+                    asignatura_key = f"asig:{asignatura_id}"
+                elif clase_id_valido:
+                    asignatura_key = f"clase:{clase_id}"
+                else:
+                    continue
+
+                if asignatura_key not in asignaturas_by_key:
+                    asignaturas_by_key[asignatura_key] = asignatura
+
+                calificaciones_por_asignatura[asignatura_key].append(calif)
+
+            total_promedio = 0
+            count_asignaturas = 0
+
+            for asignatura_key, calificaciones_asignatura in calificaciones_por_asignatura.items():
+                evaluaciones_list = []
+                suma_notas = 0
+
+                for calif in calificaciones_asignatura:
+                    evaluaciones_list.append({
+                        'nombre': calif.evaluacion.nombre,
+                        'fecha_evaluacion': calif.evaluacion.fecha_evaluacion,
+                        'nota': calif.nota,
+                        'ponderacion': calif.evaluacion.ponderacion,
                     })
-                
-                if count_asignaturas > 0:
-                    promedio_general = round(total_promedio / count_asignaturas, 1)
+                    suma_notas += calif.nota
+
+                promedio_asignatura = None
+                total_calif = len(calificaciones_asignatura)
+                if total_calif > 0:
+                    promedio_asignatura = round(suma_notas / total_calif, 1)
+                    total_promedio += promedio_asignatura
+                    count_asignaturas += 1
+
+                notas_por_asignatura.append({
+                    'asignatura': asignaturas_by_key.get(asignatura_key),
+                    'promedio': promedio_asignatura,
+                    'evaluaciones': evaluaciones_list,
+                })
+
+            notas_por_asignatura.sort(
+                key=lambda item: str(getattr(item['asignatura'], 'nombre', '')) if item.get('asignatura') else ''
+            )
+
+            if count_asignaturas > 0:
+                promedio_general = round(total_promedio / count_asignaturas, 1)
         
         return {
             'estudiante_seleccionado': estudiante_seleccionado,

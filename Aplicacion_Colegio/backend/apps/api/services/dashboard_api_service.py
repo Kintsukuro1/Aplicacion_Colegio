@@ -86,6 +86,7 @@ class DashboardApiService:
             'context': {
                 'user_id': user.id,
                 'role': role_name,
+                'school_id': school_id,
                 'colegio_id': school_id,
                 'is_global_admin': cls._is_global_admin(user),
             },
@@ -147,6 +148,7 @@ class DashboardApiService:
 
         return {
             'today': today.isoformat(),
+            'school_id': school_id,
             'colegio_id': school_id,
             'students': student_qs.count(),
             'teachers': teacher_qs.count(),
@@ -175,6 +177,7 @@ class DashboardApiService:
         next_7_days = today + timedelta(days=7)
         return {
             'today': today.isoformat(),
+            'school_id': school_id,
             'colegio_id': school_id,
             'attendance_today_total': attendance_today_total,
             'attendance_today_present': attendance_today_present,

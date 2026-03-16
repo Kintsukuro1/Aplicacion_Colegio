@@ -1,7 +1,7 @@
 from django.db.models import Avg, Count, Q, Sum
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -275,7 +275,7 @@ def apoderado_pupilo_anotaciones(request, student_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser])
+@parser_classes([JSONParser, MultiPartParser, FormParser])
 def apoderado_crear_justificativo(request):
     profile_error = _forbidden_if_not_guardian(request.user)
     if profile_error:
