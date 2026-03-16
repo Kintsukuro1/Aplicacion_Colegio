@@ -3,183 +3,277 @@
 
 <div class="content-wrapper">
     <div class="page-header">
-        <h1>📖 Libro de Clases</h1>
-        <p class="subtitle">Matriz completa de calificaciones por clase</p>
+        <h1>Libro de Clases Digital</h1>
+        <p class="subtitle">Registro diario, firma docente e historial por establecimiento</p>
     </div>
 
     <div class="libro-container">
-        
-        {# Filtros #}
         <div class="filtros-section">
-            <form method="GET" class="filtros-form">
-                <input type="hidden" name="pagina" value="libro_clases">
+            <div class="filtros-form" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
                 <div class="filtro-item">
-                    <label for="clase_id">Seleccionar Clase:</label>
-                    <select name="clase_id" id="clase_id" onchange="this.form.submit()">
-                        <option value="">-- Seleccione una clase --</option>
+                    <label for="clase_id">Clase</label>
+                    <select id="clase_id">
+                        <option value="">Seleccione una clase</option>
                         {% for clase in clases %}
-                            <option value="{{ clase.id }}" {% if filtro_clase_id|stringformat:"s" == clase.id|stringformat:"s" %}selected{% endif %}>
-                                {{ clase.curso.nombre }} - {{ clase.asignatura.nombre }}
-                            </option>
+                        <option value="{{ clase.id }}" {% if filtro_clase_id|stringformat:'s' == clase.id|stringformat:'s' %}selected{% endif %}>
+                            {{ clase.curso.nombre }} - {{ clase.asignatura.nombre }}{% if clase.profesor %} - {{ clase.profesor.get_full_name }}{% endif %}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
-            </form>
-        </div>
-
-        {% if clase_seleccionada %}
-        
-        {# Información de la Clase #}
-        <div class="info-clase">
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">Curso:</span>
-                    <span class="info-value">{{ clase_seleccionada.curso.nombre }}</span>
+                <div class="filtro-item">
+                    <label for="fecha_registro">Fecha</label>
+                    <input id="fecha_registro" type="date" value="{{ fecha_filtro }}">
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Asignatura:</span>
-                    <span class="info-value">{{ clase_seleccionada.asignatura.nombre }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Profesor:</span>
-                    <span class="info-value">{{ clase_seleccionada.profesor.get_full_name }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Promedio General:</span>
-                    <span class="info-value {% if promedio_general >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
-                        {{ promedio_general|default:"0.0" }}
-                    </span>
+                <div class="filtro-item">
+                    <label for="numero_clase">Numero de bloque</label>
+                    <input id="numero_clase" type="number" min="1" step="1" value="1">
                 </div>
             </div>
         </div>
 
-        {# Estadísticas Rápidas #}
-        <div class="stats-rapidas">
-            <div class="stat-card">
-                <span class="stat-icon">👨‍🎓</span>
-                <div class="stat-info">
-                    <span class="stat-numero">{{ total_estudiantes }}</span>
-                    <span class="stat-label">Estudiantes</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-icon">📝</span>
-                <div class="stat-info">
-                    <span class="stat-numero">{{ total_evaluaciones }}</span>
-                    <span class="stat-label">Evaluaciones</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <span class="stat-icon">📊</span>
-                <div class="stat-info">
-                    <span class="stat-numero">{{ promedio_general|default:"0.0" }}</span>
-                    <span class="stat-label">Promedio Curso</span>
+        {% if not libro_read_only %}
+        <div class="tabla-container" style="margin-bottom: 16px;">
+            <h4 style="margin: 0 0 10px 0;">Registrar clase</h4>
+            <div style="display:grid; gap: 10px;">
+                <label for="contenido_tratado">Contenido tratado</label>
+                <textarea id="contenido_tratado" rows="4" placeholder="Describe los objetivos, actividades y avances de la clase"></textarea>
+
+                <label for="tarea_asignada">Tarea asignada</label>
+                <textarea id="tarea_asignada" rows="2" placeholder="Opcional"></textarea>
+
+                <label for="observaciones">Observaciones</label>
+                <textarea id="observaciones" rows="2" placeholder="Opcional"></textarea>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button id="btn_guardar" type="button" class="btn-exportar">Guardar registro</button>
+                    <button id="btn_firmar" type="button" class="btn-exportar btn-excel" disabled>Firmar ultimo registro</button>
                 </div>
             </div>
         </div>
+        {% endif %}
 
-        {% if evaluaciones %}
-        {# Tabla Matriz de Calificaciones #}
+        <div id="estado_libro" class="mensaje-inicial" style="display:none;"></div>
+
         <div class="tabla-container">
             <div class="tabla-scroll">
                 <table class="tabla-libro">
                     <thead>
                         <tr>
-                            <th class="col-numero">#</th>
-                            <th class="col-estudiante">Estudiante</th>
-                            {% for evaluacion in evaluaciones %}
-                            <th class="col-evaluacion" title="{{ evaluacion.nombre }} - {{ evaluacion.fecha_evaluacion|date:'d/m/Y' }} ({{ evaluacion.ponderacion }}%)">
-                                <div class="eval-header">
-                                    <span class="eval-nombre">{{ evaluacion.nombre|truncatechars:15 }}</span>
-                                    <span class="eval-fecha">{{ evaluacion.fecha_evaluacion|date:"d/m" }}</span>
-                                    <span class="eval-pond">{{ evaluacion.ponderacion }}%</span>
-                                </div>
-                            </th>
-                            {% endfor %}
-                            <th class="col-promedio">Promedio</th>
-                            <th class="col-estado">Estado</th>
+                            <th>Fecha</th>
+                            <th>Curso</th>
+                            <th>Asignatura</th>
+                            <th>Bloque</th>
+                            <th>Contenido</th>
+                            <th>Firma</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for fila in matriz_calificaciones %}
-                        <tr>
-                            <td class="col-numero">{{ forloop.counter }}</td>
-                            <td class="col-estudiante">
-                                {{ fila.estudiante.apellido_paterno }} {{ fila.estudiante.apellido_materno }}, {{ fila.estudiante.nombre }}
-                            </td>
-                            {% for nota in fila.notas %}
-                            <td class="col-nota">
-                                {% if nota %}
-                                    <span class="nota {% if nota >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
-                                        {{ nota }}
-                                    </span>
-                                {% else %}
-                                    <span class="nota-vacia">-</span>
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                            <td class="col-promedio">
-                                {% if fila.promedio %}
-                                    <span class="promedio {% if fila.promedio >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
-                                        {{ fila.promedio }}
-                                    </span>
-                                {% else %}
-                                    <span class="promedio-vacio">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="col-estado">
-                                <span class="badge badge-{{ fila.estado|lower|cut:' ' }}">{{ fila.estado }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        
-                        {# Fila de promedios por evaluación #}
-                        <tr class="fila-promedios">
-                            <td colspan="2" class="label-promedios">Promedio por Evaluación:</td>
-                            {% for promedio in promedios_evaluaciones %}
-                            <td class="col-nota">
-                                {% if promedio %}
-                                    <span class="promedio-eval {% if promedio >= 4.0 %}aprobado{% else %}reprobado{% endif %}">
-                                        {{ promedio }}
-                                    </span>
-                                {% else %}
-                                    <span class="promedio-vacio">-</span>
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                            <td colspan="2"></td>
-                        </tr>
+                    <tbody id="tabla_registros_body">
+                        <tr><td colspan="6">Seleccione filtros para cargar registros.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {# Botones de Acción #}
-        <div class="acciones-libro">
-            <button type="button" class="btn-exportar" onclick="window.print()">
-                <span class="icon">🖨️</span>
-                Imprimir
-            </button>
-            <button type="button" class="btn-exportar btn-excel" onclick="alert('Funcionalidad de exportación a Excel próximamente')">
-                <span class="icon">📊</span>
-                Exportar a Excel
-            </button>
-        </div>
-
-        {% else %}
-        <div class="mensaje-vacio">
-            <span class="icon">📝</span>
-            <p>No hay evaluaciones registradas para esta clase.</p>
-            <p class="hint">Crea evaluaciones desde el módulo "Evaluaciones y Notas".</p>
+        {% if libro_read_only %}
+        <div class="acciones-libro" style="margin-top: 14px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn-exportar" id="btn_export_csv">Exportar Superintendencia CSV</button>
+            <button type="button" class="btn-exportar btn-excel" id="btn_export_xlsx">Exportar Superintendencia XLSX</button>
+            <button type="button" class="btn-exportar" id="btn_export_pdf">Exportar Superintendencia PDF</button>
+            <button type="button" class="btn-exportar btn-excel" id="btn_export_sige">Exportar Superintendencia SIGE</button>
         </div>
         {% endif %}
-
-        {% else %}
-        <div class="mensaje-inicial">
-            <span class="icon">📖</span>
-            <p>Selecciona una clase para ver el libro de calificaciones.</p>
-        </div>
-        {% endif %}
-
     </div>
 </div>
+
+<script>
+(() => {
+    const readOnly = {{ libro_read_only|yesno:"true,false" }};
+    const roleScope = "{{ libro_role_scope|default:'profesor' }}";
+    const claseInput = document.getElementById('clase_id');
+    const fechaInput = document.getElementById('fecha_registro');
+    const numeroClaseInput = document.getElementById('numero_clase');
+    const contenidoInput = document.getElementById('contenido_tratado');
+    const tareaInput = document.getElementById('tarea_asignada');
+    const observacionesInput = document.getElementById('observaciones');
+    const btnGuardar = document.getElementById('btn_guardar');
+    const btnFirmar = document.getElementById('btn_firmar');
+    const estado = document.getElementById('estado_libro');
+    const tablaBody = document.getElementById('tabla_registros_body');
+    const btnExportCsv = document.getElementById('btn_export_csv');
+    const btnExportXlsx = document.getElementById('btn_export_xlsx');
+    const btnExportPdf = document.getElementById('btn_export_pdf');
+    const btnExportSige = document.getElementById('btn_export_sige');
+
+    let ultimoRegistroId = null;
+
+    const endpointList = roleScope === 'profesor'
+        ? '/api/profesor/libro-clases/'
+        : (roleScope === 'coordinador' ? '/api/coordinador/libro-clases/' : '/api/admin-escolar/libro-clases/');
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+            return parts.pop().split(';').shift();
+        }
+        return '';
+    }
+
+    function setStatus(message, isError = false) {
+        estado.style.display = 'block';
+        estado.innerHTML = `<p style="margin:0; color:${isError ? '#b91c1c' : '#14532d'}">${message}</p>`;
+    }
+
+    function clearStatus() {
+        estado.style.display = 'none';
+        estado.innerHTML = '';
+    }
+
+    function renderRows(registros) {
+        if (!registros || registros.length === 0) {
+            tablaBody.innerHTML = '<tr><td colspan="6">No hay registros para los filtros seleccionados.</td></tr>';
+            ultimoRegistroId = null;
+            if (btnFirmar) {
+                btnFirmar.disabled = true;
+            }
+            return;
+        }
+
+        ultimoRegistroId = registros[0].id_registro;
+        if (btnFirmar) {
+            btnFirmar.disabled = !!registros[0].firmado;
+        }
+
+        tablaBody.innerHTML = registros.map((item) => {
+            const estadoFirma = item.firmado
+                ? `Firmado ${item.fecha_firma ? '(' + item.fecha_firma.slice(0, 10) + ')' : ''}`
+                : 'Pendiente';
+            return `
+                <tr>
+                    <td>${item.fecha || ''}</td>
+                    <td>${item.curso || ''}</td>
+                    <td>${item.asignatura || ''}</td>
+                    <td>${item.numero_clase || ''}</td>
+                    <td>${item.contenido_tratado || ''}</td>
+                    <td>${estadoFirma}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function listarRegistros() {
+        clearStatus();
+        const params = new URLSearchParams();
+        if (claseInput.value) {
+            params.set('clase_id', claseInput.value);
+        }
+        if (fechaInput.value) {
+            params.set('fecha', fechaInput.value);
+        }
+
+        const response = await fetch(`${endpointList}?${params.toString()}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            renderRows([]);
+            setStatus(payload.error || 'No se pudieron cargar registros.', true);
+            return;
+        }
+        renderRows(payload.registros || []);
+    }
+
+    async function guardarRegistro() {
+        clearStatus();
+        if (!claseInput.value || !fechaInput.value || !contenidoInput.value.trim()) {
+            setStatus('Clase, fecha y contenido tratado son obligatorios.', true);
+            return;
+        }
+
+        const body = {
+            clase_id: parseInt(claseInput.value, 10),
+            fecha: fechaInput.value,
+            numero_clase: parseInt(numeroClaseInput.value || '1', 10),
+            contenido_tratado: contenidoInput.value.trim(),
+            tarea_asignada: tareaInput.value.trim(),
+            observaciones: observacionesInput.value.trim(),
+        };
+
+        const response = await fetch('/api/profesor/libro-clases/registro/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify(body),
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            setStatus(payload.error || 'No se pudo guardar el registro.', true);
+            return;
+        }
+
+        setStatus('Registro guardado correctamente.');
+        await listarRegistros();
+    }
+
+    async function firmarRegistro() {
+        clearStatus();
+        if (!ultimoRegistroId) {
+            setStatus('No hay registro para firmar con los filtros actuales.', true);
+            return;
+        }
+
+        const response = await fetch(`/api/profesor/libro-clases/${ultimoRegistroId}/firmar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: '{}',
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            setStatus(payload.error || 'No se pudo firmar el registro.', true);
+            return;
+        }
+
+        setStatus('Registro firmado exitosamente.');
+        await listarRegistros();
+    }
+
+    function exportarSuperintendencia(format) {
+        const month = (fechaInput.value || '').slice(0, 7);
+        if (!month || month.length !== 7) {
+            setStatus('Seleccione una fecha valida para exportar (YYYY-MM).', true);
+            return;
+        }
+        window.location.href = `/api/reportes/superintendencia/?format=${format}&month=${month}`;
+    }
+
+    claseInput.addEventListener('change', listarRegistros);
+    fechaInput.addEventListener('change', listarRegistros);
+    if (btnGuardar) {
+        btnGuardar.addEventListener('click', guardarRegistro);
+    }
+    if (btnFirmar) {
+        btnFirmar.addEventListener('click', firmarRegistro);
+    }
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', () => exportarSuperintendencia('csv'));
+    }
+    if (btnExportXlsx) {
+        btnExportXlsx.addEventListener('click', () => exportarSuperintendencia('xlsx'));
+    }
+    if (btnExportPdf) {
+        btnExportPdf.addEventListener('click', () => exportarSuperintendencia('pdf'));
+    }
+    if (btnExportSige) {
+        btnExportSige.addEventListener('click', () => exportarSuperintendencia('sige'));
+    }
+
+    listarRegistros().catch(() => {
+        setStatus('Error inesperado al inicializar la vista.', true);
+    });
+})();
+</script>

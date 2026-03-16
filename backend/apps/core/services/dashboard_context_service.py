@@ -930,49 +930,33 @@ class DashboardContextService:
     @staticmethod
     def _get_profesor_libro_clases_context(request_get_params, user, colegio):
         """Get libro_clases context for profesor"""
+        from datetime import date
+
         from backend.apps.cursos.models import Clase
-        from backend.apps.academico.services.grades_service import GradesService
 
-        clases = GradesService.get_teacher_classes_for_gradebook(user, colegio)
+        clases = Clase.objects.filter(
+            profesor=user,
+            colegio=colegio,
+            activo=True,
+        ).select_related('curso', 'asignatura').order_by('curso__nombre', 'asignatura__nombre')
+
         filtro_clase_id = request_get_params.get('clase_id', '')
-        clase_seleccionada = None
-        matriz_calificaciones = []
-        evaluaciones = []
-        promedios_evaluaciones = []
-        total_evaluaciones = 0
-        total_estudiantes = 0
-        promedio_general = 0
+        fecha_filtro = request_get_params.get('fecha') or date.today().isoformat()
 
+        clase_seleccionada = None
         if filtro_clase_id:
             try:
-                clase_id = int(filtro_clase_id)
-                clase_seleccionada = clases.filter(id=clase_id).first()
-
-                if clase_seleccionada:
-                    gradebook_data = GradesService.build_gradebook_matrix(
-                        colegio, clase_seleccionada
-                    )
-
-                    evaluaciones = gradebook_data['evaluaciones']
-                    matriz_calificaciones = gradebook_data['matriz_calificaciones']
-                    promedios_evaluaciones = gradebook_data['promedios_evaluaciones']
-                    total_evaluaciones = gradebook_data['total_evaluaciones']
-                    total_estudiantes = gradebook_data['total_estudiantes']
-                    promedio_general = gradebook_data['promedio_general']
-
+                clase_seleccionada = clases.filter(id=int(filtro_clase_id)).first()
             except (ValueError, TypeError):
-                pass
+                clase_seleccionada = None
 
         return {
             'clases': clases,
             'filtro_clase_id': filtro_clase_id,
+            'fecha_filtro': fecha_filtro,
             'clase_seleccionada': clase_seleccionada,
-            'evaluaciones': evaluaciones,
-            'matriz_calificaciones': matriz_calificaciones,
-            'promedios_evaluaciones': promedios_evaluaciones,
-            'total_evaluaciones': total_evaluaciones,
-            'total_estudiantes': total_estudiantes,
-            'promedio_general': promedio_general,
+            'libro_read_only': False,
+            'libro_role_scope': 'profesor',
         }
 
     @staticmethod
@@ -1017,6 +1001,11 @@ class DashboardContextService:
             'fecha_fin': fecha_fin,
             'reporte_data': reporte_data,
             'clase_seleccionada': clase_seleccionada,
+            'can_export_superintendencia': PolicyService.has_capability(
+                user,
+                'REPORT_EXPORT_SUPERINTENDENCIA',
+                school_id=colegio.rbd,
+            ),
         }
 
     @staticmethod

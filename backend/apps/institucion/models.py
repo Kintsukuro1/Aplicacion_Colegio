@@ -145,6 +145,58 @@ class Colegio(models.Model):
         super().save(*args, **kwargs)
 
 
+class ConfiguracionAcademica(models.Model):
+    """Configuracion academica por colegio para cumplimiento Decreto 67."""
+
+    TIPOS_COLEGIO = [
+        ('MUNICIPAL', 'Municipal'),
+        ('PARTICULAR_SUBVENCIONADO', 'Particular Subvencionado'),
+        ('PARTICULAR_PAGADO', 'Particular Pagado'),
+        ('TECNICO_PROFESIONAL', 'Tecnico Profesional'),
+    ]
+
+    PERIODOS_EVALUATIVOS = [
+        ('SEMESTRE', 'Semestre'),
+        ('TRIMESTRE', 'Trimestre'),
+        ('BIMESTRE', 'Bimestre'),
+    ]
+
+    id_configuracion = models.AutoField(primary_key=True)
+    colegio = models.OneToOneField(
+        Colegio,
+        on_delete=models.CASCADE,
+        related_name='configuracion_academica',
+    )
+    tipo_colegio = models.CharField(max_length=30, choices=TIPOS_COLEGIO, default='MUNICIPAL')
+    nota_minima = models.DecimalField(max_digits=3, decimal_places=1, default=1.0)
+    nota_maxima = models.DecimalField(max_digits=3, decimal_places=1, default=7.0)
+    nota_aprobacion = models.DecimalField(max_digits=3, decimal_places=1, default=4.0)
+    periodo_evaluativo = models.CharField(max_length=20, choices=PERIODOS_EVALUATIVOS, default='SEMESTRE')
+    requiere_firma_docente = models.BooleanField(default=True)
+    exportar_sige_automatico = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='colegio_id')
+
+    class Meta:
+        db_table = 'configuracion_academica'
+        verbose_name = 'Configuracion Academica'
+        verbose_name_plural = 'Configuraciones Academicas'
+        constraints = [
+            CheckConstraint(
+                condition=Q(nota_minima__lt=F('nota_maxima')),
+                name='config_nota_min_menor_nota_max',
+            ),
+            CheckConstraint(
+                condition=Q(nota_aprobacion__gte=F('nota_minima')) & Q(nota_aprobacion__lte=F('nota_maxima')),
+                name='config_nota_aprobacion_en_rango',
+            ),
+        ]
+
+    def __str__(self):
+        return f"Configuracion Academica {self.colegio.nombre}"
+
+
 class ColegioInfraestructura(models.Model):
     """Relación entre colegio e infraestructura"""
     colegio = models.ForeignKey(Colegio, on_delete=models.CASCADE, related_name='infraestructura')

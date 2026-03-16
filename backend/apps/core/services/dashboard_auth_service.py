@@ -45,7 +45,7 @@ PAGE_CAPABILITIES_ANY = {
     'notas': {'GRADE_VIEW'},
     'mis_notas': {'GRADE_VIEW'},
     'libro_notas': {'GRADE_VIEW'},
-    'libro_clases': {'CLASS_VIEW'},
+    'libro_clases': {'CLASS_VIEW', 'LIBRO_CLASE_VIEW', 'LIBRO_CLASE_VIEW_RBD'},
     'mis_certificados': {'REPORT_VIEW_BASIC', 'REPORT_VIEW_ACADEMIC'},
     'disponibilidad': {'CLASS_VIEW', 'CLASS_TAKE_ATTENDANCE'},
     'reportes': {'REPORT_VIEW_BASIC', 'REPORT_VIEW_ACADEMIC', 'REPORT_VIEW_FINANCIAL'},

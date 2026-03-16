@@ -48,6 +48,14 @@
                 </a>
             </li>
             {% endif %}
+            {% if 'libro_clases' in paginas_habilitadas %}
+            <li {% if pagina_actual == 'libro_clases' %}class="active"{% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=libro_clases">
+                    <span class="icon">📖</span>
+                    <span>Libro de Clases</span>
+                </a>
+            </li>
+            {% endif %}
             
             <li class="nav-section">
                 <span class="section-title">👤 Cuenta</span>

@@ -3,6 +3,10 @@ Modelos del módulo Académico
 Migrados desde sistema_antiguo/academico/models.py
 Compatible con autopoblar.py sin modificaciones
 """
+import hashlib
+import json
+
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -278,6 +282,141 @@ class Calificacion(models.Model):
                 return recuperacion.nota
         
         return self.nota
+
+
+class RegistroClase(models.Model):
+    """Acta diaria de clase para libro de clases digital."""
+
+    id_registro = models.AutoField(primary_key=True)
+    colegio = models.ForeignKey(Colegio, on_delete=models.CASCADE, related_name='registros_clase')
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='registros_clase')
+    profesor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='registros_clase')
+    fecha = models.DateField()
+    numero_clase = models.PositiveIntegerField(default=1)
+    contenido_tratado = models.TextField()
+    tarea_asignada = models.TextField(null=True, blank=True)
+    observaciones = models.TextField(null=True, blank=True)
+    firmado = models.BooleanField(default=False)
+    fecha_firma = models.DateTimeField(null=True, blank=True)
+    hash_contenido = models.CharField(max_length=64, blank=True, default='')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='colegio_id')
+
+    class Meta:
+        db_table = 'registro_clase'
+        verbose_name = 'Registro de Clase'
+        verbose_name_plural = 'Registros de Clase'
+        ordering = ['-fecha', '-numero_clase']
+        unique_together = ('clase', 'fecha', 'numero_clase')
+
+    def __str__(self):
+        return f"{self.clase} - {self.fecha} - Bloque {self.numero_clase}"
+
+    def _contenido_firma_payload(self):
+        payload = {
+            'clase_id': self.clase_id,
+            'colegio_id': self.colegio_id,
+            'profesor_id': self.profesor_id,
+            'fecha': self.fecha.isoformat() if self.fecha else None,
+            'numero_clase': self.numero_clase,
+            'contenido_tratado': self.contenido_tratado,
+            'tarea_asignada': self.tarea_asignada or '',
+            'observaciones': self.observaciones or '',
+        }
+        return json.dumps(payload, sort_keys=True, ensure_ascii=True)
+
+    def compute_hash_contenido(self):
+        return hashlib.sha256(self._contenido_firma_payload().encode('utf-8')).hexdigest()
+
+    def clean(self):
+        if not self.pk:
+            return
+
+        current = RegistroClase._base_manager.filter(pk=self.pk).values(
+            'firmado',
+            'clase_id',
+            'colegio_id',
+            'profesor_id',
+            'fecha',
+            'numero_clase',
+            'contenido_tratado',
+            'tarea_asignada',
+            'observaciones',
+            'hash_contenido',
+        ).first()
+        if not current or not current['firmado']:
+            return
+
+        blocked_fields_changed = any(
+            [
+                current['clase_id'] != self.clase_id,
+                current['colegio_id'] != self.colegio_id,
+                current['profesor_id'] != self.profesor_id,
+                current['fecha'] != self.fecha,
+                current['numero_clase'] != self.numero_clase,
+                current['contenido_tratado'] != self.contenido_tratado,
+                (current['tarea_asignada'] or '') != (self.tarea_asignada or ''),
+                (current['observaciones'] or '') != (self.observaciones or ''),
+            ]
+        )
+        if blocked_fields_changed:
+            raise ValidationError('El registro de clase firmado es inmutable y no puede editarse.')
+
+    def firmar(self, *, profesor, ip_address='', user_agent=''):
+        if self.firmado:
+            raise ValidationError('El registro de clase ya se encuentra firmado.')
+
+        timestamp = timezone.now()
+        self.hash_contenido = self.compute_hash_contenido()
+        self.firmado = True
+        self.fecha_firma = timestamp
+        self.save(update_fields=['hash_contenido', 'firmado', 'fecha_firma', 'fecha_actualizacion'])
+
+        FirmaRegistroClase.objects.update_or_create(
+            registro_clase=self,
+            defaults={
+                'profesor': profesor,
+                'estado': 'FIRMADO',
+                'firma_hash': self.hash_contenido,
+                'ip_address': ip_address,
+                'user_agent': (user_agent or '')[:255],
+                'timestamp_servidor': timestamp,
+            },
+        )
+
+
+class FirmaRegistroClase(models.Model):
+    """Firma de docente sobre registro de clase."""
+
+    ESTADOS = [
+        ('PENDIENTE', 'Pendiente'),
+        ('FIRMADO', 'Firmado'),
+        ('RECTIFICADO', 'Rectificado'),
+    ]
+
+    id_firma = models.AutoField(primary_key=True)
+    registro_clase = models.OneToOneField(
+        RegistroClase,
+        on_delete=models.CASCADE,
+        related_name='firma_docente',
+    )
+    profesor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='firmas_registro_clase')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
+    firma_hash = models.CharField(max_length=64)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True, default='')
+    timestamp_servidor = models.DateTimeField(default=timezone.now)
+    objects = TenantManager(school_field='registro_clase__colegio_id')
+
+    class Meta:
+        db_table = 'firma_registro_clase'
+        verbose_name = 'Firma de Registro de Clase'
+        verbose_name_plural = 'Firmas de Registro de Clase'
+        ordering = ['-timestamp_servidor']
+
+    def __str__(self):
+        return f"Firma {self.registro_clase_id} - {self.estado}"
 
 
 class MaterialClase(models.Model):

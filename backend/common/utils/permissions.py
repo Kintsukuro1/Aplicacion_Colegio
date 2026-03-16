@@ -109,6 +109,7 @@ def get_paginas_por_rol(rol):
             'rendimiento': 'coordinador_academico/rendimiento.html',
             'profesores': 'coordinador_academico/profesores.html',
             'planificacion': 'coordinador_academico/planificacion.html',
+            'libro_clases': 'profesor/libro_clases.html',
             'perfil': 'compartido/perfil.html',
         },
         'inspector_convivencia': {

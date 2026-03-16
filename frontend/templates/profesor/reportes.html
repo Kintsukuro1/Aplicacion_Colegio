@@ -336,7 +336,77 @@
                 <span class="icon">📊</span>
                 Exportar Excel
             </button>
+            {% if can_export_superintendencia %}
+            <button type="button" class="btn-exportar" onclick="exportarSuperintendencia('csv')">
+                <span class="icon">📁</span>
+                Superintendencia CSV
+            </button>
+            <button type="button" class="btn-exportar btn-excel" onclick="exportarSuperintendencia('xlsx')">
+                <span class="icon">📘</span>
+                Superintendencia XLSX
+            </button>
+            <button type="button" class="btn-exportar btn-pdf" onclick="exportarSuperintendencia('pdf')">
+                <span class="icon">📄</span>
+                Superintendencia PDF
+            </button>
+            <button type="button" class="btn-exportar btn-excel" onclick="exportarSuperintendencia('sige')">
+                <span class="icon">🏛️</span>
+                Superintendencia SIGE
+            </button>
+            <button type="button" class="btn-exportar" onclick="cargarAuditoriaSuperintendencia()">
+                <span class="icon">🧾</span>
+                Ver Auditoría Exportaciones
+            </button>
+            <button type="button" class="btn-exportar" onclick="descargarAuditoriaSuperintendenciaCSV()">
+                <span class="icon">⬇️</span>
+                Descargar Auditoría CSV
+            </button>
+            {% endif %}
         </div>
+
+        {% if can_export_superintendencia %}
+        <div class="tabla-section" style="margin-top: 16px;">
+            <h2>🧾 Auditoría Exportaciones Superintendencia</h2>
+            <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <input type="date" id="auditoria_fecha_desde" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;" />
+                <input type="date" id="auditoria_fecha_hasta" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;" />
+                <input type="text" id="auditoria_usuario" placeholder="Usuario (ID, nombre o email)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; min-width: 220px;" />
+                <select id="auditoria_sort_by" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="fecha">Ordenar por Fecha</option>
+                    <option value="usuario">Ordenar por Usuario</option>
+                    <option value="resultado">Ordenar por Resultado</option>
+                </select>
+                <select id="auditoria_sort_dir" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    <option value="desc">Descendente</option>
+                    <option value="asc">Ascendente</option>
+                </select>
+                <button type="button" class="btn-exportar" onclick="aplicarFiltrosAuditoria()">Aplicar Filtros</button>
+                <button type="button" class="btn-exportar" onclick="limpiarFiltrosAuditoria()">Limpiar</button>
+            </div>
+            <div class="tabla-scroll">
+                <table class="tabla-reporte">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Formato</th>
+                            <th>Mes</th>
+                            <th>Resultado</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla_auditoria_superintendencia">
+                        <tr><td colspan="6">Carga el historial para visualizar eventos.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn-exportar" id="auditoria_prev" onclick="cambiarPaginaAuditoria(-1)">Anterior</button>
+                <button type="button" class="btn-exportar" id="auditoria_next" onclick="cambiarPaginaAuditoria(1)">Siguiente</button>
+                <span id="auditoria_resumen">Sin datos cargados.</span>
+            </div>
+        </div>
+        {% endif %}
         
         <script>
         function exportarPDF() {
@@ -370,6 +440,169 @@
             const url = `/reportes/exportar-excel/?tipo=${tipo}&clase_id=${claseId}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
             window.location.href = url;
         }
+
+        function exportarSuperintendencia(formato) {
+            const params = new URLSearchParams(window.location.search);
+            const monthBase = params.get('fecha_fin') || params.get('fecha_inicio') || '';
+            let month = '';
+
+            if (monthBase && monthBase.length >= 7) {
+                month = monthBase.slice(0, 7);
+            } else {
+                const now = new Date();
+                month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
+
+            const url = `/api/reportes/superintendencia/?format=${formato}&month=${month}`;
+            window.location.href = url;
+        }
+
+        const auditoriaState = {
+            page: 1,
+            pageSize: 20,
+            month: '',
+            fechaDesde: '',
+            fechaHasta: '',
+            usuario: '',
+            sortBy: 'fecha',
+            sortDir: 'desc',
+        };
+
+        function obtenerMonthAuditoria() {
+            const params = new URLSearchParams(window.location.search);
+            const monthBase = params.get('fecha_fin') || params.get('fecha_inicio') || '';
+            if (monthBase && monthBase.length >= 7) {
+                return monthBase.slice(0, 7);
+            }
+            return '';
+        }
+
+        async function cargarAuditoriaSuperintendencia(page = 1) {
+            const tbody = document.getElementById('tabla_auditoria_superintendencia');
+            const resumen = document.getElementById('auditoria_resumen');
+            const btnPrev = document.getElementById('auditoria_prev');
+            const btnNext = document.getElementById('auditoria_next');
+            const inputFechaDesde = document.getElementById('auditoria_fecha_desde');
+            const inputFechaHasta = document.getElementById('auditoria_fecha_hasta');
+            const inputUsuario = document.getElementById('auditoria_usuario');
+            const inputSortBy = document.getElementById('auditoria_sort_by');
+            const inputSortDir = document.getElementById('auditoria_sort_dir');
+            if (!tbody) return;
+
+            const month = obtenerMonthAuditoria();
+            auditoriaState.month = month;
+            auditoriaState.page = Math.max(1, page);
+            auditoriaState.fechaDesde = (inputFechaDesde && inputFechaDesde.value) ? inputFechaDesde.value : '';
+            auditoriaState.fechaHasta = (inputFechaHasta && inputFechaHasta.value) ? inputFechaHasta.value : '';
+            auditoriaState.usuario = (inputUsuario && inputUsuario.value) ? inputUsuario.value.trim() : '';
+            auditoriaState.sortBy = (inputSortBy && inputSortBy.value) ? inputSortBy.value : 'fecha';
+            auditoriaState.sortDir = (inputSortDir && inputSortDir.value) ? inputSortDir.value : 'desc';
+
+            let url = `/api/reportes/superintendencia/auditoria/?page=${auditoriaState.page}&page_size=${auditoriaState.pageSize}`;
+            if (month) {
+                url += `&month=${month}`;
+            }
+            if (auditoriaState.fechaDesde) {
+                url += `&fecha_desde=${encodeURIComponent(auditoriaState.fechaDesde)}`;
+            }
+            if (auditoriaState.fechaHasta) {
+                url += `&fecha_hasta=${encodeURIComponent(auditoriaState.fechaHasta)}`;
+            }
+            if (auditoriaState.usuario) {
+                url += `&usuario=${encodeURIComponent(auditoriaState.usuario)}`;
+            }
+            url += `&sort_by=${encodeURIComponent(auditoriaState.sortBy)}`;
+            url += `&sort_dir=${encodeURIComponent(auditoriaState.sortDir)}`;
+
+            tbody.innerHTML = '<tr><td colspan="6">Cargando auditoría...</td></tr>';
+            try {
+                const response = await fetch(url);
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    tbody.innerHTML = `<tr><td colspan="6">${payload.error || 'No se pudo cargar auditoría.'}</td></tr>`;
+                    if (resumen) resumen.textContent = 'No se pudo cargar la auditoría.';
+                    return;
+                }
+
+                const eventos = payload.eventos || [];
+                if (eventos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">Sin eventos para el filtro actual.</td></tr>';
+                } else {
+                    tbody.innerHTML = eventos.map((item) => {
+                        const fecha = (item.fecha_hora || '').replace('T', ' ').slice(0, 16);
+                        return `
+                            <tr>
+                                <td>${fecha}</td>
+                                <td>${item.usuario_nombre || '-'}</td>
+                                <td>${item.format || '-'}</td>
+                                <td>${item.month || '-'}</td>
+                                <td>${item.result || '-'}</td>
+                                <td>${item.descripcion || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                auditoriaState.page = payload.page || auditoriaState.page;
+                if (btnPrev) btnPrev.disabled = !payload.has_prev;
+                if (btnNext) btnNext.disabled = !payload.has_next;
+                if (resumen) {
+                    const total = payload.total || 0;
+                    const totalPages = payload.total_pages || 0;
+                    resumen.textContent = `Total eventos: ${total}. Página ${auditoriaState.page} de ${totalPages || 1}.`;
+                }
+            } catch (_err) {
+                tbody.innerHTML = '<tr><td colspan="6">Error inesperado cargando auditoría.</td></tr>';
+                if (resumen) resumen.textContent = 'Error inesperado al cargar la auditoría.';
+            }
+        }
+
+        function cambiarPaginaAuditoria(delta) {
+            const nextPage = Math.max(1, auditoriaState.page + delta);
+            cargarAuditoriaSuperintendencia(nextPage);
+        }
+
+        function aplicarFiltrosAuditoria() {
+            cargarAuditoriaSuperintendencia(1);
+        }
+
+        function limpiarFiltrosAuditoria() {
+            const inputFechaDesde = document.getElementById('auditoria_fecha_desde');
+            const inputFechaHasta = document.getElementById('auditoria_fecha_hasta');
+            const inputUsuario = document.getElementById('auditoria_usuario');
+            const inputSortBy = document.getElementById('auditoria_sort_by');
+            const inputSortDir = document.getElementById('auditoria_sort_dir');
+            if (inputFechaDesde) inputFechaDesde.value = '';
+            if (inputFechaHasta) inputFechaHasta.value = '';
+            if (inputUsuario) inputUsuario.value = '';
+            if (inputSortBy) inputSortBy.value = 'fecha';
+            if (inputSortDir) inputSortDir.value = 'desc';
+            cargarAuditoriaSuperintendencia(1);
+        }
+
+        function descargarAuditoriaSuperintendenciaCSV() {
+            const month = auditoriaState.month || obtenerMonthAuditoria();
+            let url = '/api/reportes/superintendencia/auditoria/?download=csv';
+            if (month) {
+                url += `&month=${month}`;
+            }
+            if (auditoriaState.fechaDesde) {
+                url += `&fecha_desde=${encodeURIComponent(auditoriaState.fechaDesde)}`;
+            }
+            if (auditoriaState.fechaHasta) {
+                url += `&fecha_hasta=${encodeURIComponent(auditoriaState.fechaHasta)}`;
+            }
+            if (auditoriaState.usuario) {
+                url += `&usuario=${encodeURIComponent(auditoriaState.usuario)}`;
+            }
+            url += `&sort_by=${encodeURIComponent(auditoriaState.sortBy || 'fecha')}`;
+            url += `&sort_dir=${encodeURIComponent(auditoriaState.sortDir || 'desc')}`;
+            window.location.href = url;
+        }
+
+        {% if can_export_superintendencia %}
+        cargarAuditoriaSuperintendencia();
+        {% endif %}
         </script>
 
         {% else %}

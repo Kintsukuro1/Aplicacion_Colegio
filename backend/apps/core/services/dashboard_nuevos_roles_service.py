@@ -25,6 +25,7 @@ class DashboardCoordinadorService:
             'rendimiento': DashboardCoordinadorService._get_rendimiento_context,
             'profesores': DashboardCoordinadorService._get_profesores_context,
             'planificacion': DashboardCoordinadorService._get_planificacion_context,
+            'libro_clases': DashboardCoordinadorService._get_libro_clases_context,
         }
         handler = handlers.get(pagina_solicitada, DashboardCoordinadorService._get_inicio_context)
         try:
@@ -166,6 +167,25 @@ class DashboardCoordinadorService:
             'planificaciones_pendientes': pendientes,
             'planificaciones_aprobadas': aprobadas,
             'planificaciones_rechazadas': rechazadas,
+        }
+
+    @staticmethod
+    def _get_libro_clases_context(user, escuela_rbd):
+        from datetime import date
+
+        from backend.apps.cursos.models import Clase
+
+        clases = Clase.objects.filter(
+            colegio_id=escuela_rbd,
+            activo=True,
+        ).select_related('curso', 'asignatura', 'profesor').order_by('curso__nombre', 'asignatura__nombre')
+
+        return {
+            'clases': clases,
+            'filtro_clase_id': '',
+            'fecha_filtro': date.today().isoformat(),
+            'libro_read_only': True,
+            'libro_role_scope': 'coordinador',
         }
 
 

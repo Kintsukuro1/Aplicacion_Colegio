@@ -751,9 +751,10 @@ class DashboardAdminService:
         """
         DashboardAdminService._validate_school_integrity(escuela_rbd, 'DASHBOARD_ADMIN_LIBRO_CLASES_CONTEXT')
 
+        from datetime import date
+
         from backend.apps.institucion.models import Colegio
         from backend.apps.cursos.models import Clase
-        from backend.apps.academico.services.grades_service import GradesService
         
         colegio = Colegio.objects.get(rbd=escuela_rbd)
         
@@ -766,44 +767,14 @@ class DashboardAdminService:
         )
         
         filtro_clase_id = request_get_params.get('clase_id', '')
-        clase_seleccionada = None
-        matriz_calificaciones = []
-        evaluaciones = []
-        promedios_evaluaciones = []
-        total_evaluaciones = 0
-        total_estudiantes = 0
-        promedio_general = 0
-        
-        if filtro_clase_id:
-            try:
-                clase_id = int(filtro_clase_id)
-                clase_seleccionada = clases.filter(id=clase_id).first()
-                
-                if clase_seleccionada:
-                    gradebook_data = GradesService.build_gradebook_matrix(
-                        colegio, clase_seleccionada
-                    )
-                    
-                    evaluaciones = gradebook_data['evaluaciones']
-                    matriz_calificaciones = gradebook_data['matriz_calificaciones']
-                    promedios_evaluaciones = gradebook_data['promedios_evaluaciones']
-                    total_evaluaciones = gradebook_data['total_evaluaciones']
-                    total_estudiantes = gradebook_data['total_estudiantes']
-                    promedio_general = gradebook_data['promedio_general']
-            
-            except (ValueError, TypeError) as e:
-                pass  # Silently handle errors
+        fecha_filtro = request_get_params.get('fecha') or date.today().isoformat()
         
         return {
             'clases': clases,
             'filtro_clase_id': filtro_clase_id,
-            'clase_seleccionada': clase_seleccionada,
-            'evaluaciones': evaluaciones,
-            'matriz_calificaciones': matriz_calificaciones,
-            'promedios_evaluaciones': promedios_evaluaciones,
-            'total_evaluaciones': total_evaluaciones,
-            'total_estudiantes': total_estudiantes,
-            'promedio_general': promedio_general,
+            'fecha_filtro': fecha_filtro,
+            'libro_read_only': True,
+            'libro_role_scope': 'admin',
         }
 
     @staticmethod
@@ -1065,4 +1036,9 @@ class DashboardAdminService:
             'fecha_fin': fecha_fin,
             'reporte_data': reporte_data,
             'clase_seleccionada': clase_seleccionada,
+            'can_export_superintendencia': PolicyService.has_capability(
+                user,
+                'REPORT_EXPORT_SUPERINTENDENCIA',
+                school_id=escuela_rbd,
+            ),
         }

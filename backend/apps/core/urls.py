@@ -72,6 +72,15 @@ from backend.apps.core.views.profesor.asistencia import (
     registro_asistencia_clase,
     reporte_asistencia_clase,
 )
+from backend.apps.core.views.profesor.libro_clases_api import (
+    exportar_reporte_superintendencia,
+    firmar_registro_profesor,
+    guardar_registro_profesor,
+    listar_auditoria_reporte_superintendencia,
+    listar_registros_profesor,
+    listar_registros_rbd,
+    obtener_registro_profesor,
+)
 from backend.apps.mensajeria.views import mensajes_clase
 from backend.apps.core.views.asesor_financiero.dashboard_api import dashboard_kpis, dashboard_estadisticas
 from backend.apps.core.views.asesor_financiero.estados_cuenta_api import listar_estados_cuenta
@@ -314,6 +323,18 @@ urlpatterns = [
     path('api/soporte/tickets/crear/', crear_ticket, name='api_soporte_crear_ticket'),
     path('api/soporte/tickets/<int:ticket_id>/estado/', actualizar_ticket, name='api_soporte_actualizar_ticket'),
     path('api/soporte/usuarios/<int:user_id>/reset_password/', reset_password, name='api_soporte_reset_password'),
+
+    # -------------------------------------------------------------------
+    # Libro de Clases Digital — APIs
+    # -------------------------------------------------------------------
+    path('api/profesor/libro-clases/', listar_registros_profesor, name='api_profesor_libro_clases_listar'),
+    path('api/profesor/libro-clases/registro/', guardar_registro_profesor, name='api_profesor_libro_clases_guardar'),
+    path('api/profesor/libro-clases/<int:registro_id>/', obtener_registro_profesor, name='api_profesor_libro_clases_detalle'),
+    path('api/profesor/libro-clases/<int:registro_id>/firmar/', firmar_registro_profesor, name='api_profesor_libro_clases_firmar'),
+    path('api/coordinador/libro-clases/', listar_registros_rbd, name='api_coordinador_libro_clases_listar'),
+    path('api/admin-escolar/libro-clases/', listar_registros_rbd, name='api_admin_escolar_libro_clases_listar'),
+    path('api/reportes/superintendencia/', exportar_reporte_superintendencia, name='api_reportes_superintendencia_exportar'),
+    path('api/reportes/superintendencia/auditoria/', listar_auditoria_reporte_superintendencia, name='api_reportes_superintendencia_auditoria'),
 
     # -------------------------------------------------------------------
     # Bibliotecario Digital — APIs

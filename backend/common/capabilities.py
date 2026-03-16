@@ -105,6 +105,13 @@ CAPABILITIES = [
     # Planificación docente (revisión)
     'PLANNING_VIEW',
     'PLANNING_APPROVE',
+        # Libro de clases digital / Compliance Chile
+        'LIBRO_CLASE_VIEW',
+        'LIBRO_CLASE_EDIT',
+        'LIBRO_CLASE_FIRMAR',
+        'LIBRO_CLASE_VIEW_RBD',
+        'DECRETO67_CONFIGURE',
+        'REPORT_EXPORT_SUPERINTENDENCIA',
 ]
 
 DEFAULT_CAPABILITIES_BY_ROLE = {
@@ -149,6 +156,10 @@ DEFAULT_CAPABILITIES_BY_ROLE = {
         'USER_EDIT',
         'USER_ASSIGN_ROLE',
         'AUDIT_VIEW',
+            'LIBRO_CLASE_VIEW',
+            'LIBRO_CLASE_VIEW_RBD',
+            'DECRETO67_CONFIGURE',
+            'REPORT_EXPORT_SUPERINTENDENCIA',
     },
     'profesor': {
         'DASHBOARD_VIEW_SELF',
@@ -164,6 +175,9 @@ DEFAULT_CAPABILITIES_BY_ROLE = {
         'ANNOUNCEMENT_CREATE',
         'ANNOUNCEMENT_EDIT',
         'REPORT_VIEW_BASIC',
+            'LIBRO_CLASE_VIEW',
+            'LIBRO_CLASE_EDIT',
+            'LIBRO_CLASE_FIRMAR',
     },
     'estudiante': {
         'DASHBOARD_VIEW_SELF',
@@ -210,6 +224,9 @@ DEFAULT_CAPABILITIES_BY_ROLE = {
         'PLANNING_VIEW',
         'PLANNING_APPROVE',
         'ANNOUNCEMENT_VIEW',
+            'LIBRO_CLASE_VIEW',
+            'LIBRO_CLASE_VIEW_RBD',
+            'REPORT_EXPORT_SUPERINTENDENCIA',
     },
     'inspector_convivencia': {
         'DASHBOARD_VIEW_SCHOOL',
