@@ -58,6 +58,27 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
+      - name: Repository integrity gate
+        run: python scripts/check_repo_integrity.py
+
+      - name: Nested mirror guard (pull request)
+        if: github.event_name == 'pull_request'
+        env:
+          ALLOW_NESTED_MIRROR_CHANGES: 'false'
+        run: |
+          python scripts/check_nested_mirror_changes.py \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.sha }}"
+
+      - name: Nested mirror guard (push)
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        env:
+          ALLOW_NESTED_MIRROR_CHANGES: 'false'
+        run: |
+          python scripts/check_nested_mirror_changes.py \
+            --base "${{ github.event.before }}" \
+            --head "${{ github.sha }}"
+
       - name: Run migrations
         run: python manage.py migrate --noinput
 
@@ -65,4 +86,4 @@ jobs:
         run: pytest tests/regression/test_critical_operations_minimum.py -q
 
       - name: Run tests with coverage threshold
-        run: pytest --cov --cov-config=.coveragerc --cov-report=term-missing
+        run: pytest tests --cov --cov-config=.coveragerc --cov-report=term-missing

@@ -165,6 +165,7 @@ urlpatterns = [
     path('api/dashboard/rendimiento/', api_datos_rendimiento, name='api_datos_rendimiento'),
     path('api/dashboard/estadisticas/', api_datos_estadisticas, name='api_datos_estadisticas'),
     path('api/dashboard/notificaciones/', api_notificaciones, name='api_notificaciones'),
+    path('api/v1/', include('backend.apps.api.urls')),
 
     # APIs asesor financiero
     path('api/asesor-financiero/dashboard/kpis/', dashboard_kpis, name='api_dashboard_kpis'),
