@@ -423,6 +423,29 @@ class ConfiguracionAcademica(models.Model):
         default=0,
         help_text='% de alumnos prioritarios sobre matrícula total (para reporte SEP)',
     )
+    # Escala de notas — configurable por colegio (Chile: 1.0-7.0 por defecto)
+    nota_minima = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        default=1.0,
+        help_text='Nota mínima de la escala (ej: 1.0 para Chile)',
+    )
+    nota_maxima = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        default=7.0,
+        help_text='Nota máxima de la escala (ej: 7.0 para Chile)',
+    )
+    nota_aprobacion = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        default=4.0,
+        help_text='Nota mínima de aprobación (ej: 4.0 estándar Chile, 3.5 en algunos decretos)',
+    )
+    redondeo_decimales = models.PositiveSmallIntegerField(
+        default=1,
+        help_text='Cantidad de decimales a redondear en notas (1 = un decimal)',
+    )
     # Alertas tempranas — umbrales configurables
     umbral_inasistencia_alerta = models.PositiveSmallIntegerField(
         default=3,
@@ -457,3 +480,198 @@ class ConfiguracionAcademica(models.Model):
     def es_sep(self):
         """True si el colegio tiene convenio SEP activo."""
         return self.tiene_convenio_sep
+
+    @classmethod
+    def get_escala_para_colegio(cls, colegio):
+        """
+        Retorna la configuración de escala de notas para un colegio.
+        Si no existe configuración, retorna defaults chilenos (1.0 - 7.0, aprobación 4.0).
+
+        Returns:
+            dict: {nota_minima, nota_maxima, nota_aprobacion, redondeo_decimales}
+        """
+        from decimal import Decimal
+        try:
+            config = cls.objects.get(colegio=colegio)
+            return {
+                'nota_minima': config.nota_minima,
+                'nota_maxima': config.nota_maxima,
+                'nota_aprobacion': config.nota_aprobacion,
+                'redondeo_decimales': config.redondeo_decimales,
+            }
+        except cls.DoesNotExist:
+            return {
+                'nota_minima': Decimal('1.0'),
+                'nota_maxima': Decimal('7.0'),
+                'nota_aprobacion': Decimal('4.0'),
+                'redondeo_decimales': 1,
+            }
+
+
+class EventoCalendario(models.Model):
+    """
+    Eventos del calendario escolar académico.
+
+    Tipos:
+    - feriado: días feriados nacionales / regionales
+    - vacaciones: recesos escolares
+    - evaluacion: pruebas institucionales / SIMCE
+    - reunion: reuniones de apoderados, consejo de profesores
+    - actividad: actividades extracurriculares, salidas pedagógicas
+    - ceremonia: licenciaturas, actos cívicos
+    - administrativo: matrículas, inscripciones, pagos
+    """
+    TIPOS_EVENTO = [
+        ('feriado', '📅 Feriado'),
+        ('vacaciones', '🏖️ Vacaciones'),
+        ('evaluacion', '📝 Evaluación Institucional'),
+        ('reunion', '👥 Reunión'),
+        ('actividad', '🎯 Actividad'),
+        ('ceremonia', '🎓 Ceremonia'),
+        ('administrativo', '📋 Administrativo'),
+        ('otro', '📌 Otro'),
+    ]
+
+    VISIBILIDAD = [
+        ('todos', 'Todos'),
+        ('profesores', 'Solo Profesores'),
+        ('estudiantes', 'Solo Estudiantes'),
+        ('apoderados', 'Solo Apoderados'),
+        ('administrativos', 'Solo Administrativos'),
+    ]
+
+    id_evento = models.AutoField(primary_key=True)
+    colegio = models.ForeignKey(
+        Colegio, on_delete=models.CASCADE, related_name='eventos_calendario'
+    )
+    ciclo_academico = models.ForeignKey(
+        CicloAcademico, on_delete=models.CASCADE,
+        related_name='eventos_calendario', null=True, blank=True
+    )
+
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True, null=True)
+    tipo = models.CharField(max_length=20, choices=TIPOS_EVENTO, default='otro')
+
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField(null=True, blank=True, help_text='Para eventos de más de un día')
+    hora_inicio = models.TimeField(null=True, blank=True)
+    hora_fin = models.TimeField(null=True, blank=True)
+    todo_el_dia = models.BooleanField(default=False)
+
+    lugar = models.CharField(max_length=200, blank=True, null=True)
+    visibilidad = models.CharField(max_length=20, choices=VISIBILIDAD, default='todos')
+    es_feriado_nacional = models.BooleanField(default=False, help_text='No hay clases')
+    color = models.CharField(max_length=7, default='#3B82F6', help_text='Color hex para el calendario')
+
+    activo = models.BooleanField(default=True)
+    creado_por = models.ForeignKey(
+        'accounts.User', on_delete=models.PROTECT, related_name='eventos_creados'
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='colegio_id')
+
+    class Meta:
+        db_table = 'evento_calendario'
+        verbose_name = 'Evento del Calendario'
+        verbose_name_plural = 'Eventos del Calendario'
+        ordering = ['fecha_inicio', 'hora_inicio']
+        indexes = [
+            models.Index(fields=['colegio', 'fecha_inicio']),
+            models.Index(fields=['tipo', 'fecha_inicio']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} — {self.titulo} ({self.fecha_inicio})"
+
+    @property
+    def es_multidia(self):
+        return self.fecha_fin is not None and self.fecha_fin > self.fecha_inicio
+
+
+class SolicitudReunion(models.Model):
+    """
+    Solicitud de reunión apoderado → profesor.
+
+    Flujo: pendiente → confirmada / reprogramada / rechazada → completada / cancelada
+    """
+    ESTADOS = [
+        ('pendiente', '⏳ Pendiente'),
+        ('confirmada', '✅ Confirmada'),
+        ('reprogramada', '🔄 Reprogramada'),
+        ('rechazada', '❌ Rechazada'),
+        ('completada', '✔️ Completada'),
+        ('cancelada', '🚫 Cancelada'),
+    ]
+
+    TIPOS = [
+        ('academica', 'Académica'),
+        ('conductual', 'Conductual'),
+        ('orientacion', 'Orientación'),
+        ('administrativa', 'Administrativa'),
+        ('general', 'General'),
+    ]
+
+    MODALIDADES = [
+        ('presencial', 'Presencial'),
+        ('virtual', 'Virtual (videollamada)'),
+        ('telefonica', 'Telefónica'),
+    ]
+
+    colegio = models.ForeignKey(
+        Colegio, on_delete=models.CASCADE, related_name='solicitudes_reunion'
+    )
+    apoderado = models.ForeignKey(
+        'accounts.Apoderado', on_delete=models.CASCADE, related_name='solicitudes_reunion'
+    )
+    profesor = models.ForeignKey(
+        'accounts.User', on_delete=models.CASCADE, related_name='reuniones_solicitadas'
+    )
+    estudiante = models.ForeignKey(
+        'accounts.User', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reuniones_como_tema'
+    )
+
+    motivo = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='general')
+
+    # Fecha propuesta por el apoderado
+    fecha_propuesta = models.DateField(null=True, blank=True)
+    hora_propuesta = models.TimeField(null=True, blank=True)
+
+    # Fecha confirmada por el profesor
+    fecha_confirmada = models.DateField(null=True, blank=True)
+    hora_confirmada = models.TimeField(null=True, blank=True)
+    duracion_minutos = models.IntegerField(default=30)
+
+    modalidad = models.CharField(max_length=20, choices=MODALIDADES, default='presencial')
+    lugar = models.CharField(max_length=200, blank=True, null=True)
+    enlace_virtual = models.URLField(blank=True, null=True)
+
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+    observaciones_apoderado = models.TextField(blank=True, null=True)
+    respuesta_profesor = models.TextField(blank=True, null=True)
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='colegio_id')
+
+    class Meta:
+        db_table = 'solicitud_reunion'
+        verbose_name = 'Solicitud de Reunión'
+        verbose_name_plural = 'Solicitudes de Reunión'
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['profesor', 'estado']),
+            models.Index(fields=['apoderado', 'estado']),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.get_tipo_display()} — '
+            f'{self.apoderado.user.get_full_name() if self.apoderado and self.apoderado.user else "?"} '
+            f'→ {self.profesor.get_full_name() if self.profesor else "?"} '
+            f'({self.get_estado_display()})'
+        )
+

@@ -1,10 +1,12 @@
 import pytest
 from rest_framework.test import APIClient
 from unittest.mock import patch
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from backend.apps.api.auth import AuthTokenBurstThrottle, AuthTokenSustainedThrottle, ColegioTokenObtainPairView
 from backend.apps.accounts.models import Role, User
 from backend.apps.institucion.models import Colegio
+from backend.apps.security.models import ActiveSession
 
 
 pytestmark = pytest.mark.django_db
@@ -175,6 +177,59 @@ def test_refresh_rotates_token_and_old_refresh_is_rejected():
     assert stale_refresh_response.status_code in (400, 401)
 
 
+def test_token_obtain_registers_active_session():
+    user = _mk_user('admin10@test.cl', 'Administrador escolar', 705, '12121211-3')
+
+    client = APIClient()
+    token_response = client.post(
+        '/api/v1/auth/token/',
+        {'email': user.email, 'password': 'Test#123456'},
+        format='json',
+        HTTP_USER_AGENT='pytest-agent-login',
+    )
+    assert token_response.status_code == 200
+
+    refresh = token_response.json()['refresh']
+    refresh_jti = str(RefreshToken(refresh).get('jti'))
+
+    session = ActiveSession.objects.get(user=user, token_jti=refresh_jti)
+    assert session.is_active is True
+    assert 'pytest-agent-login' in session.user_agent
+
+
+def test_token_refresh_rotates_active_session_state():
+    user = _mk_user('admin11@test.cl', 'Administrador escolar', 706, '13131311-3')
+
+    client = APIClient()
+    token_response = client.post(
+        '/api/v1/auth/token/',
+        {'email': user.email, 'password': 'Test#123456'},
+        format='json',
+        HTTP_USER_AGENT='pytest-agent-initial',
+    )
+    assert token_response.status_code == 200
+
+    refresh = token_response.json()['refresh']
+    old_jti = str(RefreshToken(refresh).get('jti'))
+    assert ActiveSession.objects.filter(user=user, token_jti=old_jti, is_active=True).exists()
+
+    refresh_response = client.post(
+        '/api/v1/auth/token/refresh/',
+        {'refresh': refresh},
+        format='json',
+        HTTP_USER_AGENT='pytest-agent-refresh',
+    )
+    assert refresh_response.status_code == 200
+
+    rotated_refresh = refresh_response.json().get('refresh')
+    assert rotated_refresh
+    new_jti = str(RefreshToken(rotated_refresh).get('jti'))
+    assert new_jti != old_jti
+
+    assert ActiveSession.objects.filter(user=user, token_jti=old_jti, is_active=False).exists()
+    assert ActiveSession.objects.filter(user=user, token_jti=new_jti, is_active=True).exists()
+
+
 def test_logout_invalidates_refresh_token_for_next_refresh_attempt():
     user = _mk_user('admin9@test.cl', 'Administrador escolar', 704, '11112222-3')
 
@@ -193,6 +248,28 @@ def test_logout_invalidates_refresh_token_for_next_refresh_attempt():
 
     refresh_after_logout = client.post('/api/v1/auth/token/refresh/', {'refresh': refresh}, format='json')
     assert refresh_after_logout.status_code in (400, 401)
+
+
+def test_logout_deactivates_active_session_for_refresh_token():
+    user = _mk_user('admin12@test.cl', 'Administrador escolar', 707, '14141411-3')
+
+    client = APIClient()
+    token_response = client.post(
+        '/api/v1/auth/token/',
+        {'email': user.email, 'password': 'Test#123456'},
+        format='json',
+    )
+    assert token_response.status_code == 200
+
+    refresh = token_response.json()['refresh']
+    refresh_jti = str(RefreshToken(refresh).get('jti'))
+    assert ActiveSession.objects.filter(user=user, token_jti=refresh_jti, is_active=True).exists()
+
+    client.force_authenticate(user=user)
+    logout_response = client.post('/api/v1/auth/logout/', {'refresh': refresh}, format='json')
+    assert logout_response.status_code == 200
+
+    assert ActiveSession.objects.filter(user=user, token_jti=refresh_jti, is_active=False).exists()
 
 
 def test_token_endpoint_declares_auth_throttles():

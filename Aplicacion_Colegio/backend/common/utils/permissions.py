@@ -24,6 +24,7 @@ def get_paginas_por_rol(rol):
             'inicio': 'compartido/inicio_modulos.html',
             'gestionar_escuelas': 'admin/seleccionar_escuela.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'admin_general': {
             'inicio': 'compartido/inicio_modulos.html',
@@ -37,6 +38,11 @@ def get_paginas_por_rol(rol):
             'configuracion': 'admin/configuracion.html',
             'auditoria': 'admin/auditoria.html',
             'monitoreo_seguridad': 'admin/monitoreo_seguridad.html',
+            'calendario_eventos': 'compartido/calendario_eventos.html',
+            'solicitud_reuniones': 'compartido/solicitud_reuniones.html',
+            'active_sessions': 'compartido/active_sessions.html',
+            'password_history': 'compartido/password_history.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'admin_escolar': {
             'inicio': 'compartido/inicio_modulos.html',
@@ -54,7 +60,12 @@ def get_paginas_por_rol(rol):
             'libro_clases': 'profesor/libro_clases.html',
             'informes_reportes': 'profesor/reportes.html',
             'reportes': 'profesor/reportes.html',
+            'calendario_eventos': 'compartido/calendario_eventos.html',
+            'solicitud_reuniones': 'compartido/solicitud_reuniones.html',
+            'active_sessions': 'compartido/active_sessions.html',
+            'password_history': 'compartido/password_history.html',
             'perfil': 'admin_escolar/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'profesor': {
             'inicio': 'compartido/inicio_modulos.html',
@@ -66,7 +77,10 @@ def get_paginas_por_rol(rol):
             'disponibilidad': 'profesor/disponibilidad.html',
             'tareas_consolidado': 'profesor/tareas_consolidado.html',
             'mis_planificaciones': 'profesor/mis_planificaciones.html',
+            'calendario_eventos': 'compartido/calendario_eventos.html',
+            'solicitud_reuniones': 'compartido/solicitud_reuniones.html',
             'perfil': 'profesor/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'estudiante': {
             'inicio': 'estudiante/inicio.html',
@@ -80,6 +94,7 @@ def get_paginas_por_rol(rol):
             'mis_anotaciones': 'estudiante/mis_anotaciones.html',
             'mis_certificados': 'estudiante/mis_certificados.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'apoderado': {
             'inicio': 'apoderado/inicio.html',
@@ -91,6 +106,7 @@ def get_paginas_por_rol(rol):
             'firmas_pendientes': 'apoderado/firmas_pendientes.html',
             'calendario_pupilo': 'apoderado/calendario_pupilo.html',
             'perfil': 'apoderado/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'asesor_financiero': {
             'inicio': 'asesor_financiero/inicio.html',
@@ -103,6 +119,7 @@ def get_paginas_por_rol(rol):
             'reportes': 'asesor_financiero/reportes.html',
             'configuracion_transbank': 'asesor_financiero/configuracion_transbank.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'coordinador_academico': {
             'inicio': 'coordinador_academico/inicio.html',
@@ -110,6 +127,7 @@ def get_paginas_por_rol(rol):
             'profesores': 'coordinador_academico/profesores.html',
             'planificacion': 'coordinador_academico/planificacion.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'inspector_convivencia': {
             'inicio': 'inspector_convivencia/inicio.html',
@@ -117,6 +135,7 @@ def get_paginas_por_rol(rol):
             'justificativos': 'inspector_convivencia/justificativos.html',
             'asistencia': 'inspector_convivencia/asistencia.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'psicologo_orientador': {
             'inicio': 'psicologo_orientador/inicio.html',
@@ -124,6 +143,7 @@ def get_paginas_por_rol(rol):
             'derivaciones': 'psicologo_orientador/derivaciones.html',
             'ficha_estudiante': 'psicologo_orientador/ficha_estudiante.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'soporte_tecnico_escolar': {
             'inicio': 'soporte_tecnico_escolar/inicio.html',
@@ -131,12 +151,14 @@ def get_paginas_por_rol(rol):
             'usuarios': 'soporte_tecnico_escolar/usuarios.html',
             'actividad': 'soporte_tecnico_escolar/actividad.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
         'bibliotecario_digital': {
             'inicio': 'bibliotecario_digital/inicio.html',
             'catalogo': 'bibliotecario_digital/catalogo.html',
             'prestamos': 'bibliotecario_digital/prestamos.html',
             'perfil': 'compartido/perfil.html',
+            'notificaciones': 'compartido/notificaciones.html',
         },
     }
 

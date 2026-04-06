@@ -42,6 +42,28 @@
                 </a>
             </li>
             {% endif %}
+            <li {% if pagina_actual == 'importar_datos' %}class="active"{% endif %}>
+                <a href="{% url 'importar_datos' %}">
+                    <span class="icon">📥</span>
+                    <span>Importar/Exportar Datos</span>
+                </a>
+            </li>
+            {% if 'calendario_eventos' in paginas_habilitadas %}
+            <li {% if pagina_actual == 'calendario_eventos' %}class="active"{% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=calendario_eventos">
+                    <span class="icon">🗓️</span>
+                    <span>Calendario Escolar</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if 'solicitud_reuniones' in paginas_habilitadas %}
+            <li {% if pagina_actual == 'solicitud_reuniones' %}class="active"{% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=solicitud_reuniones">
+                    <span class="icon">🤝</span>
+                    <span>Solicitud Reuniones</span>
+                </a>
+            </li>
+            {% endif %}
 
             <li class="nav-section">
                 <span class="section-title">Reportes Globales</span>
@@ -91,6 +113,22 @@
                 <a href="{% url 'monitoreo_seguridad' %}">
                     <span class="icon">🔐</span>
                     <span>Monitoreo de Seguridad</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if 'active_sessions' in paginas_habilitadas %}
+            <li {% if pagina_actual == 'active_sessions' %}class="active"{% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=active_sessions">
+                    <span class="icon">🧭</span>
+                    <span>Sesiones Activas</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if 'password_history' in paginas_habilitadas %}
+            <li {% if pagina_actual == 'password_history' %}class="active"{% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=password_history">
+                    <span class="icon">🛡️</span>
+                    <span>Password History</span>
                 </a>
             </li>
             {% endif %}

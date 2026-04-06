@@ -55,6 +55,7 @@ from backend.apps.api.resources_views import (
     student_my_grades,
     student_my_profile,
 )
+from backend.apps.api.profile_views import my_profile, change_password
 from backend.apps.api.views import api_health, me, operational_metrics
 from backend.apps.core.views.coordinador_academico.api import (
     actualizar_estado_planificacion as legacy_coordinador_actualizar_planificacion,
@@ -94,6 +95,52 @@ from backend.apps.core.views.bibliotecario_digital.api import (
 from backend.apps.core.views.asesor_financiero.pagos_api import (
     listar_pagos as legacy_asesor_financiero_listar_pagos,
 )
+from backend.apps.api.gestion_escolar_views import (
+    FirmaDigitalViewSet,
+    MaterialClaseViewSet,
+    TeacherAdminViewSet,
+    apoderado_pupilo_materiales,
+    student_academic_history,
+    teacher_my_schedule,
+)
+from backend.apps.api.comunicacion_analitica_views import (
+    EventoCalendarioViewSet,
+    comunicado_estadisticas,
+    confirmar_comunicado,
+    mis_comunicados,
+    teacher_trends_report,
+)
+from backend.apps.api.seguridad_views import (
+    active_sessions_list,
+    change_password_secure,
+    my_sessions,
+    password_history_list,
+    revoke_all_other_sessions,
+    revoke_session,
+    security_dashboard,
+    sensitive_data_audit_log,
+    unblock_ip,
+)
+from backend.apps.api.finanzas_reuniones_views import (
+    cancelar_reunion,
+    ciclo_statistics,
+    ciclo_transition,
+    financial_dashboard,
+    financial_morosos_report,
+    mis_reuniones,
+    reuniones_apoderados_pupilos,
+    responder_reunion,
+    solicitar_reunion,
+)
+from backend.apps.api.importacion_exportacion_views import (
+    api_descargar_plantilla,
+    api_exportar_asistencia,
+    api_exportar_estudiantes,
+    api_exportar_profesores,
+    api_exportar_reporte_academico,
+    api_importacion_dashboard,
+    api_importar_datos,
+)
 
 app_name = 'api'
 
@@ -108,6 +155,12 @@ router.register(r'profesor/clases', TeacherClassViewSet, basename='api-profesor-
 router.register(r'profesor/asistencias', TeacherAttendanceViewSet, basename='api-profesor-asistencias')
 router.register(r'profesor/evaluaciones', TeacherEvaluationViewSet, basename='api-profesor-evaluaciones')
 router.register(r'profesor/calificaciones', TeacherGradeViewSet, basename='api-profesor-calificaciones')
+# ── Semana 3-4 ──
+router.register(r'profesores', TeacherAdminViewSet, basename='api-profesores-admin')
+router.register(r'firmas', FirmaDigitalViewSet, basename='api-firmas')
+router.register(r'materiales', MaterialClaseViewSet, basename='api-materiales')
+# ── Semana 5-6 ──
+router.register(r'calendario', EventoCalendarioViewSet, basename='api-calendario')
 router.register(r'comunicados', ComunicadoViewSet, basename='api-comunicados')
 router.register(r'mensajeria/conversaciones', ConversacionViewSet, basename='api-mensajeria-conversaciones')
 router.register(r'convivencia/anotaciones', AnotacionConvivenciaViewSet, basename='api-convivencia-anotaciones')
@@ -144,6 +197,9 @@ urlpatterns = [
     path('estudiante/mis-clases/', student_my_classes, name='student_my_classes'),
     path('estudiante/mis-notas/', student_my_grades, name='student_my_grades'),
     path('estudiante/mi-asistencia/', student_my_attendance, name='student_my_attendance'),
+    # ── Self-service profile (todos los roles) ──
+    path('perfil/mi-perfil/', my_profile, name='my_profile'),
+    path('perfil/cambiar-password/', change_password, name='change_password'),
     path('estudiante/tareas/entregar/', legacy_estudiante_entregar_tarea, name='legacy_estudiante_entregar_tarea'),
     path('apoderado/mis-pupilos/', apoderado_mis_pupilos, name='apoderado_mis_pupilos'),
     path('apoderado/pupilo/<int:student_id>/notas/', apoderado_pupilo_notas, name='apoderado_pupilo_notas'),
@@ -152,6 +208,43 @@ urlpatterns = [
     path('apoderado/justificativos/', apoderado_crear_justificativo, name='apoderado_crear_justificativo'),
     path('apoderado/comunicados/', apoderado_comunicados, name='apoderado_comunicados'),
     path('apoderado/pagos/estado/', apoderado_pagos_estado, name='apoderado_pagos_estado'),
+    path('apoderado/pupilo/<int:student_id>/materiales/', apoderado_pupilo_materiales, name='apoderado_pupilo_materiales'),
+    # ── Semana 3-4: Horario, Historial ──
+    path('profesor/mi-horario/', teacher_my_schedule, name='teacher_my_schedule'),
+    path('estudiante/historial-academico/', student_academic_history, name='student_academic_history'),
+    # ── Semana 5-6: Comunicados, Tendencias, Calendario ──
+    path('comunicados/<int:comunicado_id>/confirmar/', confirmar_comunicado, name='confirmar_comunicado'),
+    path('comunicados/<int:comunicado_id>/estadisticas/', comunicado_estadisticas, name='comunicado_estadisticas'),
+    path('comunicados/mis-comunicados/', mis_comunicados, name='mis_comunicados'),
+    path('profesor/tendencias/', teacher_trends_report, name='teacher_trends_report'),
+    # ── Semana 7-8: Seguridad ──
+    path('seguridad/dashboard/', security_dashboard, name='security_dashboard'),
+    path('seguridad/mis-sesiones/', my_sessions, name='my_sessions'),
+    path('seguridad/sesiones-activas/', active_sessions_list, name='active_sessions_list'),
+    path('seguridad/sesiones/<int:session_id>/revocar/', revoke_session, name='revoke_session'),
+    path('seguridad/sesiones/revocar-otras/', revoke_all_other_sessions, name='revoke_all_other_sessions'),
+    path('seguridad/password-history/', password_history_list, name='password_history_list'),
+    path('seguridad/auditoria-datos-sensibles/', sensitive_data_audit_log, name='sensitive_data_audit_log'),
+    path('seguridad/desbloquear-ip/', unblock_ip, name='unblock_ip'),
+    path('seguridad/cambiar-password/', change_password_secure, name='change_password_secure'),
+    # ── Semana 9-10: Finanzas, Reuniones, Ciclos ──
+    path('finanzas/dashboard/', financial_dashboard, name='financial_dashboard'),
+    path('finanzas/morosos/', financial_morosos_report, name='financial_morosos_report'),
+    path('reuniones/solicitar/', solicitar_reunion, name='solicitar_reunion'),
+    path('reuniones/apoderados-pupilos/', reuniones_apoderados_pupilos, name='reuniones_apoderados_pupilos'),
+    path('reuniones/mis-reuniones/', mis_reuniones, name='mis_reuniones'),
+    path('reuniones/<int:reunion_id>/responder/', responder_reunion, name='responder_reunion'),
+    path('reuniones/<int:reunion_id>/cancelar/', cancelar_reunion, name='cancelar_reunion'),
+    path('ciclos-academicos/<int:ciclo_id>/transicion/', ciclo_transition, name='ciclo_transition'),
+    path('ciclos-academicos/<int:ciclo_id>/estadisticas/', ciclo_statistics, name='ciclo_statistics'),
+    # ── Semana 11-12: Importación y Exportación ──
+    path('importacion/importar/', api_importar_datos, name='api_importar_datos'),
+    path('importacion/plantilla/<str:tipo>/', api_descargar_plantilla, name='api_descargar_plantilla'),
+    path('importacion/dashboard/', api_importacion_dashboard, name='api_importacion_dashboard'),
+    path('exportacion/estudiantes/', api_exportar_estudiantes, name='api_exportar_estudiantes'),
+    path('exportacion/profesores/', api_exportar_profesores, name='api_exportar_profesores'),
+    path('exportacion/reporte-academico/', api_exportar_reporte_academico, name='api_exportar_reporte_academico'),
+    path('exportacion/asistencia/', api_exportar_asistencia, name='api_exportar_asistencia'),
     path('coordinador/planificaciones/', legacy_coordinador_listar_planificaciones, name='legacy_coordinador_listar_planificaciones'),
     path(
         'coordinador/planificaciones/<int:planificacion_id>/estado/',

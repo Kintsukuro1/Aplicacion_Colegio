@@ -50,6 +50,10 @@ class DashboardContextService:
             if params.get('user') is None:
                 raise ValueError('Parámetro requerido: user')
             return
+        if operation == 'get_notificaciones_full_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            return
         raise ValueError(f'Operación no soportada: {operation}')
 
     @staticmethod
@@ -62,6 +66,8 @@ class DashboardContextService:
             return DashboardContextService._execute_get_profesor_context(params)
         if operation == 'get_notificaciones_context':
             return DashboardContextService._execute_get_notificaciones_context(params)
+        if operation == 'get_notificaciones_full_context':
+            return DashboardContextService._execute_get_notificaciones_full_context(params)
         raise ValueError(f'Operación no soportada: {operation}')
 
     @staticmethod
@@ -683,7 +689,8 @@ class DashboardContextService:
             if data['evaluaciones']:
                 notas = [e['nota'] for e in data['evaluaciones']]
                 data['promedio'] = round(sum(notas) / len(notas), 1)
-                data['estado'] = 'Aprobado' if data['promedio'] >= 4.0 else 'Reprobado'
+                from backend.common.utils.grade_scale import estado_nota as _estado_nota
+                data['estado'] = _estado_nota(data['promedio'], user.colegio)
             else:
                 data['promedio'] = 0.0
                 data['estado'] = 'Sin evaluaciones'
@@ -1205,6 +1212,13 @@ class DashboardContextService:
         })
 
     @staticmethod
+    def get_notificaciones_full_context(user, request_get_params=None):
+        return DashboardContextService.execute('get_notificaciones_full_context', {
+            'user': user,
+            'request_get_params': request_get_params,
+        })
+
+    @staticmethod
     def _execute_get_notificaciones_context(params: dict):
         """Get notifications context for any authenticated user"""
         user = params['user']
@@ -1256,6 +1270,95 @@ class DashboardContextService:
         return {
             'notificaciones_count': notificaciones_count,
             'notificaciones_recientes': notificaciones_formatted,
+        }
+
+    @staticmethod
+    def _execute_get_notificaciones_full_context(params: dict):
+        """Get full notifications list context for dashboard notifications page."""
+        user = params['user']
+        request_get_params = params.get('request_get_params')
+        from urllib.parse import parse_qs, urlencode, urlparse
+        from backend.apps.notificaciones.models import Notificacion
+
+        estado = (request_get_params.get('estado') if request_get_params else '') or ''
+        estado = estado.strip().lower()
+
+        queryset = Notificacion.objects.filter(destinatario=user).order_by('-fecha_creacion')
+
+        if estado == 'no_leidas':
+            queryset = queryset.filter(leido=False)
+        elif estado == 'leidas':
+            queryset = queryset.filter(leido=True)
+
+        icon_map = {
+            'calificacion': '⭐',
+            'asistencia': '✅',
+            'evaluacion': '📝',
+            'alerta': '⚠️',
+            'sistema': '⚙️',
+            'tarea_nueva': '📚',
+            'tarea_entregada': '📤',
+            'tarea_calificada': '🏅',
+            'anuncio_nuevo': '📢',
+            'mensaje_nuevo': '✉️',
+            'comunicado_nuevo': '📄',
+            'evento_nuevo': '📅',
+            'citacion_nueva': '👥',
+            'noticia_nueva': '📰',
+            'urgente_nuevo': '🚨',
+        }
+
+        notificaciones = []
+
+        def _normalize_notificacion_enlace(enlace: str) -> str:
+            if not enlace:
+                return '#'
+
+            if 'pagina=clase' not in enlace:
+                return enlace
+
+            parsed = urlparse(enlace)
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            pagina = (query.get('pagina') or [''])[0]
+            clase_id = (query.get('id') or [''])[0]
+
+            if pagina != 'clase' or not clase_id:
+                return enlace
+
+            remaining_params = []
+            for key, values in query.items():
+                if key in ('pagina', 'id'):
+                    continue
+                for value in values:
+                    remaining_params.append((key, value))
+
+            extra_query = urlencode(remaining_params, doseq=True)
+            target = f'/estudiante/clase/{clase_id}/'
+            if extra_query:
+                return f'{target}?{extra_query}'
+            return target
+
+        for notif in queryset:
+            notificaciones.append({
+                'id': notif.id,
+                'titulo': notif.titulo,
+                'mensaje': notif.mensaje,
+                'fecha_creacion': notif.fecha_creacion,
+                'leido': notif.leido,
+                'tipo': notif.tipo,
+                'prioridad': notif.prioridad,
+                'enlace': _normalize_notificacion_enlace(notif.enlace or '#'),
+                'icono': icon_map.get(notif.tipo, '🔔'),
+            })
+
+        total = Notificacion.objects.filter(destinatario=user).count()
+        total_no_leidas = Notificacion.objects.filter(destinatario=user, leido=False).count()
+
+        return {
+            'notificaciones_todas': notificaciones,
+            'notificaciones_total': total,
+            'notificaciones_no_leidas': total_no_leidas,
+            'notificaciones_filtro_estado': estado,
         }
 
     @staticmethod

@@ -137,6 +137,15 @@ from backend.apps.core.views.coordinador_academico.api import (
     listar_planificaciones as coordinador_listar_planificaciones,
     actualizar_estado_planificacion,
 )
+from backend.apps.api.importacion_exportacion_views import (
+    api_descargar_plantilla,
+    api_exportar_asistencia,
+    api_exportar_estudiantes,
+    api_exportar_profesores,
+    api_exportar_reporte_academico,
+    api_importacion_dashboard,
+    api_importar_datos,
+)
 
 
 urlpatterns = [
@@ -172,6 +181,15 @@ urlpatterns = [
     path('api/dashboard/rendimiento/', api_datos_rendimiento, name='api_datos_rendimiento'),
     path('api/dashboard/estadisticas/', api_datos_estadisticas, name='api_datos_estadisticas'),
     path('api/dashboard/notificaciones/', api_notificaciones, name='api_notificaciones'),
+
+    # Alias legacy /api para módulo importación/exportación (v1 sigue vigente en /api/v1)
+    path('api/importacion/importar/', api_importar_datos, name='api_importar_datos_legacy_alias'),
+    path('api/importacion/plantilla/<str:tipo>/', api_descargar_plantilla, name='api_descargar_plantilla_legacy_alias'),
+    path('api/importacion/dashboard/', api_importacion_dashboard, name='api_importacion_dashboard_legacy_alias'),
+    path('api/exportacion/estudiantes/', api_exportar_estudiantes, name='api_exportar_estudiantes_legacy_alias'),
+    path('api/exportacion/profesores/', api_exportar_profesores, name='api_exportar_profesores_legacy_alias'),
+    path('api/exportacion/reporte-academico/', api_exportar_reporte_academico, name='api_exportar_reporte_academico_legacy_alias'),
+    path('api/exportacion/asistencia/', api_exportar_asistencia, name='api_exportar_asistencia_legacy_alias'),
 
     # APIs asesor financiero
     path('api/asesor-financiero/dashboard/kpis/', dashboard_kpis, name='api_dashboard_kpis'),

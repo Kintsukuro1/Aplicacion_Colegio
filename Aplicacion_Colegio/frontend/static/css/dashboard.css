@@ -1076,29 +1076,82 @@ button.dropdown-item.logout {
 }
 
 .notif-item {
+    display: block;
     padding: 1rem 1.2rem;
     border-bottom: 1px solid #f1f3f5;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
     position: relative;
+    text-decoration: none;
+    color: #1f2937;
+    background: #ffffff;
 }
 
 .notif-item:hover {
-    background: #f8f9fa;
+    background: #fffaf3;
+    box-shadow: inset 3px 0 0 #ff8a00;
+    text-decoration: none;
+    color: #111827;
 }
 
-.notif-item.no-leido {
-    background: #e3f2fd;
+.notif-item:visited,
+.notif-item:active,
+.notif-item:focus {
+    text-decoration: none;
+    color: #1f2937;
 }
 
-.notif-item.no-leido::before {
+.notif-item:focus-visible {
+    outline: 2px solid #ff8a00;
+    outline-offset: -2px;
+}
+
+.notif-item.notif-no-leida {
+    background: #fff4e8;
+}
+
+.notif-item.notif-no-leida::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
     width: 4px;
-    background: #2196f3;
+    background: #ff8a00;
+}
+
+.notif-item-content {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.notif-item-title {
+    font-size: 0.93rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #1f2937;
+}
+
+.notif-item-message {
+    font-size: 0.83rem;
+    line-height: 1.45;
+    color: #4b5563;
+}
+
+.notif-item-meta {
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #9ca3af;
+    text-transform: lowercase;
+}
+
+.notif-item.notif-no-leida .notif-item-title {
+    color: #9a3412;
+}
+
+.notif-item.notif-no-leida .notif-item-meta {
+    color: #c2410c;
 }
 
 .notif-tipo {
@@ -1140,16 +1193,20 @@ button.dropdown-item.logout {
 }
 
 .notif-footer a {
+    display: inline-block;
     color: #ff8a00;
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
     transition: all 0.2s ease;
 }
 
 .notif-footer a:hover {
-    color: #e67a00;
-    text-decoration: underline;
+    color: #a04d00;
+    text-decoration: none;
+    background: #ffe7cc;
 }
 
 /* --- RESPONSIVE DESIGN --- */

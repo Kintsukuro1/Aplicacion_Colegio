@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'backend.apps.auditoria',  # Sistema de auditoría (Ley 20.370)
     'backend.apps.subscriptions',  # Sistema de suscripciones y monetización
     'backend.apps.core',  # Modelos mejorados Fase 3
+    'backend.apps.security',  # Módulos de seguridad (hardening, sesiones, historial) 
 ]
 
 # API v1 app (capa unificada REST)

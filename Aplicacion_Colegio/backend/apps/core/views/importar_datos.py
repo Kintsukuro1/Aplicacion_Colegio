@@ -18,7 +18,8 @@ def importar_datos(request):
     can_configure_school = PolicyService.has_capability(request.user, 'SYSTEM_CONFIGURE')
     is_system_admin = PolicyService.has_capability(request.user, 'SYSTEM_ADMIN')
 
-    if not can_configure_school or is_system_admin:
+    # Permitir tanto Admin Escolar (SYSTEM_CONFIGURE) como Admin General (SYSTEM_ADMIN).
+    if not (can_configure_school or is_system_admin):
         messages.error(request, "No tienes permisos para acceder a esta sección")
         return redirect("dashboard")
 

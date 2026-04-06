@@ -268,7 +268,22 @@ class Calificacion(models.Model):
     
     def __str__(self):
         return f"{self.estudiante.get_full_name()} - {self.evaluacion.nombre}: {self.nota}"
-    
+
+    def clean(self):
+        """Valida la nota contra la escala configurada del colegio."""
+        from django.core.exceptions import ValidationError
+        from backend.apps.institucion.models import ConfiguracionAcademica
+
+        super().clean()
+
+        if self.nota is not None and self.colegio_id:
+            escala = ConfiguracionAcademica.get_escala_para_colegio(self.colegio)
+            if self.nota < escala['nota_minima'] or self.nota > escala['nota_maxima']:
+                raise ValidationError({
+                    'nota': f"La nota debe estar entre {escala['nota_minima']} y {escala['nota_maxima']} "
+                            f"según la configuración del colegio."
+                })
+
     def get_nota_efectiva(self):
         """Retorna la nota efectiva considerando recuperaciones"""
         if not self.evaluacion.es_recuperacion and self.evaluacion.recuperaciones.exists():

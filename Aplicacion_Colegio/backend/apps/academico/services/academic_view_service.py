@@ -18,6 +18,7 @@ from backend.common.services import PermissionService
 from backend.common.services.policy_service import PolicyService
 from backend.common.utils.error_response import ErrorResponseBuilder
 from backend.apps.core.services.integrity_service import IntegrityService
+from backend.common.utils.grade_scale import estado_nota
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +248,7 @@ class AcademicViewService:
                         'fecha': cal.evaluacion.fecha_evaluacion,
                         'nota': cal.nota,
                         'ponderacion': ponderacion,
-                        'estado': 'Aprobado' if cal.nota >= 4.0 else 'Reprobado'
+                        'estado': estado_nota(float(cal.nota), user.colegio)
                     })
 
                 promedio = suma_ponderada / suma_ponderaciones if suma_ponderaciones > 0 else 0
@@ -258,7 +259,7 @@ class AcademicViewService:
                     'profesor': clase.profesor.get_full_name(),
                     'evaluaciones': evaluaciones_list,
                     'promedio': promedio,
-                    'estado': 'Aprobado' if promedio >= 4.0 else 'Reprobado',
+                    'estado': estado_nota(promedio, user.colegio),
                     'total_evaluaciones': len(evaluaciones_list)
                 })
 

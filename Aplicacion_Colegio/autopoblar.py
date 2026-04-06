@@ -118,7 +118,8 @@ from backend.apps.academico.models import (
     MaterialClase, Planificacion
 )
 from backend.apps.comunicados.models import Comunicado
-from backend.apps.mensajeria.models import Anuncio
+from backend.apps.mensajeria.models import Anuncio, Conversacion, Mensaje
+from backend.apps.notificaciones.models import Notificacion
 from backend.apps.subscriptions.models import Plan, Subscription
 
 # NUEVOS MODELOS FASE 3
@@ -1824,6 +1825,398 @@ def poblar_comunicados():
     print(f"  ✓ {comunicados_creados} comunicados creados")
     print("✅ Comunicados creados\n")
 
+
+def poblar_notificaciones():
+    """Crear notificaciones reales en la tabla Notificacion + ajustar escenarios de mensajeria."""
+    print("🔔 Creando Notificaciones del sistema...")
+
+    colegio = Colegio.objects.get(rbd=10001)
+    curso_1medio = Curso.objects.get(nombre='1° Medio A', colegio=colegio)
+    clase = (
+        Clase.objects.filter(curso=curso_1medio, activo=True)
+        .select_related('profesor', 'asignatura')
+        .first()
+    )
+    if not clase or not clase.profesor:
+        print("  ⚠️  No se encontro clase/profesor para crear escenarios de notificacion")
+        print("✅ Escenarios de Notificaciones ajustados\n")
+        return
+
+    estudiante_rel = (
+        clase.estudiantes.select_related('estudiante')
+        .filter(activo=True)
+        .first()
+    )
+    if not estudiante_rel:
+        print("  ⚠️  No se encontro estudiante en la clase para escenario de mensajeria")
+        print("✅ Escenarios de Notificaciones ajustados\n")
+        return
+
+    estudiante = estudiante_rel.estudiante
+    profesor = clase.profesor
+
+    # Forzar al menos una tarea y una evaluacion para "hoy"
+    tarea_hoy = Tarea.objects.filter(clase=clase, activa=True).order_by('fecha_entrega').first()
+    if tarea_hoy:
+        tarea_hoy.fecha_entrega = timezone.make_aware(datetime.combine(date.today(), time(18, 0)))
+        tarea_hoy.save(update_fields=['fecha_entrega'])
+
+    evaluacion_hoy = Evaluacion.objects.filter(clase=clase, activa=True).order_by('fecha_evaluacion').first()
+    if evaluacion_hoy:
+        evaluacion_hoy.fecha_evaluacion = date.today()
+        evaluacion_hoy.save(update_fields=['fecha_evaluacion'])
+
+    conversacion, _created = Conversacion.objects.get_or_create(
+        clase=clase,
+        participante1=profesor,
+        participante2=estudiante,
+    )
+
+    Mensaje.objects.create(
+        conversacion=conversacion,
+        emisor=profesor,
+        receptor=estudiante,
+        contenido='Recuerda revisar la tarea y prepararte para la evaluacion de hoy.',
+    )
+    Mensaje.objects.create(
+        conversacion=conversacion,
+        emisor=estudiante,
+        receptor=profesor,
+        contenido='Profesor, ya subi mi tarea. Quedo atento a comentarios.',
+    )
+
+    # ─── Crear Notificaciones reales en la BD ───────────────────────────────
+    now = timezone.now()
+
+    # Obtener usuarios clave del colegio
+    admin_escolar = User.objects.filter(email='maria.lopez@colegio.cl').first()
+    apoderado = User.objects.filter(email='carmen.silva@gmail.com').first()
+    asesor_fin = User.objects.filter(email='laura.mendez@colegio.cl').first()
+    coordinador = User.objects.filter(email='paula.rios@colegio.cl').first()
+    admin_gral = User.objects.filter(email='carlos.perez@colegio.cl').first()
+
+    # Obtener algunos estudiantes mas
+    estudiantes = list(User.objects.filter(
+        rbd_colegio=colegio.rbd,
+        role__nombre__in=['Estudiante', 'Alumno'],
+        is_active=True,
+    ).order_by('email')[:5])
+
+    notifs_creadas = 0
+
+    # ── BATCH: Notificaciones para el PROFESOR ──────────────────────────────
+    notifs_profesor = [
+        {
+            'tipo': 'tarea_entregada',
+            'titulo': f'{estudiante.nombre} entregó tarea de {clase.asignatura.nombre}',
+            'mensaje': f'El estudiante {estudiante.nombre} {estudiante.apellido_paterno} entregó la tarea "{tarea_hoy.titulo if tarea_hoy else "Actividad"}" a tiempo.',
+            'prioridad': 'normal',
+            'leido': False,
+            'fecha_creacion': now - timedelta(minutes=15),
+        },
+        {
+            'tipo': 'evaluacion',
+            'titulo': 'Recordatorio: Evaluación programada hoy',
+            'mensaje': f'Tienes una evaluación programada hoy para {clase.asignatura.nombre} en {curso_1medio.nombre}.',
+            'enlace': '/profesor/evaluaciones',
+            'prioridad': 'alta',
+            'leido': False,
+            'fecha_creacion': now - timedelta(hours=2),
+        },
+        {
+            'tipo': 'mensaje_nuevo',
+            'titulo': 'Nuevo mensaje de estudiante',
+            'mensaje': f'{estudiante.nombre} {estudiante.apellido_paterno} te envió un mensaje sobre la tarea pendiente.',
+            'prioridad': 'normal',
+            'leido': True,
+            'fecha_creacion': now - timedelta(hours=5),
+        },
+        {
+            'tipo': 'asistencia',
+            'titulo': 'Asistencia pendiente de registro',
+            'mensaje': f'Falta registrar asistencia de hoy para {curso_1medio.nombre} - {clase.asignatura.nombre}.',
+            'enlace': '/profesor/asistencias',
+            'prioridad': 'alta',
+            'leido': False,
+            'fecha_creacion': now - timedelta(hours=1),
+        },
+        {
+            'tipo': 'sistema',
+            'titulo': 'Planificación semanal pendiente',
+            'mensaje': 'Recuerda completar la planificación de clases para la próxima semana.',
+            'prioridad': 'baja',
+            'leido': True,
+            'fecha_creacion': now - timedelta(days=1),
+        },
+        {
+            'tipo': 'comunicado_nuevo',
+            'titulo': 'Nuevo comunicado de dirección',
+            'mensaje': 'La dirección ha publicado un comunicado sobre actualización de protocolos de evaluación.',
+            'prioridad': 'normal',
+            'leido': False,
+            'fecha_creacion': now - timedelta(days=2),
+        },
+    ]
+
+    for n in notifs_profesor:
+        fecha = n.pop('fecha_creacion')
+        obj = Notificacion(**n, destinatario=profesor)
+        obj.save()
+        Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+        notifs_creadas += 1
+
+    # ── BATCH: Notificaciones para ESTUDIANTES ──────────────────────────────
+    notifs_estudiante_tpl = [
+        {
+            'tipo': 'calificacion',
+            'titulo': f'Nueva calificación en {clase.asignatura.nombre}',
+            'mensaje': 'Tu profesor ha registrado una nueva calificación. Revisa tu libreta de notas.',
+            'enlace': '/estudiante/panel',
+            'prioridad': 'normal',
+            'leido': False,
+            'delta': timedelta(hours=3),
+        },
+        {
+            'tipo': 'tarea_nueva',
+            'titulo': f'Nueva tarea: {tarea_hoy.titulo if tarea_hoy else "Ejercicios semana"}',
+            'mensaje': f'Se ha asignado una nueva tarea en {clase.asignatura.nombre}. Fecha de entrega: hoy.',
+            'enlace': '/estudiante/panel',
+            'prioridad': 'alta',
+            'leido': False,
+            'delta': timedelta(hours=6),
+        },
+        {
+            'tipo': 'evaluacion',
+            'titulo': 'Evaluación programada para hoy',
+            'mensaje': f'Recuerda que hoy tienes evaluación en {clase.asignatura.nombre}. ¡Prepárate!',
+            'prioridad': 'alta',
+            'leido': False,
+            'delta': timedelta(hours=8),
+        },
+        {
+            'tipo': 'asistencia',
+            'titulo': 'Registro de inasistencia',
+            'mensaje': 'Se registró una inasistencia en tu historial del día de ayer. Si fue justificada, contacta a tu profesor jefe.',
+            'prioridad': 'normal',
+            'leido': True,
+            'delta': timedelta(days=1),
+        },
+        {
+            'tipo': 'anuncio_nuevo',
+            'titulo': 'Actividad extracurricular disponible',
+            'mensaje': 'Se abrieron inscripciones para el taller de robótica. Consulta los horarios en la cartelera.',
+            'prioridad': 'baja',
+            'leido': True,
+            'delta': timedelta(days=3),
+        },
+    ]
+
+    for est in estudiantes:
+        for tpl in notifs_estudiante_tpl:
+            delta = tpl.pop('delta')
+            data = {**tpl}
+            fecha = now - delta
+            obj = Notificacion(**data, destinatario=est)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+            tpl['delta'] = delta  # restore for next student
+
+    # ── BATCH: Notificaciones para APODERADO ────────────────────────────────
+    if apoderado:
+        notifs_apoderado = [
+            {
+                'tipo': 'calificacion',
+                'titulo': 'Nueva calificación de su hijo/a',
+                'mensaje': f'Se registró una nueva calificación en {clase.asignatura.nombre}. Promedio actual: 5.8.',
+                'prioridad': 'normal',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=4),
+            },
+            {
+                'tipo': 'asistencia',
+                'titulo': 'Alerta de inasistencia',
+                'mensaje': 'Su hijo/a registró una inasistencia ayer. Si fue justificada, envíe el justificativo.',
+                'enlace': '/apoderado/panel',
+                'prioridad': 'alta',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=20),
+            },
+            {
+                'tipo': 'citacion_nueva',
+                'titulo': 'Citación a reunión de apoderados',
+                'mensaje': 'Se le convoca a reunión general de apoderados el próximo viernes a las 18:00.',
+                'prioridad': 'urgente',
+                'leido': False,
+                'fecha_creacion': now - timedelta(days=1),
+            },
+            {
+                'tipo': 'comunicado_nuevo',
+                'titulo': 'Circular: Uniforme escolar 2026',
+                'mensaje': 'Se informa sobre los proveedores autorizados para la adquisición del uniforme escolar.',
+                'prioridad': 'baja',
+                'leido': True,
+                'fecha_creacion': now - timedelta(days=5),
+            },
+            {
+                'tipo': 'alerta',
+                'titulo': 'Rendimiento académico bajo',
+                'mensaje': 'El promedio de su hijo/a ha descendido por debajo de 4.5 en Matemáticas. Le recomendamos solicitar reforzamiento.',
+                'prioridad': 'urgente',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=10),
+            },
+        ]
+        for n in notifs_apoderado:
+            fecha = n.pop('fecha_creacion')
+            obj = Notificacion(**n, destinatario=apoderado)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+
+    # ── BATCH: Notificaciones para ADMIN ESCOLAR ────────────────────────────
+    if admin_escolar:
+        notifs_admin = [
+            {
+                'tipo': 'sistema',
+                'titulo': 'Resumen diario del colegio',
+                'mensaje': f'Hoy asistieron 28 de 30 estudiantes en {curso_1medio.nombre}. Tasa: 93.3%.',
+                'prioridad': 'normal',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=1),
+            },
+            {
+                'tipo': 'alerta',
+                'titulo': '2 profesores sin registrar asistencia',
+                'mensaje': 'Los siguientes profesores aún no registran asistencia hoy. Verificar antes de las 14:00.',
+                'prioridad': 'alta',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=3),
+            },
+            {
+                'tipo': 'evento_nuevo',
+                'titulo': 'Consejo de profesores agendado',
+                'mensaje': 'Se ha agendado consejo de profesores para el miércoles 09/04 a las 16:00.',
+                'enlace': '/calendario/eventos',
+                'prioridad': 'normal',
+                'leido': True,
+                'fecha_creacion': now - timedelta(days=2),
+            },
+            {
+                'tipo': 'urgente_nuevo',
+                'titulo': '⚠️ Emergencia: Corte de agua programado',
+                'mensaje': 'Se informa corte de agua para mañana de 08:00 a 12:00. Tomar previsiones.',
+                'prioridad': 'urgente',
+                'leido': False,
+                'fecha_creacion': now - timedelta(minutes=30),
+            },
+        ]
+        for n in notifs_admin:
+            fecha = n.pop('fecha_creacion')
+            obj = Notificacion(**n, destinatario=admin_escolar)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+
+    # ── BATCH: Notificaciones para ASESOR FINANCIERO ────────────────────────
+    if asesor_fin:
+        notifs_fin = [
+            {
+                'tipo': 'sistema',
+                'titulo': 'Cuotas vencidas: 12 pendientes',
+                'mensaje': 'Hay 12 cuotas vencidas del mes de marzo. Se recomienda enviar recordatorios.',
+                'enlace': '/asesor-financiero/panel',
+                'prioridad': 'alta',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=6),
+            },
+            {
+                'tipo': 'sistema',
+                'titulo': 'Pago recibido: $125.000',
+                'mensaje': 'Se registró un pago por transferencia bancaria de la familia González.',
+                'prioridad': 'normal',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=2),
+            },
+        ]
+        for n in notifs_fin:
+            fecha = n.pop('fecha_creacion')
+            obj = Notificacion(**n, destinatario=asesor_fin)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+
+    # ── BATCH: Notificaciones para COORDINADOR ACADÉMICO ────────────────────
+    if coordinador:
+        notifs_coord = [
+            {
+                'tipo': 'alerta',
+                'titulo': '5 estudiantes con promedio bajo 4.0',
+                'mensaje': 'Se detectaron 5 estudiantes con promedio general bajo 4.0 en el período actual.',
+                'prioridad': 'alta',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=4),
+            },
+            {
+                'tipo': 'sistema',
+                'titulo': 'Reporte mensual disponible',
+                'mensaje': 'El reporte ministerial de marzo 2026 está listo para revisión.',
+                'prioridad': 'normal',
+                'leido': True,
+                'fecha_creacion': now - timedelta(days=3),
+            },
+        ]
+        for n in notifs_coord:
+            fecha = n.pop('fecha_creacion')
+            obj = Notificacion(**n, destinatario=coordinador)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+
+    # ── BATCH: Notificaciones para ADMIN GENERAL ────────────────────────────
+    if admin_gral:
+        notifs_global = [
+            {
+                'tipo': 'sistema',
+                'titulo': 'Suscripción próxima a vencer',
+                'mensaje': 'La suscripción del Liceo Técnico Industrial (RBD 10002) vence en 7 días.',
+                'prioridad': 'urgente',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=12),
+            },
+            {
+                'tipo': 'sistema',
+                'titulo': 'Nuevo colegio registrado',
+                'mensaje': 'Se ha registrado un nuevo colegio en la plataforma. Pendiente de activación.',
+                'prioridad': 'normal',
+                'leido': True,
+                'fecha_creacion': now - timedelta(days=4),
+            },
+            {
+                'tipo': 'alerta',
+                'titulo': 'Intento de acceso no autorizado',
+                'mensaje': 'Se detectaron 3 intentos fallidos de inicio de sesión desde IP 192.168.1.45.',
+                'prioridad': 'urgente',
+                'leido': False,
+                'fecha_creacion': now - timedelta(hours=1),
+            },
+        ]
+        for n in notifs_global:
+            fecha = n.pop('fecha_creacion')
+            obj = Notificacion(**n, destinatario=admin_gral)
+            obj.save()
+            Notificacion.objects.filter(pk=obj.pk).update(fecha_creacion=fecha)
+            notifs_creadas += 1
+
+    # ── Resumen ─────────────────────────────────────────────────────────────
+    total_notifs = Notificacion.objects.count()
+    total_unread = Notificacion.objects.filter(leido=False).count()
+    print(f"  ✓ Notificaciones creadas en batch: {notifs_creadas}")
+    print(f"  ✓ Total notificaciones en BD: {total_notifs}")
+    print(f"  ✓ Sin leer: {total_unread}")
+    print(f"  ✓ Conversacion de prueba ID: {conversacion.id_conversacion}")
+    print("✅ Notificaciones del sistema creadas\n")
+
 def poblar_apoderados():
     """Crear perfiles de apoderados y relaciones con estudiantes"""
     print("👨‍👩‍👧‍👦 Creando Perfiles de Apoderados y Relaciones...")
@@ -2893,6 +3286,7 @@ def main():
         poblar_materiales()
         poblar_anuncios()
         poblar_comunicados()
+        poblar_notificaciones()
         poblar_planificaciones()
         poblar_firmas_digitales()
         poblar_planes()  # Crear planes de suscripción

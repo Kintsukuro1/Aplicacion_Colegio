@@ -31,7 +31,7 @@ class Anuncio(models.Model):
     fecha_creacion = models.DateTimeField(default=timezone.now)
     fecha_modificacion = models.DateTimeField(auto_now=True)
     leido_por = models.ManyToManyField(User, related_name='anuncios_leidos', blank=True)
-    objects = TenantManager(school_field='clase__colegio_id')
+    objects = TenantManager(school_field='clase__colegio__rbd')
 
     class Meta:
         db_table = 'anuncio'
@@ -60,7 +60,7 @@ class Conversacion(models.Model):
     participante2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversaciones_como_p2')
     fecha_creacion = models.DateTimeField(default=timezone.now)
     ultima_actividad = models.DateTimeField(default=timezone.now)
-    objects = TenantManager(school_field='clase__colegio_id')
+    objects = TenantManager(school_field='clase__colegio__rbd')
 
     class Meta:
         db_table = 'conversacion'

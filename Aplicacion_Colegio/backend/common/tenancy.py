@@ -42,7 +42,7 @@ class TenantManager(models.Manager):
     def __init__(
         self,
         *args,
-        school_field: str = "colegio_id",
+        school_field: str = "rbd_colegio",
         coerce_school_id_to_str: bool = False,
         **kwargs,
     ):

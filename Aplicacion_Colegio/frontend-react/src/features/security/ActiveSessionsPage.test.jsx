@@ -1,0 +1,93 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import ActiveSessionsPage from './ActiveSessionsPage';
+
+const getMock = vi.fn();
+const postMock = vi.fn();
+
+vi.mock('../../lib/apiClient', () => ({
+  apiClient: {
+    get: (...args) => getMock(...args),
+    post: (...args) => postMock(...args),
+  },
+}));
+
+describe('ActiveSessionsPage', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    postMock.mockReset();
+    vi.restoreAllMocks();
+
+    getMock.mockImplementation((path) => {
+      if (path === '/api/v1/seguridad/sesiones-activas/') {
+        return Promise.resolve({
+          sesiones: [
+            {
+              id: 11,
+              user_email: 'admin@colegio.cl',
+              user_rol: 'Administrador escolar',
+              colegio_rbd: 10001,
+              ip: '192.168.0.10',
+              dispositivo: 'Desktop',
+              ultima_actividad: '2026-04-05T12:00:00Z',
+            },
+          ],
+        });
+      }
+
+      if (path === '/api/v1/seguridad/dashboard/') {
+        return Promise.resolve({
+          colegio: 'Colegio Santa Maria',
+          intentos_fallidos_24h: 2,
+          ips_bloqueadas: 1,
+          sesiones_activas: 1,
+          accesos_datos_sensibles_24h: 3,
+          ips_bloqueadas_lista: ['10.0.0.8'],
+        });
+      }
+
+      return Promise.resolve({});
+    });
+  });
+
+  it('shows access denied without capabilities', () => {
+    render(<ActiveSessionsPage me={{ capabilities: [] }} />);
+    expect(screen.getByText('No tienes permisos para ver esta pagina.')).toBeInTheDocument();
+  });
+
+  it('loads sessions and revokes a selected session', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    postMock.mockResolvedValue({ detail: 'Sesion revocada exitosamente.' });
+
+    render(<ActiveSessionsPage me={{ capabilities: ['AUDIT_VIEW'] }} />);
+
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith('/api/v1/seguridad/sesiones-activas/');
+      expect(getMock).toHaveBeenCalledWith('/api/v1/seguridad/dashboard/');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Revocar' }));
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith('/api/v1/seguridad/sesiones/11/revocar/', {});
+    });
+  });
+
+  it('unblocks an IP from blocked list', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    postMock.mockResolvedValue({ detail: 'IP desbloqueada correctamente.' });
+
+    render(<ActiveSessionsPage me={{ capabilities: ['SYSTEM_ADMIN'] }} />);
+
+    const unblockButton = await screen.findByRole('button', { name: 'Desbloquear' });
+    await user.click(unblockButton);
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalledWith('/api/v1/seguridad/desbloquear-ip/', { ip: '10.0.0.8' });
+    });
+  });
+});

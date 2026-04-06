@@ -94,40 +94,361 @@ class DashboardApiService:
 
     @classmethod
     def _build_self_section(cls, user, *, today):
-        payload = {
-            'today': today.isoformat(),
+        """Construye la sección 'self' del dashboard con métricas por rol."""
+        role_name = getattr(getattr(user, 'role', None), 'nombre', '') or ''
+        role_key = role_name.strip().lower()
+        school_id = getattr(user, 'rbd_colegio', None)
+
+        base = {'today': today.isoformat(), 'role': role_name}
+
+        if role_key == 'profesor':
+            base.update(cls._build_teacher_self(user, today=today, school_id=school_id))
+        elif role_key in {'estudiante', 'alumno'}:
+            base.update(cls._build_student_self(user, today=today, school_id=school_id))
+        elif role_key == 'apoderado':
+            base.update(cls._build_apoderado_self(user, today=today, school_id=school_id))
+        elif role_key in {'administrador escolar', 'admin_escolar'}:
+            base.update(cls._build_admin_escolar_self(user, today=today, school_id=school_id))
+        elif role_key in {'administrador general', 'admin_general', 'super admin'}:
+            base.update(cls._build_admin_general_self(user, today=today, school_id=school_id))
+        else:
+            base.update({'my_classes': 0, 'my_attendance_today': 0, 'my_evaluations': 0})
+
+        return base
+
+    # ── Estudiante ──────────────────────────────────────────
+
+    @classmethod
+    def _build_student_self(cls, user, *, today, school_id):
+        from django.db.models import Avg
+        from backend.apps.accounts.models import PerfilEstudiante
+        from backend.apps.academico.models import Tarea, EntregaTarea
+        from backend.common.utils.grade_scale import get_escala
+
+        data = {
+            'mis_clases': ClaseEstudiante.objects.filter(estudiante_id=user.id, activo=True).count(),
+            'promedio_general': None,
+            'porcentaje_asistencia': 100.0,
+            'tareas_pendientes': 0,
+            'proximas_evaluaciones': [],
+            'nota_aprobacion': None,
         }
-        if cls._is_teacher_user(user):
-            payload.update(
-                {
-                    'my_classes': Clase.objects.filter(profesor_id=user.id, activo=True).count(),
-                    'my_attendance_today': Asistencia.objects.filter(clase__profesor_id=user.id, fecha=today).count(),
-                    'my_evaluations': Evaluacion.objects.filter(clase__profesor_id=user.id, activa=True).count(),
-                }
-            )
-            return payload
 
-        is_student = bool(
-            getattr(getattr(user, 'role', None), 'nombre', '').strip().lower() in {'estudiante', 'alumno'}
-        )
-        if is_student:
-            payload.update(
-                {
-                    'my_classes': ClaseEstudiante.objects.filter(estudiante_id=user.id, activo=True).count(),
-                    'my_grades': Calificacion.objects.filter(estudiante_id=user.id).count(),
-                    'my_attendance_today': Asistencia.objects.filter(estudiante_id=user.id, fecha=today).count(),
-                }
-            )
-            return payload
+        # Promedio general
+        avg = Calificacion.objects.filter(
+            estudiante_id=user.id, colegio_id=school_id
+        ).aggregate(avg=Avg('nota'))['avg']
+        if avg is not None:
+            data['promedio_general'] = round(float(avg), 1)
 
-        payload.update(
+        # Escala del colegio
+        try:
+            from backend.apps.institucion.models import Colegio
+            colegio = Colegio.objects.get(rbd=school_id)
+            escala = get_escala(colegio)
+            data['nota_aprobacion'] = float(escala['nota_aprobacion'])
+        except Exception:
+            data['nota_aprobacion'] = 4.0
+
+        # Porcentaje de asistencia
+        att_total = Asistencia.objects.filter(
+            estudiante_id=user.id, colegio_id=school_id
+        ).count()
+        if att_total > 0:
+            att_present = Asistencia.objects.filter(
+                estudiante_id=user.id, colegio_id=school_id, estado='P'
+            ).count()
+            data['porcentaje_asistencia'] = round((att_present / att_total) * 100, 1)
+
+        # Tareas pendientes
+        try:
+            perfil = PerfilEstudiante.objects.get(user=user)
+            curso_actual = perfil.curso_actual
+            if curso_actual:
+                tareas_del_curso = Tarea.objects.filter(
+                    clase__curso=curso_actual, activa=True, es_publica=True
+                ).values_list('id_tarea', flat=True)
+                entregadas = set(
+                    EntregaTarea.objects.filter(
+                        estudiante=user, tarea_id__in=tareas_del_curso
+                    ).values_list('tarea_id', flat=True)
+                )
+                data['tareas_pendientes'] = len(set(tareas_del_curso) - entregadas)
+        except PerfilEstudiante.DoesNotExist:
+            pass
+
+        # Próximas evaluaciones (7 días)
+        next_7 = today + timedelta(days=7)
+        upcoming = Evaluacion.objects.filter(
+            clase__in=ClaseEstudiante.objects.filter(
+                estudiante_id=user.id, activo=True
+            ).values_list('clase_id', flat=True),
+            activa=True,
+            fecha_evaluacion__gte=today,
+            fecha_evaluacion__lte=next_7,
+        ).select_related('clase__asignatura').order_by('fecha_evaluacion')[:5]
+        data['proximas_evaluaciones'] = [
             {
-                'my_classes': 0,
-                'my_attendance_today': 0,
-                'my_evaluations': 0,
+                'nombre': ev.nombre,
+                'asignatura': ev.clase.asignatura.nombre if ev.clase and ev.clase.asignatura else '',
+                'fecha': ev.fecha_evaluacion.isoformat() if ev.fecha_evaluacion else None,
+                'tipo': ev.tipo_evaluacion or '',
             }
+            for ev in upcoming
+        ]
+
+        return data
+
+    # ── Profesor ────────────────────────────────────────────
+
+    @classmethod
+    def _build_teacher_self(cls, user, *, today, school_id):
+        from django.db.models import Avg, Count
+        from backend.apps.academico.models import Tarea, EntregaTarea
+
+        teacher_classes = Clase.objects.filter(
+            profesor_id=user.id, colegio_id=school_id, activo=True
         )
-        return payload
+        teacher_class_ids = list(teacher_classes.values_list('id', flat=True))
+
+        # Clases hoy (por bloques)
+        from backend.apps.cursos.models import BloqueHorario
+        dia_semana = today.weekday() + 1
+        clases_hoy = BloqueHorario.objects.filter(
+            clase_id__in=teacher_class_ids,
+            dia_semana=dia_semana,
+            activo=True,
+        ).select_related('clase__asignatura', 'clase__curso').order_by('hora_inicio')
+        clases_hoy_list = [
+            {
+                'asignatura': b.clase.asignatura.nombre if b.clase.asignatura else '',
+                'curso': b.clase.curso.nombre if b.clase.curso else '',
+                'hora_inicio': b.hora_inicio.strftime('%H:%M'),
+                'hora_fin': b.hora_fin.strftime('%H:%M'),
+                'bloque': b.bloque_numero,
+            }
+            for b in clases_hoy
+        ]
+
+        # Evaluaciones activas
+        eval_count = Evaluacion.objects.filter(
+            clase_id__in=teacher_class_ids, activa=True
+        ).count()
+
+        # Promedio general de notas del profesor
+        avg = Calificacion.objects.filter(
+            evaluacion__clase_id__in=teacher_class_ids
+        ).aggregate(avg=Avg('nota'))['avg']
+        promedio_general = round(float(avg), 1) if avg is not None else None
+
+        # Tareas por revisar
+        tareas_sin_revisar = 0
+        try:
+            tareas_activas = Tarea.objects.filter(
+                clase_id__in=teacher_class_ids, activa=True
+            ).values_list('id_tarea', flat=True)
+            tareas_sin_revisar = EntregaTarea.objects.filter(
+                tarea_id__in=tareas_activas,
+                calificacion__isnull=True,
+            ).count()
+        except Exception:
+            pass
+
+        # Total estudiantes distintos
+        total_estudiantes = ClaseEstudiante.objects.filter(
+            clase_id__in=teacher_class_ids, activo=True
+        ).values('estudiante_id').distinct().count()
+
+        # Asistencia pendiente hoy
+        clases_sin_asistencia_hoy = teacher_classes.exclude(
+            asistencias__fecha=today
+        ).count()
+
+        return {
+            'mis_clases': len(teacher_class_ids),
+            'clases_hoy': clases_hoy_list,
+            'total_clases_hoy': len(clases_hoy_list),
+            'mis_evaluaciones': eval_count,
+            'promedio_general': promedio_general,
+            'tareas_por_revisar': tareas_sin_revisar,
+            'total_estudiantes': total_estudiantes,
+            'asistencia_pendiente_hoy': clases_sin_asistencia_hoy,
+        }
+
+    # ── Apoderado ───────────────────────────────────────────
+
+    @classmethod
+    def _build_apoderado_self(cls, user, *, today, school_id):
+        from django.db.models import Avg
+        from backend.apps.accounts.models import Apoderado, RelacionApoderadoEstudiante
+        from backend.apps.matriculas.models import EstadoCuenta
+        from backend.apps.comunicados.models import Comunicado, ConfirmacionLectura
+
+        data = {
+            'pupilos': [],
+            'pagos_pendientes': 0,
+            'total_deuda': 0,
+            'comunicados_sin_leer': 0,
+        }
+
+        try:
+            apoderado = Apoderado.objects.get(user=user)
+        except Apoderado.DoesNotExist:
+            return data
+
+        # Pupilos con métricas
+        relaciones = RelacionApoderadoEstudiante.objects.filter(
+            apoderado=apoderado, activa=True
+        ).select_related('estudiante')
+
+        for rel in relaciones:
+            est = rel.estudiante
+            avg = Calificacion.objects.filter(
+                estudiante_id=est.id, colegio_id=school_id
+            ).aggregate(avg=Avg('nota'))['avg']
+
+            att_total = Asistencia.objects.filter(
+                estudiante_id=est.id, colegio_id=school_id
+            ).count()
+            att_pct = 100.0
+            if att_total > 0:
+                att_present = Asistencia.objects.filter(
+                    estudiante_id=est.id, colegio_id=school_id, estado='P'
+                ).count()
+                att_pct = round((att_present / att_total) * 100, 1)
+
+            data['pupilos'].append({
+                'id': est.id,
+                'nombre': est.get_full_name(),
+                'promedio': round(float(avg), 1) if avg else None,
+                'porcentaje_asistencia': att_pct,
+                'parentesco': rel.parentesco,
+            })
+
+        # Pagos pendientes
+        cuentas_pendientes = EstadoCuenta.objects.filter(
+            estudiante_id__in=[r.estudiante_id for r in relaciones],
+            colegio_id=school_id,
+            estado__in=['GENERADO', 'ENVIADO'],
+        )
+        data['pagos_pendientes'] = cuentas_pendientes.count()
+        data['total_deuda'] = float(
+            sum(c.saldo_pendiente for c in cuentas_pendientes)
+        )
+
+        # Comunicados sin leer
+        comunicados_enviados = Comunicado.objects.filter(
+            colegio_id=school_id,
+            estado='ENVIADO',
+        ).values_list('id', flat=True)
+        leidos = set(
+            ConfirmacionLectura.objects.filter(
+                usuario=user,
+                comunicado_id__in=comunicados_enviados,
+            ).values_list('comunicado_id', flat=True)
+        )
+        data['comunicados_sin_leer'] = len(set(comunicados_enviados) - leidos)
+
+        return data
+
+    # ── Administrador Escolar ───────────────────────────────
+
+    @classmethod
+    def _build_admin_escolar_self(cls, user, *, today, school_id):
+        from django.db.models import Avg, Sum
+        from backend.apps.matriculas.models import Matricula, EstadoCuenta
+
+        # Matrícula total
+        matriculas_activas = Matricula.objects.filter(
+            colegio_id=school_id, estado='ACTIVA'
+        ).count()
+
+        # Estudiantes activos
+        student_qs = User.objects.filter(
+            Q(role__nombre__iexact='Estudiante') | Q(role__nombre__iexact='Alumno'),
+            rbd_colegio=school_id, is_active=True,
+        )
+        total_estudiantes = student_qs.count()
+
+        # Profesores activos
+        total_profesores = User.objects.filter(
+            role__nombre__iexact='Profesor',
+            rbd_colegio=school_id, is_active=True,
+        ).count()
+
+        # Cursos activos
+        total_cursos = Curso.objects.filter(
+            colegio_id=school_id, activo=True
+        ).count()
+
+        # Asistencia promedio del mes
+        primer_dia_mes = today.replace(day=1)
+        att_mes = Asistencia.objects.filter(
+            colegio_id=school_id,
+            fecha__gte=primer_dia_mes,
+            fecha__lte=today,
+        )
+        att_total = att_mes.count()
+        att_pct = 0.0
+        if att_total > 0:
+            att_present = att_mes.filter(estado='P').count()
+            att_pct = round((att_present / att_total) * 100, 1)
+
+        # Morosidad
+        cuentas_pendientes = EstadoCuenta.objects.filter(
+            colegio_id=school_id,
+            estado__in=['GENERADO', 'ENVIADO'],
+        )
+        total_morosidad = float(
+            cuentas_pendientes.aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+        )
+        alumnos_morosos = cuentas_pendientes.values('estudiante_id').distinct().count()
+
+        # Evaluaciones próximos 7 días
+        next_7 = today + timedelta(days=7)
+        evaluaciones_proximas = Evaluacion.objects.filter(
+            colegio_id=school_id,
+            activa=True,
+            fecha_evaluacion__gte=today,
+            fecha_evaluacion__lte=next_7,
+        ).count()
+
+        return {
+            'matriculas_activas': matriculas_activas,
+            'total_estudiantes': total_estudiantes,
+            'total_profesores': total_profesores,
+            'total_cursos': total_cursos,
+            'asistencia_promedio_mes': att_pct,
+            'total_morosidad': total_morosidad,
+            'alumnos_morosos': alumnos_morosos,
+            'evaluaciones_proximas': evaluaciones_proximas,
+        }
+
+    # ── Administrador General ───────────────────────────────
+
+    @classmethod
+    def _build_admin_general_self(cls, user, *, today, school_id):
+        """Admin general ve datos del colegio más métricas globales."""
+        # Reutilizar admin escolar como base
+        data = cls._build_admin_escolar_self(user, today=today, school_id=school_id)
+
+        # Agregar métricas globales
+        try:
+            from backend.apps.subscriptions.models import Subscription
+            sub = Subscription.objects.select_related('plan').filter(
+                colegio_id=school_id, status='active'
+            ).first()
+            if sub:
+                data['plan_actual'] = sub.plan.nombre if sub.plan else None
+                data['estado_suscripcion'] = sub.status
+            else:
+                data['plan_actual'] = None
+                data['estado_suscripcion'] = None
+        except Exception:
+            data['plan_actual'] = None
+            data['estado_suscripcion'] = None
+
+        return data
 
     @staticmethod
     def _build_school_section(*, today, school_id=None):
@@ -174,6 +495,18 @@ class DashboardApiService:
         if attendance_today_total:
             attendance_rate = round((attendance_today_present * 100.0) / attendance_today_total, 2)
 
+        # Obtener umbral de aprobación del colegio
+        nota_aprobacion = 4.0
+        if school_id is not None:
+            from backend.apps.institucion.models import Colegio
+            try:
+                from backend.common.utils.grade_scale import get_escala
+                colegio = Colegio.objects.get(rbd=school_id)
+                escala = get_escala(colegio)
+                nota_aprobacion = float(escala['nota_aprobacion'])
+            except Exception:
+                pass
+
         next_7_days = today + timedelta(days=7)
         return {
             'today': today.isoformat(),
@@ -186,7 +519,8 @@ class DashboardApiService:
                 fecha_evaluacion__gte=today,
                 fecha_evaluacion__lte=next_7_days,
             ).count(),
-            'grades_below_4': grades_qs.filter(nota__lt=4.0).count(),
+            'grades_below_approval': grades_qs.filter(nota__lt=nota_aprobacion).count(),
+            'nota_aprobacion': nota_aprobacion,
         }
 
     @classmethod

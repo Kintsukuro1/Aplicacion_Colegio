@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 PAGE_CAPABILITIES_ANY = {
     'inicio': {'DASHBOARD_VIEW_SELF', 'DASHBOARD_VIEW_SCHOOL', 'DASHBOARD_VIEW_ANALYTICS'},
     'perfil': {'DASHBOARD_VIEW_SELF', 'DASHBOARD_VIEW_SCHOOL', 'DASHBOARD_VIEW_ANALYTICS'},
+    'notificaciones': {'DASHBOARD_VIEW_SELF', 'DASHBOARD_VIEW_SCHOOL', 'DASHBOARD_VIEW_ANALYTICS'},
     'mi_escuela': {'SYSTEM_CONFIGURE'},
     'infraestructura': {'SYSTEM_CONFIGURE'},
     'gestionar_escuelas': {'SYSTEM_CONFIGURE'},
@@ -60,6 +61,10 @@ PAGE_CAPABILITIES_ANY = {
     'justificativos': {'STUDENT_VIEW', 'JUSTIFICATION_VIEW'},
     'firmas_pendientes': {'STUDENT_VIEW'},
     'calendario_pupilo': {'STUDENT_VIEW', 'CLASS_VIEW'},
+    'calendario_eventos': {'ANNOUNCEMENT_VIEW', 'ANNOUNCEMENT_CREATE', 'ANNOUNCEMENT_EDIT', 'ANNOUNCEMENT_DELETE'},
+    'solicitud_reuniones': {'CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN'},
+    'active_sessions': {'AUDIT_VIEW', 'SYSTEM_ADMIN'},
+    'password_history': {'AUDIT_VIEW', 'SYSTEM_ADMIN'},
     'dashboard_financiero': {'FINANCE_VIEW'},
     'estados_cuenta': {'FINANCE_VIEW'},
     'pagos': {'FINANCE_VIEW', 'FINANCE_MANAGE_PAYMENTS'},

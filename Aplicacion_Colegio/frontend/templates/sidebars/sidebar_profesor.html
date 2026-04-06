@@ -59,6 +59,22 @@
                 </a>
             </li>
             {% endif %}
+            {% if 'calendario_eventos' in paginas_habilitadas %}
+            <li {% if pagina_actual == "calendario_eventos" %}class="active" {% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=calendario_eventos">
+                    <span class="icon">🗓️</span>
+                    <span>Calendario Escolar</span>
+                </a>
+            </li>
+            {% endif %}
+            {% if 'solicitud_reuniones' in paginas_habilitadas %}
+            <li {% if pagina_actual == "solicitud_reuniones" %}class="active" {% endif %}>
+                <a href="{% url 'dashboard' %}?pagina=solicitud_reuniones">
+                    <span class="icon">🤝</span>
+                    <span>Solicitud Reuniones</span>
+                </a>
+            </li>
+            {% endif %}
             {% if 'tareas_consolidado' in paginas_habilitadas %}
             <li {% if pagina_actual == "tareas_consolidado" %}class="active" {% endif %}>
                 <a href="{% url 'dashboard' %}?pagina=tareas_consolidado">

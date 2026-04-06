@@ -11,6 +11,16 @@ from rest_framework.response import Response
 from backend.apps.accounts.models import Apoderado, User
 from backend.apps.academico.models import Asistencia, Calificacion, Evaluacion
 from backend.apps.api.base import CapabilityModelViewSet
+from backend.apps.api.helpers import (
+    apply_search_filter,
+    ensure_same_school,
+    ensure_teacher_owns_class,
+    forbid_without_cap,
+    has_cap,
+    is_global_admin,
+    is_teacher,
+    school_id,
+)
 from backend.apps.api.permissions import HasCapability
 from backend.apps.api.services.academic_batch_api_service import AcademicBatchApiService
 from backend.apps.api.services.asignatura_api_service import AsignaturaApiService
@@ -51,43 +61,7 @@ from backend.apps.api.resources_serializers import (
 from backend.apps.cursos.models import Asignatura, Clase, ClaseEstudiante, Curso
 from backend.apps.institucion.models import CicloAcademico
 from backend.apps.matriculas.models import Matricula
-from backend.common.services.policy_service import PolicyService
 
-
-def _is_global_admin(user):
-    return PolicyService.has_capability(user, 'SYSTEM_ADMIN')
-
-
-def _is_teacher_user(user):
-    role_name = getattr(getattr(user, 'role', None), 'nombre', '') or ''
-    return role_name.strip().lower() == 'profesor'
-
-
-def _ensure_same_school(user, school_id):
-    if _is_global_admin(user):
-        return
-    if getattr(user, 'rbd_colegio', None) != school_id:
-        raise PermissionDenied('No puede operar recursos de otro colegio.')
-
-
-def _ensure_teacher_owns_class(user, clase):
-    if _is_global_admin(user):
-        return
-    if _is_teacher_user(user) and clase.profesor_id != user.id:
-        raise PermissionDenied('No puede operar una clase asignada a otro profesor.')
-
-
-def _has_capability(user, capability):
-    return PolicyService.has_capability(
-        user,
-        capability,
-        school_id=getattr(user, 'rbd_colegio', None),
-    )
-
-
-def _forbid_without_capability(user, capability):
-    if not _is_global_admin(user) and not _has_capability(user, capability):
-        raise PermissionDenied('No tiene permisos para este recurso.')
 
 
 class StudentViewSet(CapabilityModelViewSet):
@@ -107,9 +81,22 @@ class StudentViewSet(CapabilityModelViewSet):
         base_qs = User.objects.select_related('role').filter(
             Q(role__nombre__iexact='Estudiante') | Q(role__nombre__iexact='Alumno')
         )
-        if _is_global_admin(self.request.user):
-            return base_qs.order_by('apellido_paterno', 'nombre')
-        return base_qs.filter(rbd_colegio=self.request.user.rbd_colegio).order_by('apellido_paterno', 'nombre')
+        if not is_global_admin(self.request.user):
+            base_qs = base_qs.filter(rbd_colegio=self.request.user.rbd_colegio)
+
+        # Búsqueda por nombre, email, RUT
+        base_qs = apply_search_filter(
+            base_qs,
+            self.request.query_params.get('search'),
+            ['nombre', 'apellido_paterno', 'apellido_materno', 'email', 'rut'],
+        )
+
+        # Filtro por estado activo
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            base_qs = base_qs.filter(is_active=is_active.lower() == 'true')
+
+        return base_qs.order_by('apellido_paterno', 'nombre')
 
     def get_serializer_class(self):
         if self.action in {'create', 'update', 'partial_update'}:
@@ -120,10 +107,10 @@ class StudentViewSet(CapabilityModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
-        school_id = self.request.user.rbd_colegio
-        if _is_global_admin(self.request.user):
-            school_id = self.request.data.get('rbd_colegio') or school_id
-        StudentApiService.create_student(serializer=serializer, school_id=school_id)
+        sid = self.request.user.rbd_colegio
+        if is_global_admin(self.request.user):
+            sid = self.request.data.get('rbd_colegio') or sid
+        StudentApiService.create_student(serializer=serializer, school_id=sid)
 
     @transaction.atomic
     def perform_destroy(self, instance):
@@ -165,9 +152,17 @@ class CursoViewSet(CapabilityModelViewSet):
 
     def get_queryset(self):
         base_qs = super().get_queryset()
-        if _is_global_admin(self.request.user):
-            return base_qs.order_by('nombre')
-        return base_qs.filter(colegio_id=self.request.user.rbd_colegio).order_by('nombre')
+        if not is_global_admin(self.request.user):
+            base_qs = base_qs.filter(colegio_id=self.request.user.rbd_colegio)
+
+        # Búsqueda por nombre
+        base_qs = apply_search_filter(
+            base_qs,
+            self.request.query_params.get('search'),
+            ['nombre'],
+        )
+
+        return base_qs.order_by('nombre')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -202,9 +197,16 @@ class AsignaturaViewSet(CapabilityModelViewSet):
 
     def get_queryset(self):
         base_qs = super().get_queryset()
-        if _is_global_admin(self.request.user):
-            return base_qs.order_by('nombre')
-        return base_qs.filter(colegio_id=self.request.user.rbd_colegio).order_by('nombre')
+        if not is_global_admin(self.request.user):
+            base_qs = base_qs.filter(colegio_id=self.request.user.rbd_colegio)
+
+        base_qs = apply_search_filter(
+            base_qs,
+            self.request.query_params.get('search'),
+            ['nombre'],
+        )
+
+        return base_qs.order_by('nombre')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -232,9 +234,9 @@ class CicloAcademicoViewSet(CapabilityModelViewSet):
 
     def get_queryset(self):
         base_qs = super().get_queryset()
-        if _is_global_admin(self.request.user):
-            return base_qs.order_by('-fecha_inicio')
-        return base_qs.filter(colegio_id=self.request.user.rbd_colegio).order_by('-fecha_inicio')
+        if not is_global_admin(self.request.user):
+            base_qs = base_qs.filter(colegio_id=self.request.user.rbd_colegio)
+        return base_qs.order_by('-fecha_inicio')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -279,7 +281,7 @@ class MatriculaViewSet(CapabilityModelViewSet):
 
     def get_queryset(self):
         base_qs = super().get_queryset()
-        if not _is_global_admin(self.request.user):
+        if not is_global_admin(self.request.user):
             base_qs = base_qs.filter(colegio_id=self.request.user.rbd_colegio)
 
         estudiante_id = self.request.query_params.get('estudiante_id')
@@ -329,11 +331,17 @@ class ApoderadoViewSet(CapabilityModelViewSet):
 
     def get_queryset(self):
         base_qs = super().get_queryset()
-        if _is_global_admin(self.request.user):
-            return base_qs.order_by('-activo', 'user__apellido_paterno', 'user__nombre')
-        return base_qs.filter(user__rbd_colegio=self.request.user.rbd_colegio).order_by(
-            '-activo', 'user__apellido_paterno', 'user__nombre'
+        if not is_global_admin(self.request.user):
+            base_qs = base_qs.filter(user__rbd_colegio=self.request.user.rbd_colegio)
+
+        # Búsqueda por nombre/email del usuario vinculado
+        base_qs = apply_search_filter(
+            base_qs,
+            self.request.query_params.get('search'),
+            ['user__nombre', 'user__apellido_paterno', 'user__email', 'user__rut'],
         )
+
+        return base_qs.order_by('-activo', 'user__apellido_paterno', 'user__nombre')
 
     def get_serializer_class(self):
         if self.action in {'create', 'update', 'partial_update'}:
@@ -346,7 +354,6 @@ class ApoderadoViewSet(CapabilityModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         created, message = ApoderadoApiService.create_apoderado(
             actor=request.user,
             data=serializer.validated_data,
@@ -391,7 +398,7 @@ class ApoderadoViewSet(CapabilityModelViewSet):
             student_id=request.data.get('student_id'),
             parentesco=request.data.get('parentesco', 'padre'),
             tipo_apoderado=request.data.get('tipo_apoderado', 'principal'),
-            is_global_admin=_is_global_admin(request.user),
+            is_global_admin=is_global_admin(request.user),
         )
         return Response(ApoderadoRelacionSerializer(relation).data, status=status.HTTP_201_CREATED)
 
@@ -421,16 +428,13 @@ class TeacherClassViewSet(CapabilityModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = super().get_queryset()
-        if _is_global_admin(user):
-            return base_qs.order_by('curso__nombre', 'asignatura__nombre')
-
-        school_id = getattr(user, 'rbd_colegio', None)
-        if not school_id:
-            return base_qs.none()
-
-        base_qs = base_qs.filter(colegio_id=school_id)
-        if _is_teacher_user(user):
-            base_qs = base_qs.filter(profesor_id=user.id)
+        if not is_global_admin(user):
+            sid = school_id(user)
+            if not sid:
+                return base_qs.none()
+            base_qs = base_qs.filter(colegio_id=sid)
+            if is_teacher(user):
+                base_qs = base_qs.filter(profesor_id=user.id)
         return base_qs.order_by('curso__nombre', 'asignatura__nombre')
 
 
@@ -457,10 +461,9 @@ class TeacherAttendanceViewSet(CapabilityModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = super().get_queryset()
-        if not _is_global_admin(user):
-            school_id = getattr(user, 'rbd_colegio', None)
-            base_qs = base_qs.filter(colegio_id=school_id)
-            if _is_teacher_user(user):
+        if not is_global_admin(user):
+            base_qs = base_qs.filter(colegio_id=school_id(user))
+            if is_teacher(user):
                 base_qs = base_qs.filter(clase__profesor_id=user.id)
 
         clase_id = self.request.query_params.get('clase_id')
@@ -477,8 +480,8 @@ class TeacherAttendanceViewSet(CapabilityModelViewSet):
     def perform_create(self, serializer):
         clase = serializer.validated_data['clase']
         estudiante = serializer.validated_data['estudiante']
-        _ensure_same_school(self.request.user, clase.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, clase)
+        ensure_same_school(self.request.user, clase.colegio_id)
+        ensure_teacher_owns_class(self.request.user, clase)
 
         if not ClaseEstudiante.objects.filter(clase=clase, estudiante=estudiante, activo=True).exists():
             raise ValidationError({'estudiante': 'El estudiante no esta matriculado en esta clase.'})
@@ -488,8 +491,8 @@ class TeacherAttendanceViewSet(CapabilityModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         clase = serializer.validated_data.get('clase', serializer.instance.clase)
-        _ensure_same_school(self.request.user, clase.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, clase)
+        ensure_same_school(self.request.user, clase.colegio_id)
+        ensure_teacher_owns_class(self.request.user, clase)
         serializer.save()
 
     @action(detail=False, methods=['post'], url_path='bulk-update-state')
@@ -528,10 +531,9 @@ class TeacherEvaluationViewSet(CapabilityModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = super().get_queryset()
-        if not _is_global_admin(user):
-            school_id = getattr(user, 'rbd_colegio', None)
-            base_qs = base_qs.filter(colegio_id=school_id)
-            if _is_teacher_user(user):
+        if not is_global_admin(user):
+            base_qs = base_qs.filter(colegio_id=school_id(user))
+            if is_teacher(user):
                 base_qs = base_qs.filter(clase__profesor_id=user.id)
 
         clase_id = self.request.query_params.get('clase_id')
@@ -543,15 +545,15 @@ class TeacherEvaluationViewSet(CapabilityModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         clase = serializer.validated_data['clase']
-        _ensure_same_school(self.request.user, clase.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, clase)
+        ensure_same_school(self.request.user, clase.colegio_id)
+        ensure_teacher_owns_class(self.request.user, clase)
         serializer.save(colegio_id=clase.colegio_id)
 
     @transaction.atomic
     def perform_update(self, serializer):
         clase = serializer.validated_data.get('clase', serializer.instance.clase)
-        _ensure_same_school(self.request.user, clase.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, clase)
+        ensure_same_school(self.request.user, clase.colegio_id)
+        ensure_teacher_owns_class(self.request.user, clase)
         serializer.save()
 
     @action(detail=False, methods=['post'], url_path='bulk-toggle-active')
@@ -588,10 +590,9 @@ class TeacherGradeViewSet(CapabilityModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = super().get_queryset()
-        if not _is_global_admin(user):
-            school_id = getattr(user, 'rbd_colegio', None)
-            base_qs = base_qs.filter(colegio_id=school_id)
-            if _is_teacher_user(user):
+        if not is_global_admin(user):
+            base_qs = base_qs.filter(colegio_id=school_id(user))
+            if is_teacher(user):
                 base_qs = base_qs.filter(evaluacion__clase__profesor_id=user.id)
 
         evaluacion_id = self.request.query_params.get('evaluacion_id')
@@ -607,8 +608,8 @@ class TeacherGradeViewSet(CapabilityModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         evaluacion = serializer.validated_data['evaluacion']
-        _ensure_same_school(self.request.user, evaluacion.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, evaluacion.clase)
+        ensure_same_school(self.request.user, evaluacion.colegio_id)
+        ensure_teacher_owns_class(self.request.user, evaluacion.clase)
         serializer.save(
             colegio_id=evaluacion.colegio_id,
             registrado_por=self.request.user,
@@ -618,8 +619,8 @@ class TeacherGradeViewSet(CapabilityModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         evaluacion = serializer.validated_data.get('evaluacion', serializer.instance.evaluacion)
-        _ensure_same_school(self.request.user, evaluacion.colegio_id)
-        _ensure_teacher_owns_class(self.request.user, evaluacion.clase)
+        ensure_same_school(self.request.user, evaluacion.colegio_id)
+        ensure_teacher_owns_class(self.request.user, evaluacion.clase)
         serializer.save(actualizado_por=self.request.user)
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
@@ -651,14 +652,14 @@ def dashboard_summary(request):
 @permission_classes([IsAuthenticated])
 def ministerial_monthly_report(request):
     user = request.user
-    if not _is_global_admin(user) and not _has_capability(user, 'REPORT_VIEW_BASIC'):
+    if not is_global_admin(user) and not has_cap(user, 'REPORT_VIEW_BASIC'):
         return Response({'detail': 'No tiene permisos para este recurso.'}, status=status.HTTP_403_FORBIDDEN)
 
     year, month = ChileReportsService.resolve_month(request.query_params.get('month'))
     school_id = ChileReportsService.resolve_school_id(
         user=user,
         requested_school_id=request.query_params.get('colegio_id'),
-        is_global_admin=_is_global_admin(user),
+        is_global_admin=is_global_admin(user),
     )
     payload = ChileReportsService.build_ministerial_monthly_payload(school_id=school_id, year=year, month=month)
 
@@ -675,7 +676,7 @@ def ministerial_monthly_report(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_my_profile(request):
-    _forbid_without_capability(request.user, 'DASHBOARD_VIEW_SELF')
+    forbid_without_cap(request.user, 'DASHBOARD_VIEW_SELF')
     payload = StudentPortalApiService.serialize_profile(user=request.user)
     return Response(payload, status=status.HTTP_200_OK)
 
@@ -683,7 +684,7 @@ def student_my_profile(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_my_classes(request):
-    _forbid_without_capability(request.user, 'CLASS_VIEW')
+    forbid_without_cap(request.user, 'CLASS_VIEW')
     payload = StudentPortalApiService.serialize_my_classes(user=request.user)
     return Response(payload, status=status.HTTP_200_OK)
 
@@ -691,7 +692,7 @@ def student_my_classes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_my_grades(request):
-    _forbid_without_capability(request.user, 'GRADE_VIEW')
+    forbid_without_cap(request.user, 'GRADE_VIEW')
     payload = StudentPortalApiService.serialize_my_grades(
         user=request.user,
         clase_id=request.query_params.get('clase_id'),
@@ -703,7 +704,7 @@ def student_my_grades(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_my_attendance(request):
-    _forbid_without_capability(request.user, 'CLASS_VIEW_ATTENDANCE')
+    forbid_without_cap(request.user, 'CLASS_VIEW_ATTENDANCE')
     payload = StudentPortalApiService.serialize_my_attendance(
         user=request.user,
         clase_id=request.query_params.get('clase_id'),

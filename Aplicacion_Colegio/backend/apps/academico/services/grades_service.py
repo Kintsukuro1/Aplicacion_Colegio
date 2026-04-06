@@ -29,8 +29,11 @@ class GradesService:
                 raise ValueError(f'Parámetro requerido: {field}')
 
         nota = Decimal(str(data['nota']))
-        if nota < Decimal('1.0') or nota > Decimal('7.0'):
-            raise ValueError('La nota debe estar entre 1.0 y 7.0')
+        escala = GradesService._get_escala(data['colegio'])
+        if nota < escala['nota_minima'] or nota > escala['nota_maxima']:
+            raise ValueError(
+                f"La nota debe estar entre {escala['nota_minima']} y {escala['nota_maxima']}"
+            )
 
     @staticmethod
     def create(data: Dict[str, Any]):
@@ -108,6 +111,12 @@ class GradesService:
         if callable(handler):
             return handler(params)
         raise ValueError(f'Operación no soportada: {operation}')
+
+    @staticmethod
+    def _get_escala(colegio):
+        """Obtiene la escala de notas configurada para el colegio."""
+        from backend.apps.institucion.models import ConfiguracionAcademica
+        return ConfiguracionAcademica.get_escala_para_colegio(colegio)
 
     @staticmethod
     def _validate_school_integrity(colegio, action: str) -> None:
@@ -375,8 +384,11 @@ class GradesService:
             )
 
         count = 0
+        escala = GradesService._get_escala(target_school)
+        nota_min = float(escala['nota_minima'])
+        nota_max = float(escala['nota_maxima'])
         for estudiante_id, nota in notas_dict.items():
-            if nota is not None and 1.0 <= nota <= 7.0:
+            if nota is not None and nota_min <= nota <= nota_max:
                 try:
                     estudiante = User.objects.get(id=estudiante_id, rbd_colegio=evaluacion.colegio.rbd)
                     
@@ -503,9 +515,15 @@ class GradesService:
             })
 
         nota_final = suma_ponderada / suma_ponderaciones if suma_ponderaciones > 0 else 0
-        nota_final = round(nota_final, 1)
 
-        estado = 'Aprobado' if nota_final >= 4.0 else 'Reprobado'
+        # Obtener escala del colegio para redondeo y aprobación
+        escala = GradesService._get_escala(
+            getattr(clase, 'colegio', None) or
+            (calificaciones[0].colegio if calificaciones else None)
+        ) if calificaciones else {'nota_aprobacion': Decimal('4.0'), 'redondeo_decimales': 1}
+        nota_final = round(nota_final, escala['redondeo_decimales'])
+
+        estado = 'Aprobado' if nota_final >= float(escala['nota_aprobacion']) else 'Reprobado'
 
         return {
             'nota_final': nota_final,
@@ -574,11 +592,13 @@ class GradesService:
             promedio = suma_ponderada / suma_ponderaciones if suma_ponderaciones > 0 else None
             promedio = round(promedio, 2) if promedio is not None else None
 
+            escala_gb = GradesService._get_escala(colegio)
+            nota_aprob = float(escala_gb['nota_aprobacion'])
             matriz_calificaciones.append({
                 'estudiante': estudiante,
                 'notas': notas_fila,
                 'promedio': promedio,
-                'estado': 'Aprobado' if promedio and promedio >= 4.0 else 'Reprobado' if promedio else 'Sin notas',
+                'estado': 'Aprobado' if promedio and promedio >= nota_aprob else 'Reprobado' if promedio else 'Sin notas',
                 'sin_datos': promedio is None  # Flag: True si no tiene notas
             })
 
@@ -784,6 +804,9 @@ class GradesService:
                     return {'success': False, 'message': error_msg}
             
             # Extraer notas del POST
+            escala = GradesService._get_escala(colegio)
+            nota_min = float(escala['nota_minima'])
+            nota_max = float(escala['nota_maxima'])
             grades_dict = {}
             for key in post_data.keys():
                 if key.startswith('nota_'):
@@ -792,7 +815,7 @@ class GradesService:
                     if nota_str and nota_str.strip():
                         try:
                             nota = Decimal(nota_str)
-                            if 1.0 <= nota <= 7.0:
+                            if nota_min <= float(nota) <= nota_max:
                                 grades_dict[estudiante_id] = nota
                         except (ValueError, TypeError):
                             continue
@@ -981,7 +1004,8 @@ class GradesService:
             # Calcular promedio del estudiante
             if contador_notas > 0:
                 fila_estudiante['promedio'] = round(suma_notas / contador_notas, 1)
-                fila_estudiante['estado'] = 'Aprobado' if fila_estudiante['promedio'] >= 4.0 else 'Reprobado'
+                from backend.common.utils.grade_scale import estado_nota
+                fila_estudiante['estado'] = estado_nota(fila_estudiante['promedio'], colegio)
             else:
                 fila_estudiante['promedio'] = None
                 fila_estudiante['estado'] = 'Sin Notas'

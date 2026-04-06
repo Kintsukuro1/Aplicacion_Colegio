@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
+import SearchBar from '../../components/SearchBar';
+import { useToast } from '../../components/Toast';
 import { apiClient } from '../../lib/apiClient';
 import { asPaginated } from '../../lib/httpHelpers';
 import { hasCapability } from '../../lib/capabilities';
@@ -32,10 +34,12 @@ const EMPTY_FORM = {
 };
 
 export default function AdminStudentsPage({ me }) {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
+  const [search, setSearch] = useState(searchParams.get('q') || '');
   const [count, setCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
@@ -62,11 +66,25 @@ export default function AdminStudentsPage({ me }) {
     setPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
+    if (search) nextParams.set('q', search);
+    else nextParams.delete('q');
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function handleSearch(value) {
+    setSearch(value);
+    setPage(1); // reset to page 1 when searching
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('page', '1');
+    if (value) nextParams.set('q', value);
+    else nextParams.delete('q');
     setSearchParams(nextParams, { replace: true });
   }
 
   async function loadStudents(targetPage = page, resetSelection = true, resetBulkResult = true) {
-    const payload = await apiClient.get(`/api/v1/estudiantes/?page=${targetPage}`);
+    let url = `/api/v1/estudiantes/?page=${targetPage}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    const payload = await apiClient.get(url);
     const paginated = asPaginated(payload);
     setRows(paginated.results);
     if (resetSelection) {
@@ -123,7 +141,7 @@ export default function AdminStudentsPage({ me }) {
     return () => {
       active = false;
     };
-  }, [canView, page]);
+  }, [canView, page, search]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -171,8 +189,11 @@ export default function AdminStudentsPage({ me }) {
       }
       await loadStudents(page);
       resetForm();
+      toast.success(editingId ? 'Estudiante actualizado' : 'Estudiante creado');
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar estudiante.');
+      const msg = err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar estudiante.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -191,8 +212,11 @@ export default function AdminStudentsPage({ me }) {
     try {
       await apiClient.del(`/api/v1/estudiantes/${studentId}/`);
       await loadStudents(page);
+      toast.success('Estudiante desactivado');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo desactivar estudiante.');
+      const msg = err.payload?.detail || 'No se pudo desactivar estudiante.';
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -280,9 +304,15 @@ export default function AdminStudentsPage({ me }) {
       <header className="page-header">
         <div>
           <h2>Admin Escolar: Estudiantes</h2>
-          <p>Listado y CRUD sobre `estudiantes` de API v1.</p>
+          <p>Gestión de estudiantes — {count} registros</p>
         </div>
       </header>
+
+      <SearchBar
+        value={search}
+        onChange={handleSearch}
+        placeholder="Buscar por nombre, email, RUT..."
+      />
 
       {loading ? <p>Cargando...</p> : null}
       {error ? <div className="error-box">{error}</div> : null}
@@ -391,7 +421,7 @@ export default function AdminStudentsPage({ me }) {
                 <td>{`${row.nombre} ${row.apellido_paterno || ''}`.trim()}</td>
                 <td>{row.email}</td>
                 <td>{row.rut}</td>
-                <td>{row.is_active ? 'Si' : 'No'}</td>
+                <td>{row.is_active ? <span className="badge badge-active">Activo</span> : <span className="badge badge-inactive">Inactivo</span>}</td>
                 <td className="actions-cell">
                   {canUpdate ? (
                     <>

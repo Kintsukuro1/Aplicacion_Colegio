@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
+import GroupedSidebar from './components/GroupedSidebar';
+import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ToastProvider } from './components/Toast';
 import LoginPage from './features/auth/LoginPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import TeacherClassesPage from './features/profesor/TeacherClassesPage';
@@ -16,6 +19,11 @@ import AdminClassesPage from './features/admin_escolar/AdminClassesPage';
 import AdminEvaluationsPage from './features/admin_escolar/AdminEvaluationsPage';
 import AdminGradesPage from './features/admin_escolar/AdminGradesPage';
 import AdminAttendancePage from './features/admin_escolar/AdminAttendancePage';
+import AdminImportExportPage from './features/admin_escolar/AdminImportExportPage';
+import CalendarEventsPage from './features/calendar/CalendarEventsPage';
+import MeetingRequestsPage from './features/reuniones/MeetingRequestsPage';
+import ActiveSessionsPage from './features/security/ActiveSessionsPage';
+import PasswordHistoryPage from './features/security/PasswordHistoryPage';
 import AsesorFinancieroPage from './features/asesor_financiero/AsesorFinancieroPage';
 import InspectorConvivenciaPage from './features/inspector_convivencia/InspectorConvivenciaPage';
 import PsicologoOrientadorPage from './features/psicologo_orientador/PsicologoOrientadorPage';
@@ -83,6 +91,41 @@ const APP_ROUTES = [
     label: 'Admin Asistencias',
     component: AdminAttendancePage,
     anyOf: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'],
+  },
+  {
+    path: 'admin-escolar/importacion-exportacion',
+    to: '/admin-escolar/importacion-exportacion',
+    label: 'Admin Import/Export',
+    component: AdminImportExportPage,
+    anyOf: ['SYSTEM_ADMIN', 'SYSTEM_CONFIGURE'],
+  },
+  {
+    path: 'calendario/eventos',
+    to: '/calendario/eventos',
+    label: 'Calendario Escolar',
+    component: CalendarEventsPage,
+    anyOf: ['ANNOUNCEMENT_VIEW', 'ANNOUNCEMENT_CREATE', 'ANNOUNCEMENT_EDIT', 'ANNOUNCEMENT_DELETE', 'SYSTEM_ADMIN'],
+  },
+  {
+    path: 'reuniones/solicitudes',
+    to: '/reuniones/solicitudes',
+    label: 'Solicitudes Reunion',
+    component: MeetingRequestsPage,
+    anyOf: ['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN'],
+  },
+  {
+    path: 'seguridad/sesiones-activas',
+    to: '/seguridad/sesiones-activas',
+    label: 'Active Sessions',
+    component: ActiveSessionsPage,
+    anyOf: ['AUDIT_VIEW', 'SYSTEM_ADMIN'],
+  },
+  {
+    path: 'seguridad/password-history',
+    to: '/seguridad/password-history',
+    label: 'Password History',
+    component: PasswordHistoryPage,
+    anyOf: ['AUDIT_VIEW', 'SYSTEM_ADMIN'],
   },
   {
     path: 'profesor/clases',
@@ -202,19 +245,14 @@ function ShellLayout({ children, me, visibleRoutes }) {
 
   return (
     <div className="app-shell">
-      <aside>
-        <h1>Colegio React</h1>
-        <p>{me ? `${me.full_name} (${me.role || 'Sin rol'})` : 'Cargando usuario...'}</p>
-        <nav>
-          {visibleRoutes.map((route) => (
-            <NavLink key={route.path} to={route.to}>
-              {route.label}
-            </NavLink>
-          ))}
-        </nav>
-        <button onClick={onLogout}>Cerrar Sesion</button>
-      </aside>
-      <main>{children}</main>
+      <GroupedSidebar me={me} visibleRoutes={visibleRoutes} onLogout={onLogout} />
+      <main>
+        <div className="main-topbar">
+          <div />
+          <NotificationBell />
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
@@ -296,16 +334,18 @@ function AuthorizedApp() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <AuthorizedApp />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    <ToastProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <AuthorizedApp />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </ToastProvider>
   );
 }

@@ -19,6 +19,12 @@ export default function AdminOverviewPage() {
   const initialScope = searchParams.get('scope');
   const [scope, setScope] = useState(SCOPES.includes(initialScope) ? initialScope : 'school');
   const [data, setData] = useState(null);
+  const [cycles, setCycles] = useState([]);
+  const [selectedCycleId, setSelectedCycleId] = useState('');
+  const [cycleStats, setCycleStats] = useState(null);
+  const [cycleError, setCycleError] = useState('');
+  const [transitionMessage, setTransitionMessage] = useState('');
+  const [transitionLoading, setTransitionLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -39,9 +45,17 @@ export default function AdminOverviewPage() {
       setLoading(true);
       setError('');
       try {
-        const payload = await apiClient.get(`/api/v1/dashboard/resumen/?scope=${scope}`);
+        const [payload, cyclesPayload] = await Promise.all([
+          apiClient.get(`/api/v1/dashboard/resumen/?scope=${scope}`),
+          apiClient.get('/api/v1/ciclos-academicos/').catch(() => ({ results: [] })),
+        ]);
         if (active) {
           setData(payload);
+          const cycleRows = Array.isArray(cyclesPayload?.results) ? cyclesPayload.results : [];
+          setCycles(cycleRows);
+          if (!selectedCycleId && cycleRows.length) {
+            setSelectedCycleId(String(cycleRows[0].id));
+          }
         }
       } catch (err) {
         if (active) {
@@ -58,7 +72,71 @@ export default function AdminOverviewPage() {
     return () => {
       active = false;
     };
-  }, [scope]);
+  }, [scope, selectedCycleId]);
+
+  useEffect(() => {
+    if (!selectedCycleId) {
+      setCycleStats(null);
+      return;
+    }
+
+    let active = true;
+    async function loadCycleStats() {
+      setCycleError('');
+      setTransitionMessage('');
+      try {
+        const payload = await apiClient.get(`/api/v1/ciclos-academicos/${selectedCycleId}/estadisticas/`);
+        if (active) {
+          setCycleStats(payload);
+        }
+      } catch (err) {
+        if (active) {
+          setCycleStats(null);
+          setCycleError(err.payload?.detail || 'No se pudieron cargar estadisticas del ciclo.');
+        }
+      }
+    }
+
+    loadCycleStats();
+    return () => {
+      active = false;
+    };
+  }, [selectedCycleId]);
+
+  async function refreshCycles() {
+    const cyclesPayload = await apiClient.get('/api/v1/ciclos-academicos/');
+    const cycleRows = Array.isArray(cyclesPayload?.results) ? cyclesPayload.results : [];
+    setCycles(cycleRows);
+    if (!cycleRows.some((item) => String(item.id) === String(selectedCycleId)) && cycleRows.length) {
+      setSelectedCycleId(String(cycleRows[0].id));
+    }
+  }
+
+  async function transitionCycle(nuevoEstado) {
+    if (!selectedCycleId) {
+      return;
+    }
+    setTransitionLoading(true);
+    setCycleError('');
+    setTransitionMessage('');
+    try {
+      const payload = await apiClient.post(`/api/v1/ciclos-academicos/${selectedCycleId}/transicion/`, {
+        nuevo_estado: nuevoEstado,
+      });
+      setTransitionMessage(
+        `Transicion aplicada: ${payload.estado_anterior} -> ${payload.estado_actual}${
+          Array.isArray(payload.warnings) && payload.warnings.length ? ` | Alertas: ${payload.warnings.join(' | ')}` : ''
+        }`,
+      );
+      const statsPayload = await apiClient.get(`/api/v1/ciclos-academicos/${selectedCycleId}/estadisticas/`);
+      setCycleStats(statsPayload);
+      await refreshCycles();
+    } catch (err) {
+      setCycleError(err.payload?.detail || err.payload?.nuevo_estado || 'No se pudo aplicar transicion.');
+    } finally {
+      setTransitionLoading(false);
+    }
+  }
 
   const metrics = useMemo(() => {
     if (!data || !data.sections) {
@@ -91,11 +169,11 @@ export default function AdminOverviewPage() {
     <section>
       <header className="page-header">
         <div>
-          <h2>Admin Escolar: Panel</h2>
-          <p>Resumen ejecutivo con contrato `dashboard/resumen`.</p>
+          <h2>Panel Administrativo</h2>
+          <p>Resumen general del colegio y gestión de ciclos académicos.</p>
         </div>
         <label>
-          Scope
+          Vista
           <select value={scope} onChange={(e) => setScope(e.target.value)}>
             {SCOPES.map((item) => (
               <option key={item} value={item}>
@@ -118,8 +196,74 @@ export default function AdminOverviewPage() {
           </div>
 
           <article className="card" style={{ marginTop: '0.8rem' }}>
-            <h3>Contexto API</h3>
-            <pre>{JSON.stringify(data?.context || {}, null, 2)}</pre>
+            <h3>Gestion de Ciclos Academicos</h3>
+            <div className="actions" style={{ marginBottom: '0.6rem' }}>
+              <label>
+                Ciclo
+                <select value={selectedCycleId} onChange={(e) => setSelectedCycleId(e.target.value)}>
+                  <option value="">Seleccionar</option>
+                  {cycles.map((cycle) => (
+                    <option key={cycle.id} value={cycle.id}>
+                      {cycle.nombre} ({cycle.estado})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {cycleError ? <div className="error-box">{cycleError}</div> : null}
+            {transitionMessage ? <div className="info-box">{transitionMessage}</div> : null}
+
+            {cycleStats ? (
+              <>
+                <div className="summary-grid">
+                  <div className="summary-tile">
+                    <small>Estado</small>
+                    <strong>{cycleStats.ciclo?.estado || '-'}</strong>
+                  </div>
+                  <div className="summary-tile">
+                    <small>Matriculas</small>
+                    <strong>{cycleStats.matriculas?.total ?? 0}</strong>
+                  </div>
+                  <div className="summary-tile">
+                    <small>Cursos activos</small>
+                    <strong>{cycleStats.academico?.cursos ?? 0}</strong>
+                  </div>
+                  <div className="summary-tile">
+                    <small>Promedio general</small>
+                    <strong>{cycleStats.academico?.promedio_general ?? '-'}</strong>
+                  </div>
+                  <div className="summary-tile">
+                    <small>Asistencia</small>
+                    <strong>{cycleStats.academico?.porcentaje_asistencia ?? 0}%</strong>
+                  </div>
+                  <div className="summary-tile">
+                    <small>Tasa cobranza</small>
+                    <strong>{cycleStats.financiero?.tasa_cobranza ?? 0}%</strong>
+                  </div>
+                </div>
+
+                <div className="actions" style={{ marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => transitionCycle('PLANIFICACION')} disabled={transitionLoading || !selectedCycleId}>
+                    PLANIFICACION
+                  </button>
+                  <button type="button" onClick={() => transitionCycle('ACTIVO')} disabled={transitionLoading || !selectedCycleId}>
+                    ACTIVO
+                  </button>
+                  <button type="button" onClick={() => transitionCycle('EVALUACION')} disabled={transitionLoading || !selectedCycleId}>
+                    EVALUACION
+                  </button>
+                  <button type="button" onClick={() => transitionCycle('FINALIZADO')} disabled={transitionLoading || !selectedCycleId}>
+                    FINALIZADO
+                  </button>
+                  <button type="button" className="danger" onClick={() => transitionCycle('CERRADO')} disabled={transitionLoading || !selectedCycleId}>
+                    CERRADO
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p>Selecciona un ciclo para ver estadisticas.</p>
+            )}
           </article>
         </>
       ) : null}

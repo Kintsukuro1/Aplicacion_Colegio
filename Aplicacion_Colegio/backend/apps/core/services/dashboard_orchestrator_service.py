@@ -90,6 +90,9 @@ class DashboardOrchestratorService:
             notificaciones_context = DashboardContextService.get_notificaciones_context(request.user)
             context.update(notificaciones_context)
 
+        if pagina_solicitada == 'notificaciones' and request.user.is_authenticated:
+            context.update(DashboardContextService.get_notificaciones_full_context(request.user, request.GET))
+
         if rol == 'estudiante':
             role_context = DashboardService.get_estudiante_context(
                 request.user, pagina_solicitada, escuela_rbd, request.GET
