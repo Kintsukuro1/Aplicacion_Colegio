@@ -58,6 +58,55 @@ def _has_capability(user, capability):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def demo_panel(request):
+    """Resumen demo para panel de bienvenida del colegio (tareas, materiales, horario)."""
+    school_id = getattr(request.user, 'rbd_colegio', None)
+    if school_id is None:
+        return Response({'detail': 'No asociado a colegio.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # counts
+    from backend.apps.academico.models import Tarea, MaterialClase
+    tareas_qs = Tarea.objects.filter(colegio__rbd=school_id).select_related('clase')
+    materiales_qs = MaterialClase.objects.filter(colegio__rbd=school_id).select_related('clase')
+    bloques_qs = BloqueHorario.objects.filter(colegio__rbd=school_id).select_related('clase__asignatura', 'clase__curso')
+
+    counts = {
+        'tareas': tareas_qs.count(),
+        'materiales': materiales_qs.count(),
+        'bloques': bloques_qs.count(),
+    }
+
+    tareas = [
+        {
+            'id_tarea': t.id_tarea,
+            'titulo': t.titulo,
+            'clase_nombre': str(t.clase),
+            'fecha_entrega': t.fecha_entrega.isoformat() if t.fecha_entrega else None,
+        }
+        for t in tareas_qs.order_by('-fecha_entrega')[:5]
+    ]
+
+    materiales = [
+        {
+            'id_material': m.id_material,
+            'titulo': m.titulo,
+            'clase_nombre': str(m.clase),
+            'archivo': m.archivo.name if m.archivo else None,
+        }
+        for m in materiales_qs.order_by('-fecha_creacion')[:5]
+    ]
+
+    # horario agrupado por dia
+    horario = {}
+    for b in bloques_qs.order_by('dia_semana', 'bloque_numero'):
+        dia = b.get_dia_semana_display()
+        horario.setdefault(dia, []).append(BloqueHorarioSerializer(b).data)
+
+    return Response({'counts': counts, 'tareas': tareas, 'materiales': materiales, 'horario': horario})
+
+
 # ─────────────────────────────────────────────
 # D. Gestión Completa de Profesores
 # ─────────────────────────────────────────────

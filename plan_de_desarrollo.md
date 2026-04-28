@@ -126,17 +126,83 @@ Verificación:
 Estado:
 - Completado y validado.
 
-## Siguiente paso — Onboarding automático
+## Avance 9 — Onboarding automático con datos demo
+
+Qué se hizo:
+- Se reemplazó el stub de `generate_demo_data` por una generación real e idempotente.
+- El onboarding demo ahora crea profesores, estudiantes, cursos, asignaturas, clases, matrículas, evaluaciones, calificaciones, asistencias y registros de clase.
+- Se agregó una prueba de integración para el endpoint `/api/v1/onboarding/generate-demo/` y se validó que una segunda ejecución no duplica datos.
+
+Resultado:
+- El onboarding automático ya deja un colegio nuevo con contenido académico visible y reutilizable para demo comercial.
+
+Verificación:
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
+- `python -m pytest tests/integration/test_onboarding_registration.py tests/integration/test_onboarding_demo_data.py -q` — OK
+
+Estado:
+- Completado y validado.
+
+## Avance 10 — Cierre de onboarding automático
+
+Qué se hizo:
+- Se completó el flujo de onboarding automático para alta de colegios.
+- Se dejó listo el registro público con creación de `Colegio`, admin, configuración académica inicial, ciclo activo y trial de suscripción.
+- Se consolidó la carga demo idempotente para que el colegio nuevo arranque con cursos, asignaturas, clases, matrículas y actividad académica visible.
+- Se validaron los endpoints y el flujo demo con pruebas de integración.
+
+Resultado:
+- El onboarding dejó de ser un pendiente y pasó a ser una capacidad funcional del producto.
+
+Verificación:
+- `python -m pytest tests/integration/test_onboarding_registration.py tests/integration/test_onboarding_demo_data.py -q` — OK
+
+Estado:
+- Completado y validado.
+
+## Avance 11 — Onboarding demo con apoderados
+
+Qué se hizo:
+- Se amplió la generación demo para crear apoderados reales, relaciones estudiante-apoderado y datos de contacto visibles en el perfil de cada estudiante.
+- Se mantuvo la generación idempotente del demo para que repetir el endpoint no duplique apoderados ni relaciones.
+- Se reforzó la prueba de integración del onboarding demo para validar conteos y el llenado de campos de apoderado.
+
+Resultado:
+- El onboarding ya deja al colegio listo no solo para ver cursos y notas, sino también para comunicaciones familiares y representación básica.
+
+Verificación:
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
+- `python -m pytest tests/integration/test_onboarding_registration.py tests/integration/test_onboarding_demo_data.py -q` — OK
+
+Estado:
+- Completado y validado.
+
+## Siguiente paso — Profundizar el onboarding
 
 Objetivo:
-- Permitir que un colegio se registre en pocos minutos: crear Colegio, Usuario admin, Configuración académica inicial, Ciclo académico y trial de suscripción.
+- Convertir el alta inicial en una experiencia más completa para que el colegio quede operativo desde el primer día.
 
 Tareas inmediatas:
-1. Crear el servicio `OnboardingService`.
-2. Exponer `POST /api/v1/onboarding/register/` y `GET /api/v1/onboarding/check-slug/`.
-3. Crear `RegisterPage` y `OnboardingWizard` en React.
-4. Conectar la creación de trial de suscripción.
-5. Añadir pruebas del flujo.
+1. Crear tareas, materiales y un horario base para las clases demo.
+2. Mejorar la pantalla de registro con confirmación y resumen post-creación.
+3. Exponer un pequeño panel de bienvenida con accesos directos a los primeros pasos.
+4. Añadir pruebas para los nuevos datos demo.
+5. Consolidar accesos rápidos para apoderados recién creados.
+
+## Avance 12 — Panel de bienvenida con contenido demo
+
+Qué se hizo:
+- Se añadió un endpoint API `demo/panel/` que devuelve un resumen de contenido demo (conteos, tareas recientes, materiales y bloques horarios) para el colegio autenticado.
+- Se creó el componente React `DemoPanel` en `frontend-react/src/features/demo/DemoPanel.jsx` que consume el endpoint y muestra tareas, materiales y el horario base.
+
+Resultado:
+- Los colegios que ejecuten el onboarding automático pueden ahora ver un panel de bienvenida con contenido demo útil para exploración rápida.
+
+Verificación:
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
+
+Estado:
+- Completado y validado (backend tests).
 
 ## Registro de commits
 

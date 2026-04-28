@@ -105,6 +105,7 @@ from backend.apps.api.gestion_escolar_views import (
     apoderado_pupilo_materiales,
     student_academic_history,
     teacher_my_schedule,
+    demo_panel,
 )
 from backend.apps.api.comunicacion_analitica_views import (
     EventoCalendarioViewSet,
@@ -237,6 +238,7 @@ urlpatterns = [
     # ── Semana 3-4: Horario, Historial ──
     path('profesor/mi-horario/', teacher_my_schedule, name='teacher_my_schedule'),
     path('estudiante/historial-academico/', student_academic_history, name='student_academic_history'),
+    path('demo/panel/', demo_panel, name='demo_panel'),
     # ── Semana 5-6: Comunicados, Tendencias, Calendario ──
     path('comunicados/<int:comunicado_id>/confirmar/', confirmar_comunicado, name='confirmar_comunicado'),
     path('comunicados/<int:comunicado_id>/estadisticas/', comunicado_estadisticas, name='comunicado_estadisticas'),

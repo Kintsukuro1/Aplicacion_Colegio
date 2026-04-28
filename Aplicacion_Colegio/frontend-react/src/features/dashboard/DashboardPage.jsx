@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
+import DemoPanel from '../demo/DemoPanel';
 import StatCard from '../../components/charts/StatCard';
 import LineChart from '../../components/charts/LineChart';
 import DonutChart from '../../components/charts/DonutChart';
@@ -704,6 +705,8 @@ export default function DashboardPage() {
           ) : null}
 
           <QuickActions scope={resolvedScope} />
+          {/* Panel demo — contenido creado por onboarding automático */}
+          <DemoPanel />
         </>
       ) : null}
     </section>
