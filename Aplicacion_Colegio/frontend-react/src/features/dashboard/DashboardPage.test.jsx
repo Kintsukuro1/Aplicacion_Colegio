@@ -56,6 +56,38 @@ describe('DashboardPage', () => {
     expect(screen.getByText('120')).toBeInTheDocument();
   });
 
+  it('renders executive alerts when the executive payload arrives', async () => {
+    getMock
+      .mockResolvedValueOnce({
+        contract_version: '1.0.0',
+        scope: 'analytics',
+        generated_at: '2026-03-07',
+        available_scopes: ['analytics'],
+        sections: { self: null, school: null, analytics: { attendance_rate_today: 91 } },
+      })
+      .mockResolvedValueOnce({
+        scope: 'analytics',
+        generated_at: '2026-03-07',
+        alerts: [{ type: 'warning', icon: '⚠️', message: '12 estudiantes con notas bajo 4.0.' }],
+        subscription_alert: { type: 'info', message: 'Plan vigente hasta fin de mes.' },
+        usage_warnings: [{ type: 'danger', message: 'Se alcanzó el 90% del límite de almacenamiento.' }],
+        charts: {},
+      });
+
+    renderDashboard('/dashboard?scope=analytics');
+
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=analytics');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Panel Ejecutivo')).toBeInTheDocument();
+      expect(screen.getByText('Plan vigente hasta fin de mes.')).toBeInTheDocument();
+      expect(screen.getByText('Se alcanzó el 90% del límite de almacenamiento.')).toBeInTheDocument();
+      expect(screen.getByText('12 estudiantes con notas bajo 4.0.')).toBeInTheDocument();
+    });
+  });
+
   it('shows backend error when dashboard request fails', async () => {
     getMock.mockRejectedValue({ payload: { detail: 'No autorizado para dashboard' } });
 

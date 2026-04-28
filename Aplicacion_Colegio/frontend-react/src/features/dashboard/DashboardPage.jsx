@@ -229,6 +229,47 @@ function buildChartData(data, scope) {
   return charts;
 }
 
+function buildExecutiveAlerts(execData) {
+  const alerts = [];
+
+  if (execData?.subscription_alert?.message) {
+    alerts.push({
+      type: execData.subscription_alert.type || 'info',
+      icon:
+        execData.subscription_alert.type === 'danger'
+          ? '🔴'
+          : execData.subscription_alert.type === 'warning'
+            ? '🟡'
+            : '🔵',
+      message: execData.subscription_alert.message,
+    });
+  }
+
+  if (Array.isArray(execData?.usage_warnings)) {
+    execData.usage_warnings.forEach((warning) => {
+      if (!warning?.message) return;
+      alerts.push({
+        type: warning.type || 'warning',
+        icon: warning.type === 'danger' ? '⛔' : '⚠️',
+        message: warning.message,
+      });
+    });
+  }
+
+  if (Array.isArray(execData?.alerts)) {
+    execData.alerts.forEach((alert) => {
+      if (!alert?.message) return;
+      alerts.push({
+        type: alert.type || 'info',
+        icon: alert.icon || (alert.type === 'danger' ? '⛔' : alert.type === 'warning' ? '⚠️' : 'ℹ️'),
+        message: alert.message,
+      });
+    });
+  }
+
+  return alerts;
+}
+
 function QuickActions({ scope }) {
   const actions = [];
 
@@ -329,6 +370,37 @@ function AlertsList({ data, scope }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function ExecutiveSnapshot({ execData }) {
+  const alerts = buildExecutiveAlerts(execData);
+
+  if (!execData && alerts.length === 0) return null;
+
+  return (
+    <article className="card section-card">
+      <div className="section-card-head">
+        <div>
+          <h3>Panel Ejecutivo</h3>
+          <p>{execData?.generated_at ? `Actualizado el ${execData.generated_at}` : 'Vista ejecutiva del colegio'}</p>
+        </div>
+        {execData?.scope ? <span className="badge badge-active">{execData.scope}</span> : null}
+      </div>
+
+      {alerts.length > 0 ? (
+        <div className="exec-alerts-list exec-alerts-list--compact">
+          {alerts.map((alert, index) => (
+            <div key={`${alert.message}-${index}`} className={`exec-alert-item alert-${alert.type}`}>
+              <span className="exec-alert-icon">{alert.icon}</span>
+              <span className="exec-alert-text">{alert.message}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="section-muted">No hay alertas ejecutivas activas.</p>
+      )}
+    </article>
   );
 }
 
@@ -485,6 +557,9 @@ export default function DashboardPage() {
         <>
           {/* Alerts Banner */}
           <AlertsList data={data} scope={resolvedScope} />
+
+          {/* Executive snapshot */}
+          <ExecutiveSnapshot execData={execData} />
 
           {/* KPI Stat Cards */}
           <div className="exec-dashboard-grid">
