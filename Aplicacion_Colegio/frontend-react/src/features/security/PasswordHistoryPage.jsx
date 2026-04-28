@@ -115,7 +115,7 @@ export default function PasswordHistoryPage({ me }) {
         </table>
       </div>
 
-      <article className="card" style={{ marginTop: '0.8rem' }}>
+      <article className="card section-card">
         <h3>Auditoria de Datos Sensibles</h3>
         <div className="actions">
           <label>
@@ -141,10 +141,10 @@ export default function PasswordHistoryPage({ me }) {
           </button>
         </div>
 
-        {auditError ? <div className="error-box" style={{ marginTop: '0.6rem' }}>{auditError}</div> : null}
+        {auditError ? <div className="error-box section-card">{auditError}</div> : null}
         {loadingAudit ? <p>Cargando auditoria...</p> : null}
 
-        <div className="table-wrap" style={{ marginTop: '0.6rem' }}>
+        <div className="table-wrap section-card">
           <table>
             <thead>
               <tr>

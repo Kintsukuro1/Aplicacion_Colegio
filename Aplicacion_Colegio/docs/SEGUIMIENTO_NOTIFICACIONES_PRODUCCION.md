@@ -85,3 +85,38 @@
 5. API funcional:
    - estudiante (`alumno1@colegio.cl`): `/api/v1/notificaciones/` y `/api/v1/notificaciones/resumen/` en 200.
    - profesor (`javier.torres@colegio.cl`): `/api/v1/notificaciones/` y `/api/v1/notificaciones/resumen/` en 200.
+
+## Iteracion 2026-04-15 - Fix boton de notificaciones en dashboard
+
+### Pasos a seguir
+
+1. Corregir conflicto de visibilidad entre clases Bootstrap (`d-none`) y toggles inline (`style.display`) en el dropdown de notificaciones.
+2. Unificar el control de estado visual usando `classList` sobre `d-none` para dropdown y badge.
+3. Forzar cache busting del JS de notificaciones para evitar clientes con archivo stale.
+4. Ejecutar validacion rapida de errores de template/JS y checklist manual funcional.
+
+### Reglas del proyecto aplicadas
+
+1. Cambio frontend-only: sin cambios en endpoints API, modelos ni permisos.
+2. Parche minimo y localizado: solo `notificaciones.js` y versionado del script en `dashboard.html`.
+3. Compatibilidad con Bootstrap: evitar mezclar `d-none` (`!important`) con `style.display`.
+
+### Estado de implementacion
+
+1. `frontend/static/js/notificaciones.js`:
+   - `renderBadge()` ahora usa `badge.classList.remove/add('d-none')`.
+   - `isOpen/open/close` ahora usan `dropdown.classList.contains/remove/add('d-none')`.
+   - estado inicial del dropdown asegurado por clase `d-none`.
+2. `frontend/templates/dashboard.html`:
+   - version de script actualizada a `?v=20260415-notif-toggle-fix`.
+3. Validacion tecnica:
+   - sin errores detectados en template y JS tras el parche.
+
+### Verificacion manual sugerida
+
+1. Click en campana abre/cierra dropdown.
+2. Click fuera cierra dropdown.
+3. Tecla `Escape` cierra dropdown.
+4. Boton "Marcar todas" actualiza badge y lista.
+5. Badge se muestra solo cuando `unread_count > 0`.
+6. Polling (30s) refresca badge y, si dropdown esta abierto, la lista.

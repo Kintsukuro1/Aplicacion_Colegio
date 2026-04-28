@@ -1,11 +1,21 @@
 from rest_framework import serializers
 
 from backend.apps.accounts.models import Apoderado, PerfilEstudiante, RelacionApoderadoEstudiante, User
-from backend.apps.academico.models import Asistencia, Calificacion, Evaluacion
+from backend.apps.academico.models import (
+    ActividadResoluble,
+    Asistencia,
+    Calificacion,
+    Evaluacion,
+    IntentoResoluble,
+    OpcionPreguntaResoluble,
+    PreguntaResoluble,
+    RespuestaResoluble,
+)
 from backend.apps.cursos.models import Asignatura, Clase, ClaseEstudiante
 from backend.apps.cursos.models import Curso
 from backend.apps.institucion.models import CicloAcademico, NivelEducativo
 from backend.apps.matriculas.models import Matricula
+from backend.apps.academico.services.resoluble_service import ResolubleService
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -266,6 +276,169 @@ class GradeCompactSerializer(serializers.ModelSerializer):
             'estudiante',
             'nota',
         ]
+
+
+class OpcionPreguntaResolubleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OpcionPreguntaResoluble
+        fields = [
+            'id_opcion',
+            'texto',
+            'es_correcta',
+            'orden',
+        ]
+        read_only_fields = ['id_opcion']
+
+
+class PreguntaResolubleSerializer(serializers.ModelSerializer):
+    opciones = OpcionPreguntaResolubleSerializer(many=True, required=False)
+
+    class Meta:
+        model = PreguntaResoluble
+        fields = [
+            'id_pregunta',
+            'tipo',
+            'enunciado',
+            'orden',
+            'puntaje_maximo',
+            'respuesta_correcta_texto',
+            'respuesta_correcta_normalizada',
+            'requiere_revision_docente',
+            'activa',
+            'opciones',
+        ]
+        read_only_fields = ['id_pregunta']
+
+
+class ActividadResolubleSerializer(serializers.ModelSerializer):
+    origen_tipo = serializers.CharField(write_only=True, required=False)
+    origen_id = serializers.IntegerField(write_only=True, required=False)
+    preguntas = PreguntaResolubleSerializer(many=True, required=False)
+    preguntas_total = serializers.SerializerMethodField(read_only=True)
+    intentos_total = serializers.SerializerMethodField(read_only=True)
+    archivo_pdf = serializers.FileField(required=False, allow_null=True)
+
+    class Meta:
+        model = ActividadResoluble
+        fields = [
+            'id_actividad_resoluble',
+            'colegio',
+            'origen_tipo',
+            'origen_id',
+            'titulo',
+            'modalidad',
+            'archivo_pdf',
+            'requiere_aprobacion_docente',
+            'auto_correccion_activa',
+            'estado',
+            'activa',
+            'preguntas_total',
+            'intentos_total',
+            'preguntas',
+            'fecha_creacion',
+            'fecha_actualizacion',
+        ]
+        read_only_fields = ['id_actividad_resoluble', 'colegio', 'preguntas_total', 'intentos_total', 'fecha_creacion', 'fecha_actualizacion']
+
+    def get_preguntas_total(self, obj):
+        return obj.preguntas.count()
+
+    def get_intentos_total(self, obj):
+        return obj.intentos.count()
+
+    def validate(self, attrs):
+        if self.instance is None:
+            if not attrs.get('origen_tipo') or attrs.get('origen_id') is None:
+                raise serializers.ValidationError({'origen_tipo': 'Este campo es requerido.', 'origen_id': 'Este campo es requerido.'})
+        return attrs
+
+    def create(self, validated_data):
+        preguntas = validated_data.pop('preguntas', [])
+        payload = {**validated_data, 'preguntas': preguntas}
+        return ResolubleService.create_or_update_activity(actor=self.context['request'].user, payload=payload)
+
+    def update(self, instance, validated_data):
+        preguntas = validated_data.pop('preguntas', None)
+        payload = {**validated_data, 'preguntas': preguntas if preguntas is not None else []}
+        if preguntas is None:
+            payload.pop('preguntas')
+        return ResolubleService.create_or_update_activity(actor=self.context['request'].user, payload={
+            'origen_tipo': 'tarea' if instance.actividad.__class__.__name__ == 'Tarea' else 'evaluacion',
+            'origen_id': instance.object_id,
+            **payload,
+        })
+
+
+class RespuestaResolubleSerializer(serializers.ModelSerializer):
+    pregunta_texto = serializers.CharField(source='pregunta.enunciado', read_only=True)
+
+    class Meta:
+        model = RespuestaResoluble
+        fields = [
+            'id_respuesta',
+            'pregunta',
+            'pregunta_texto',
+            'respuesta_texto',
+            'opcion_seleccionada',
+            'es_correcta',
+            'puntaje_obtenido',
+            'observaciones',
+        ]
+        read_only_fields = ['id_respuesta', 'es_correcta', 'puntaje_obtenido', 'observaciones']
+
+
+class IntentoResolubleSerializer(serializers.ModelSerializer):
+    estudiante_nombre = serializers.CharField(source='estudiante.get_full_name', read_only=True)
+    respuestas = RespuestaResolubleSerializer(many=True, read_only=True)
+    actividad_titulo = serializers.CharField(source='actividad_resoluble.titulo', read_only=True)
+
+    class Meta:
+        model = IntentoResoluble
+        fields = [
+            'id_intento',
+            'actividad_resoluble',
+            'actividad_titulo',
+            'estudiante',
+            'estudiante_nombre',
+            'estado',
+            'puntaje_maximo',
+            'puntaje_obtenido',
+            'nota_sugerida',
+            'retroalimentacion',
+            'requiere_revision_docente',
+            'aprobado_por',
+            'fecha_envio',
+            'fecha_revision',
+            'fecha_aprobacion',
+            'resultado_publicado',
+            'respuestas',
+        ]
+        read_only_fields = [
+            'id_intento',
+            'actividad_titulo',
+            'estudiante_nombre',
+            'estado',
+            'puntaje_maximo',
+            'puntaje_obtenido',
+            'nota_sugerida',
+            'requiere_revision_docente',
+            'aprobado_por',
+            'fecha_envio',
+            'fecha_revision',
+            'fecha_aprobacion',
+            'resultado_publicado',
+            'respuestas',
+        ]
+
+
+class IntentoSubmitSerializer(serializers.Serializer):
+    actividad_resoluble_id = serializers.IntegerField()
+    respuestas = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+
+
+class IntentoApproveSerializer(serializers.Serializer):
+    intento_id = serializers.IntegerField()
+    retroalimentacion = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class StudentSelfSerializer(serializers.ModelSerializer):

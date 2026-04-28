@@ -276,6 +276,7 @@ class DashboardAuthService:
         Returns:
             str: Path del template de sidebar (ej: 'sidebars/sidebar_admin.html')
         """
+        rol = normalizar_rol(rol)
         sidebar_map = {
             'admin': 'sidebars/sidebar_admin.html',
             'admin_general': 'sidebars/sidebar_admin.html',

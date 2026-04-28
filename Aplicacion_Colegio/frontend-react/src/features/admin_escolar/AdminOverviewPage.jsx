@@ -9,7 +9,7 @@ function MetricCard({ title, value }) {
   return (
     <article className="card">
       <h3>{title}</h3>
-      <p style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{value ?? '-'}</p>
+      <p className="metric-value">{value ?? '-'}</p>
     </article>
   );
 }
@@ -195,9 +195,9 @@ export default function AdminOverviewPage() {
             ))}
           </div>
 
-          <article className="card" style={{ marginTop: '0.8rem' }}>
+          <article className="card section-card">
             <h3>Gestion de Ciclos Academicos</h3>
-            <div className="actions" style={{ marginBottom: '0.6rem' }}>
+            <div className="actions section-card">
               <label>
                 Ciclo
                 <select value={selectedCycleId} onChange={(e) => setSelectedCycleId(e.target.value)}>
@@ -243,7 +243,7 @@ export default function AdminOverviewPage() {
                   </div>
                 </div>
 
-                <div className="actions" style={{ marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                <div className="actions-wrap section-card">
                   <button type="button" onClick={() => transitionCycle('PLANIFICACION')} disabled={transitionLoading || !selectedCycleId}>
                     PLANIFICACION
                   </button>

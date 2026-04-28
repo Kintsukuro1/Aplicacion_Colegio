@@ -144,7 +144,7 @@
                                                 {% if estudiante.perfil_estudiante.curso %}
                                                     {{ estudiante.perfil_estudiante.curso.nombre }}
                                                 {% else %}
-                                                    <span style="color: #999;">Sin asignar</span>
+                                                    <span class="text-tertiary">Sin asignar</span>
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -163,7 +163,7 @@
                                 </tbody>
                             </table>
                             {% if total_estudiantes > 50 %}
-                                <p style="text-align: center; margin-top: 15px; color: #6c757d; font-style: italic;">
+                                <p class="text-italic-muted">
                                     Mostrando los primeros 50 de {{ total_estudiantes }} estudiantes totales
                                 </p>
                             {% endif %}
@@ -196,7 +196,7 @@
                                                 {% if profesor.perfil_profesor.especialidad %}
                                                     {{ profesor.perfil_profesor.especialidad }}
                                                 {% else %}
-                                                    <span style="color: #999;">No especificada</span>
+                                                    <span class="text-tertiary">No especificada</span>
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -208,7 +208,7 @@
                                 </tbody>
                             </table>
                             {% if total_profesores > 50 %}
-                                <p style="text-align: center; margin-top: 15px; color: #6c757d; font-style: italic;">
+                                <p class="text-italic-muted">
                                     Mostrando los primeros 50 de {{ total_profesores }} profesores totales
                                 </p>
                             {% endif %}
@@ -241,7 +241,7 @@
                                                 {% if apoderado.perfil_apoderado.telefono %}
                                                     {{ apoderado.perfil_apoderado.telefono }}
                                                 {% else %}
-                                                    <span style="color: #999;">No especificado</span>
+                                                    <span class="text-tertiary">No especificado</span>
                                                 {% endif %}
                                             </td>
                                             <td>
@@ -253,7 +253,7 @@
                                 </tbody>
                             </table>
                             {% if total_apoderados > 50 %}
-                                <p style="text-align: center; margin-top: 15px; color: #6c757d; font-style: italic;">
+                                <p class="text-italic-muted">
                                     Mostrando los primeros 50 de {{ total_apoderados }} apoderados totales
                                 </p>
                             {% endif %}

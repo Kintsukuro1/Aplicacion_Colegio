@@ -11,6 +11,7 @@ from datetime import date, datetime
 
 from backend.apps.academico.services.attendance_service import AttendanceService
 from backend.apps.academico.services.grades_service import GradesService
+from backend.apps.core.services.dashboard_service import DashboardService
 from backend.apps.core.views import load_dashboard_context
 
 
@@ -95,7 +96,7 @@ def gestionar_evaluaciones_calificaciones(request):
         accion = request.POST.get('accion')
         
         if accion in ['crear_evaluacion', 'editar_evaluacion', 'eliminar_evaluacion']:
-            result = GradesService.process_evaluation_action(request.user, colegio, request.POST)
+            result = GradesService.process_evaluation_action(request.user, colegio, request.POST, request.FILES)
         elif accion == 'registrar_calificaciones':
             result = GradesService.process_grades_registration(request.user, colegio, request.POST)
         else:
@@ -166,6 +167,103 @@ def gestionar_evaluaciones_calificaciones(request):
         return JsonResponse(context, safe=False)
     
     return render(request, 'profesor/gestionar_evaluaciones_calificaciones.html', context)
+
+
+@login_required
+def crear_evaluacion_online_profesor(request):
+    """Vista de creación y edición de evaluación online."""
+    colegio = getattr(request.user, "colegio", None)
+    if colegio is None:
+        messages.error(request, "No se pudo determinar el colegio del usuario.")
+        return redirect("dashboard")
+
+    clases = GradesService.get_teacher_classes_for_grades(request.user, colegio)
+    filtro_clase_id = request.GET.get('clase_id', '')
+    evaluacion_id = request.GET.get('evaluacion_id', '')
+    clase_seleccionada = None
+    evaluacion_seleccionada = None
+    actividad_principal = None
+
+    if evaluacion_id:
+        try:
+            evaluacion_seleccionada = GradesService.get_evaluation_by_id(colegio, int(evaluacion_id))
+        except (TypeError, ValueError):
+            evaluacion_seleccionada = None
+
+    if evaluacion_seleccionada and not filtro_clase_id:
+        filtro_clase_id = str(evaluacion_seleccionada.clase_id)
+
+    if not filtro_clase_id and clases.exists():
+        filtro_clase_id = str(clases.first().id)
+
+    if filtro_clase_id:
+        try:
+            clase_seleccionada = clases.get(id=filtro_clase_id)
+        except Exception:
+            clase_seleccionada = None
+
+    if evaluacion_seleccionada:
+        actividad_principal = GradesService._get_primary_activity(evaluacion_seleccionada)
+        if clase_seleccionada is None:
+            clase_seleccionada = evaluacion_seleccionada.clase
+
+    preguntas_formulario = []
+    if actividad_principal is not None:
+        preguntas_queryset = actividad_principal.preguntas.all().order_by('orden', 'id_pregunta')
+        for pregunta in preguntas_queryset[:4]:
+            opciones = [
+                {
+                    'texto': opcion.texto,
+                    'es_correcta': opcion.es_correcta,
+                }
+                for opcion in pregunta.opciones.all().order_by('orden', 'id_opcion')
+            ]
+            preguntas_formulario.append({
+                'enunciado': pregunta.enunciado,
+                'tipo': pregunta.tipo,
+                'puntaje': pregunta.puntaje,
+                'respuesta_correcta': pregunta.respuesta_correcta,
+                'requiere_revision_docente': pregunta.requiere_revision_docente,
+                'opciones': opciones,
+            })
+
+    while len(preguntas_formulario) < 4:
+        preguntas_formulario.append({
+            'enunciado': '',
+            'tipo': 'opcion_multiple',
+            'puntaje': 1,
+            'respuesta_correcta': '',
+            'requiere_revision_docente': False,
+            'opciones': [
+                {'texto': '', 'es_correcta': False},
+                {'texto': '', 'es_correcta': False},
+                {'texto': '', 'es_correcta': False},
+                {'texto': '', 'es_correcta': False},
+            ],
+        })
+
+    base_context = load_dashboard_context(request)
+    rol_contexto = base_context.get('rol') or getattr(getattr(request.user, 'role', None), 'nombre', 'profesor')
+
+    context = {
+        **base_context,
+        'clases': clases,
+        'total_clases': clases.count(),
+        'clase_seleccionada': clase_seleccionada,
+        'evaluacion_seleccionada': evaluacion_seleccionada,
+        'actividad_principal': actividad_principal,
+        'preguntas_formulario': preguntas_formulario,
+        'filtro_clase_id': filtro_clase_id,
+        'modo_formulario': 'editar' if evaluacion_seleccionada else 'crear',
+        'fecha_hoy': date.today().strftime('%Y-%m-%d'),
+        'sidebar_template': DashboardService.get_sidebar_template(rol_contexto),
+        'hide_top_navbar': True,
+    }
+
+    if request.GET.get('json'):
+        return JsonResponse(context, safe=False)
+
+    return render(request, 'academico/profesor/crear_evaluacion_online.html', context)
 
 
 @login_required

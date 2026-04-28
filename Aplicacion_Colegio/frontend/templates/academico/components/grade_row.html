@@ -9,7 +9,7 @@
         {% endif %}
     </div>
     
-    <div style="text-align: center; min-width: 80px;">
+    <div class="text-center-min">
         <div class="text-2xl font-bold" style="color: {% if grade >= 4.0 %}var(--color-success){% else %}var(--color-error){% endif %};">
             {{ grade|floatformat:1 }}
         </div>
@@ -19,7 +19,7 @@
     </div>
     
     {% if average %}
-    <div style="text-align: center; min-width: 80px;">
+    <div class="text-center-min">
         <div class="text-sm text-secondary">Promedio</div>
         <div class="text-lg font-semibold">{{ average|floatformat:1 }}</div>
     </div>

@@ -1,12 +1,28 @@
 /** GESTIONAR TAREAS - PROFESOR */
 
 function mostrarModalCrear() {
-    document.getElementById('modalCrearTarea').style.display = 'flex';
+    const modal = document.getElementById('modalCrearTarea');
+    modal.style.display = 'flex';
+    actualizarSeccionOnline();
+
+    // Establecer fecha mínima como ahora
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const campoFecha = document.getElementById('fecha_entrega');
+    if (campoFecha) {
+        campoFecha.min = now.toISOString().slice(0, 16);
+    }
 }
 
 function cerrarModalCrear() {
-    document.getElementById('modalCrearTarea').style.display = 'none';
-    document.getElementById('formCrearTarea').reset();
+    const modal = document.getElementById('modalCrearTarea');
+    const form = document.getElementById('formCrearTarea');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (form) {
+        form.reset();
+    }
 }
 
 function submitCrearTarea() {
@@ -17,6 +33,29 @@ function submitCrearTarea() {
         form.reportValidity();
     }
 }
+
+function actualizarSeccionOnline() {
+    const selectorModalidad = document.querySelector('[data-modalidad-select]');
+    const seccionOnline = document.querySelector('[data-online-section]');
+
+    if (!selectorModalidad || !seccionOnline) {
+        return;
+    }
+
+    const modalidad = selectorModalidad.value;
+    const mostrar = modalidad === 'ONLINE' || modalidad === 'MIXTA';
+    seccionOnline.classList.toggle('hidden', !mostrar);
+}
+
+document.addEventListener('change', function (event) {
+    if (event.target && event.target.matches('[data-modalidad-select]')) {
+        actualizarSeccionOnline();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    actualizarSeccionOnline();
+});
 
 function eliminarTarea(tareaId) {
     if (confirm('¿Eliminar esta tarea? Se eliminarán todas las entregas asociadas.')) {

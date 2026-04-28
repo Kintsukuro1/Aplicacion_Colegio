@@ -19,7 +19,7 @@
     {% if messages %}
         {% for message in messages %}
             <div class="mensaje-box {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% endif %}">
-                <span style="font-size: 20px;">{% if message.tags == 'success' %}✔{% else %}✖{% endif %}</span>
+                <span class="icon-md">{% if message.tags == 'success' %}✔{% else %}✖{% endif %}</span>
                 <span>{{ message }}</span>
             </div>
         {% endfor %}
@@ -55,9 +55,9 @@
         <ul>
             <li>✓ Marca los bloques en los que <strong>SÍ estás disponible</strong> para dictar clases</li>
             <li>✓ Desmarca los bloques en los que <strong>NO estás disponible</strong></li>
-            <li>✓ Los bloques marcados en <span style="color: #2ecc71; font-weight: bold;">verde</span> indican disponibilidad</li>
-            <li>✓ Los bloques marcados en <span style="color: #e74c3c; font-weight: bold;">rojo</span> indican no disponibilidad</li>
-            <li>✓ Los bloques con clases asignadas aparecen con <span style="color: #3498db; font-weight: bold;">borde azul</span></li>
+            <li>✓ Los bloques marcados en <span class="status-color status-available">verde</span> indican disponibilidad</li>
+            <li>✓ Los bloques marcados en <span class="status-color status-unavailable">rojo</span> indican no disponibilidad</li>
+            <li>✓ Los bloques con clases asignadas aparecen con <span class="status-color status-assigned">borde azul</span></li>
             <li>⚠️ Si desmarcas un bloque con clases asignadas, se te notificará para reasignar esa clase</li>
         </ul>
     </div>

@@ -10,8 +10,8 @@ export default function PaginationControls({
   const totalPages = Math.max(1, Math.ceil((count || 0) / pageSize));
 
   return (
-    <div className="card" style={{ marginTop: '0.8rem' }}>
-      <div className="actions" style={{ justifyContent: 'space-between' }}>
+    <div className="card section-card">
+      <div className="bulk-actions-bar">
         <button
           type="button"
           className="secondary"

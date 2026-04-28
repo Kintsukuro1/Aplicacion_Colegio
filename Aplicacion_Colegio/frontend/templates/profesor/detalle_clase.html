@@ -27,17 +27,17 @@
     {# Breadcrumb #}
     <div class="breadcrumb">
         <a href="{% url 'dashboard' %}?pagina=mis_clases">← Volver a Mis Clases</a>
-        <div style="margin-left: auto; display: flex; gap: 10px;">
+        <div class="d-flex gap-sm breadcrumb-actions">
             {% if es_profesor %}
                 {% if not ver_como_alumno %}
                 <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-ver-como-alumno">
-                    📋 Tareas
+                    📋 Actividades
                 </a>
                 <a href="{% url 'ver_detalle_clase' clase.id %}?ver_como_alumno=1" class="btn-ver-como-alumno">
                     👁️ Ver como alumno
                 </a>
                 {% else %}
-                <a href="{% url 'ver_detalle_clase' clase.id %}" class="btn-ver-como-alumno" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <a href="{% url 'ver_detalle_clase' clase.id %}" class="btn-ver-como-alumno btn-volver-profesor">
                     👨‍🏫 Volver a vista profesor
                 </a>
                 {% endif %}
@@ -165,7 +165,7 @@
                                     <a href="{{ material.archivo.url }}" class="dropdown-item" download>
                                         Descargar
                                     </a>
-                                    <form method="post" style="margin: 0;">
+                                    <form method="post" class="m-0">
                                         {% csrf_token %}
                                         <input type="hidden" name="accion" value="cambiar_visibilidad">
                                         <input type="hidden" name="material_id" value="{{ material.id_material }}">
@@ -173,7 +173,7 @@
                                             {% if material.es_publico %}Hacer privado{% else %}Hacer público{% endif %}
                                         </button>
                                     </form>
-                                    <form method="post" style="margin: 0;" onsubmit="return confirm('¿Eliminar este material?');">
+                                    <form method="post" class="m-0" onsubmit="return confirm('¿Eliminar este material?');">
                                         {% csrf_token %}
                                         <input type="hidden" name="accion" value="eliminar_material">
                                         <input type="hidden" name="material_id" value="{{ material.id_material }}">
@@ -197,7 +197,7 @@
                     <span class="icon">📎</span>
                     <p>No hay materiales disponibles</p>
                     {% if es_profesor and not ver_como_alumno %}
-                    <button class="btn-primary" onclick="mostrarModalSubir()" style="margin-top: 15px;">➕ Subir primer material</button>
+                    <button class="btn-primary mt-3" onclick="mostrarModalSubir()">➕ Subir primer material</button>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -208,7 +208,7 @@
                 <div class="section-header-with-action">
                     <h2 class="section-title">📝 Tareas de la Clase</h2>
                     {% if es_profesor and not ver_como_alumno %}
-                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary">➕ Crear Tarea</a>
+                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary">➕ Crear actividad híbrida</a>
                     {% endif %}
                 </div>
                 
@@ -262,7 +262,7 @@
                     <span class="icon">📝</span>
                     <p>No hay tareas publicadas</p>
                     {% if es_profesor and not ver_como_alumno %}
-                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary" style="margin-top: 15px;">➕ Crear primera tarea</a>
+                    <a href="{% url 'gestionar_tareas_profesor' clase.id %}" class="btn-primary mt-3">➕ Crear primera actividad híbrida</a>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -307,7 +307,7 @@
                 <div class="empty-state-small">
                     <span class="icon">✅</span>
                     <p>No hay entregas pendientes de revisión</p>
-                    <small style="color: #6c757d; display: block; margin-top: 8px;">
+                    <small class="entregas-tip">
                         ¡Todo está al día!
                     </small>
                 </div>
@@ -321,7 +321,7 @@
                 </div>
                 
                 <iframe src="{% url 'mensajes_clase' clase.id %}" 
-                        style="width: 100%; min-height: 600px; border: none; border-radius: 8px; background: white;">
+                        class="embed-frame">
                 </iframe>
             </div>
             {% endif %}
@@ -356,7 +356,7 @@
             <div class="tab-content" id="tab-asistencia">
                 <div class="section-header-with-action">
                     <h2 class="section-title">📋 Asistencia de la Clase</h2>
-                    <div style="display: flex; gap: 10px;">
+                    <div class="d-flex gap-sm">
                         <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-secondary">
                             📊 Ver Reportes
                         </a>
@@ -366,17 +366,17 @@
                     </div>
                 </div>
                 
-                <div style="padding: 30px; background: white; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 3rem; margin-bottom: 15px;">📋</div>
-                    <h3 style="color: #1e293b; margin-bottom: 10px;">Gestión de Asistencia</h3>
-                    <p style="color: #64748b; margin-bottom: 25px;">
+                <div class="asistencia-callout">
+                    <div class="asistencia-callout-icon">📋</div>
+                    <h3 class="asistencia-callout-title">Gestión de Asistencia</h3>
+                    <p class="asistencia-callout-desc">
                         Registra la asistencia diaria de tus estudiantes y consulta los reportes mensuales.
                     </p>
-                    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                        <a href="{% url 'registro_asistencia_clase' clase.id %}" class="btn-primary" style="text-decoration: none;">
+                    <div class="asistencia-callout-actions">
+                        <a href="{% url 'registro_asistencia_clase' clase.id %}" class="btn-primary no-decoration">
                             ✅ Registrar Asistencia Hoy
                         </a>
-                        <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-secondary" style="text-decoration: none;">
+                        <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-secondary no-decoration">
                             📊 Ver Reportes del Mes
                         </a>
                     </div>
@@ -397,40 +397,40 @@
                     {% if anuncios %}
                         {% for anuncio in anuncios %}
                         <div class="anuncio-card {% if anuncio.anclado %}anclado{% endif %}" data-anuncio-id="{{ anuncio.id_anuncio }}">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px;">
+                            <div class="anuncio-header">
+                                <h3 class="anuncio-title">
                                     {% if anuncio.anclado %}📌{% endif %}
                                     {{ anuncio.titulo }}
                                 </h3>
-                                <span style="color: #6b7280; font-size: 0.875rem;">
+                                <span class="anuncio-fecha">
                                     {{ anuncio.fecha_creacion|date:"d/m/Y H:i" }}
                                 </span>
                             </div>
-                            <div style="color: #4b5563; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap;">{{ anuncio.contenido }}</div>
+                            <div class="anuncio-contenido">{{ anuncio.contenido }}</div>
                             {% if anuncio.archivo_adjunto %}
-                            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; display: inline-block; margin-bottom: 12px;">
-                                <a href="{{ anuncio.archivo_adjunto.url }}" download style="color: #3b82f6; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                            <div class="anuncio-adjunto">
+                                <a href="{{ anuncio.archivo_adjunto.url }}" download class="anuncio-adjunto-link">
                                     📎 <span>Descargar archivo adjunto</span>
                                 </a>
                             </div>
                             {% endif %}
                             {% if es_profesor and not ver_como_alumno %}
-                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px;">
-                                <button onclick="editarAnuncio({{ anuncio.id_anuncio }})" style="padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✏️ Editar</button>
-                                <form method="post" action="{% url 'eliminar_anuncio' anuncio.id_anuncio %}" style="display: inline;" onsubmit="return confirm('¿Estás seguro de eliminar este anuncio?')">
+                            <div class="anuncio-actions">
+                                <button onclick="editarAnuncio({{ anuncio.id_anuncio }})" class="anuncio-btn anuncio-btn-edit">✏️ Editar</button>
+                                <form method="post" action="{% url 'eliminar_anuncio' anuncio.id_anuncio %}" class="d-inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este anuncio?')">
                                     {% csrf_token %}
-                                    <button type="submit" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">🗑️ Eliminar</button>
+                                    <button type="submit" class="anuncio-btn anuncio-btn-delete">🗑️ Eliminar</button>
                                 </form>
                             </div>
                             {% endif %}
                         </div>
                         {% endfor %}
                     {% else %}
-                    <div style="text-align: center; padding: 60px 20px;">
-                        <span style="font-size: 4rem; display: block; margin-bottom: 16px;">📢</span>
-                        <p style="color: #6b7280; font-size: 1.1rem;">No hay anuncios publicados</p>
+                    <div class="anuncio-empty-state">
+                        <span class="anuncio-empty-icon">📢</span>
+                        <p class="anuncio-empty-text">No hay anuncios publicados</p>
                         {% if es_profesor and not ver_como_alumno %}
-                        <button class="btn-primary" onclick="mostrarModalAnuncio()" style="margin-top: 20px;">➕ Crear primer anuncio</button>
+                        <button class="btn-primary mt-4" onclick="mostrarModalAnuncio()">➕ Crear primer anuncio</button>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -465,7 +465,7 @@
                 </div>
                 
                 <iframe src="{% url 'mensajes_clase' clase.id %}" 
-                        style="width: 100%; min-height: 600px; border: none; border-radius: 8px; background: white;">
+                        class="embed-frame">
                 </iframe>
             </div>
 
@@ -951,6 +951,134 @@
 .btn-ver-como-alumno:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.breadcrumb-actions {
+    margin-left: auto;
+}
+
+.btn-volver-profesor {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.entregas-tip {
+    color: #6c757d;
+    display: block;
+    margin-top: 8px;
+}
+
+.asistencia-callout {
+    padding: 30px;
+    background: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.asistencia-callout-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.asistencia-callout-title {
+    color: #1e293b;
+    margin-bottom: 10px;
+}
+
+.asistencia-callout-desc {
+    color: #64748b;
+    margin-bottom: 25px;
+}
+
+.asistencia-callout-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.anuncio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 12px;
+}
+
+.anuncio-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.anuncio-fecha {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.anuncio-contenido {
+    color: #4b5563;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+}
+
+.anuncio-adjunto {
+    padding: 12px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+.anuncio-adjunto-link {
+    color: #3b82f6;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.anuncio-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 8px;
+}
+
+.anuncio-btn {
+    padding: 6px 12px;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.anuncio-btn-edit {
+    background: #3b82f6;
+}
+
+.anuncio-btn-delete {
+    background: #ef4444;
+}
+
+.anuncio-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.anuncio-empty-icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.anuncio-empty-text {
+    color: #6b7280;
+    font-size: 1.1rem;
 }
 </style>
 

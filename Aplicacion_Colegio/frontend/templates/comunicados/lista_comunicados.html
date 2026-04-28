@@ -66,7 +66,7 @@
                     Ver detalle →
                 </a>
                 {% if user.role == 'admin_escolar' and comunicado.requiere_confirmacion %}
-                <a href="{% url 'comunicados:estadisticas' comunicado.id_comunicado %}" style="color: #6366f1; font-weight: 600; text-decoration: none;">
+                <a href="{% url 'comunicados:estadisticas' comunicado.id_comunicado %}" class="btn-estadisticas-link">
                     📊 Ver estadísticas
                 </a>
                 {% endif %}

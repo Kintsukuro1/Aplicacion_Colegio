@@ -92,22 +92,22 @@ export default function StudentSelfPage() {
         <div className="grid-2">
           <article className="card">
             <h3>Mi Perfil</h3>
-            <pre>{JSON.stringify(profile, null, 2)}</pre>
+            <pre className="profile-pre">{JSON.stringify(profile, null, 2)}</pre>
           </article>
           <article className="card">
             <h3>Mis Clases ({classes.length})</h3>
-            <pre>{JSON.stringify(classes, null, 2)}</pre>
+            <pre className="profile-pre">{JSON.stringify(classes, null, 2)}</pre>
           </article>
           <article className="card">
             <h3>Mis Notas ({grades.length})</h3>
-            <pre>{JSON.stringify(grades, null, 2)}</pre>
+            <pre className="profile-pre">{JSON.stringify(grades, null, 2)}</pre>
           </article>
           <article className="card">
             <h3>Mi Asistencia ({attendance.length})</h3>
-            <pre>{JSON.stringify(attendance, null, 2)}</pre>
+            <pre className="profile-pre">{JSON.stringify(attendance, null, 2)}</pre>
           </article>
 
-          <article className="card" style={{ gridColumn: '1 / -1' }}>
+          <article className="card grid-full">
             <h3>Historial Academico</h3>
 
             <div className="actions">
@@ -127,7 +127,7 @@ export default function StudentSelfPage() {
             {historyError ? <div className="error-box">{historyError}</div> : null}
 
             {!loadingHistory && !historyError && history?.ciclo ? (
-              <div className="summary-grid" style={{ marginBottom: '0.6rem' }}>
+              <div className="summary-grid section-card">
                 <div className="summary-tile">
                   <small>Ciclo activo</small>
                   <strong>{history.ciclo.nombre}</strong>

@@ -42,6 +42,7 @@ from backend.apps.core.views.admin_escolar.setup_wizard import setup_wizard
 from backend.apps.core.views.admin_escolar.gestionar_evaluaciones_calificaciones import (
     gestionar_evaluaciones_calificaciones,
 )
+from backend.apps.academico.views.academic_management_views import crear_evaluacion_online_profesor
 from backend.apps.core.views.admin_escolar.importar_datos_acciones import (
     editar_apoderado,
     editar_estudiante,
@@ -289,6 +290,11 @@ urlpatterns = [
         'gestionar-evaluaciones-calificaciones/',
         gestionar_evaluaciones_calificaciones,
         name='gestionar_evaluaciones_calificaciones',
+    ),
+    path(
+        'profesor/evaluaciones-online/',
+        crear_evaluacion_online_profesor,
+        name='crear_evaluacion_online_profesor',
     ),
     
     # Selección de escuela (Admin General)

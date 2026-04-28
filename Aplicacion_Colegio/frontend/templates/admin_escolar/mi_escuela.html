@@ -16,7 +16,7 @@
     {% if messages %}
         {% for message in messages %}
             <div class="mensaje-box {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% endif %}">
-                <span style="font-size: 20px;">{% if message.tags == 'success' %}✔{% else %}✖{% endif %}</span>
+                <span class="icon-md">{% if message.tags == 'success' %}✔{% else %}✖{% endif %}</span>
                 <span>{{ message }}</span>
             </div>
         {% endfor %}
@@ -82,7 +82,7 @@
 
             <!-- Infraestructura -->
             {% if colegio.infraestructura.all %}
-            <div class="card" style="margin-top: 25px;">
+            <div class="card mt-5">
                 <h2>🏗️ Infraestructura</h2>
                 <div class="infra-list">
                     {% for infra in colegio.infraestructura.all %}
@@ -169,7 +169,7 @@
     {% else %}
     <div class="card">
         <div class="mensaje-box error">
-            <span style="font-size: 20px;">⚠️</span>
+            <span class="icon-md">⚠️</span>
             <span>No se encontró información de la escuela.</span>
         </div>
     </div>

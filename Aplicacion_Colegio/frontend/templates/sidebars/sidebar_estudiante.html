@@ -182,10 +182,9 @@
             <span class="icon">⚙️</span>
             <span>Configuración</span>
         </a>
-        <form method="POST" action="{% url 'accounts:logout' %}" style="margin: 0;">
+        <form method="POST" action="{% url 'accounts:logout' %}" class="m-0">
             {% csrf_token %}
-            <button type="submit"
-                style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 24px; background: none; border: none; color: #6c757d; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; text-align: left; font-family: inherit;">
+            <button type="submit" class="sidebar-logout-btn">
                 <span class="icon">🚪</span>
                 <span>Cerrar Sesión</span>
             </button>

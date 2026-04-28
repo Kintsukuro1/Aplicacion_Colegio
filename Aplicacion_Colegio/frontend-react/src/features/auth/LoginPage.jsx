@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
 import { setTokens } from '../../lib/authStore';
+import { useTenant } from '../../lib/tenantContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { tenant } = useTenant();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,8 +32,22 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={onSubmit}>
+        <div className="auth-logo">
+          {tenant?.logo ? (
+            <img src={tenant.logo} alt={`Logo ${tenant.nombre}`} className="tenant-logo" />
+          ) : (
+            <span className="auth-logo-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+              </svg>
+            </span>
+          )}
+          <span className="brand-text">{tenant?.nombre || 'Colegio SaaS'}</span>
+        </div>
+
         <h1>Acceso Plataforma</h1>
-        <p>Frontend React conectado a API v1 JWT.</p>
+        <p>Ingresa tus credenciales para acceder al sistema de gestión.</p>
 
         <label>
           Correo
@@ -41,6 +57,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="username"
+            placeholder="correo@ejemplo.cl"
           />
         </label>
 
@@ -52,6 +69,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
+            placeholder="••••••••"
           />
         </label>
 

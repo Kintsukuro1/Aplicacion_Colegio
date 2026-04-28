@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import CheckConstraint, Q, F
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.utils.text import slugify
 from backend.common.tenancy import TenantManager
 
 
@@ -114,6 +115,9 @@ class Colegio(models.Model):
     telefono = models.CharField(max_length=20, null=True, blank=True)
     correo = models.EmailField(max_length=100, unique=True, null=True, blank=True)
     web = models.CharField(max_length=100, null=True, blank=True)
+    slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
+    logo = models.ImageField(upload_to='colegios/logos/', null=True, blank=True)
+    color_primario = models.CharField(max_length=7, default='#6366f1')
     capacidad_maxima = models.IntegerField(null=True, blank=True)
     fecha_fundacion = models.DateField(null=True, blank=True)
     tipo = models.CharField(
@@ -156,6 +160,14 @@ class Colegio(models.Model):
 
     def save(self, *args, **kwargs):
         self._assign_defaults_if_needed()
+        if not self.slug:
+            base_slug = slugify(self.nombre or f'colegio-{self.rbd}')[:45] or f'colegio-{self.rbd}'
+            candidate = base_slug
+            i = 1
+            while Colegio.objects.all_schools().exclude(pk=self.pk).filter(slug=candidate).exists():
+                candidate = f'{base_slug[:45]}-{i}'
+                i += 1
+            self.slug = candidate
         super().save(*args, **kwargs)
 
 

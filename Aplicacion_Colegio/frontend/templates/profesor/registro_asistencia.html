@@ -15,7 +15,7 @@
         <main class="main-content">
             <div class="content-area">
                 {# Breadcrumb #}
-                <div class="breadcrumb" style="margin-bottom: 20px;">
+                <div class="breadcrumb mb-4">
                     <a href="{% url 'dashboard' %}?pagina=mis_clases">← Mis Clases</a>
                     <span>/</span>
                     <a href="{% url 'ver_detalle_clase' clase.id %}">{{ clase.asignatura.nombre }}</a>
@@ -24,22 +24,22 @@
                 </div>
 
                 {# Header #}
-                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <div class="page-header header-bar-lg">
                     <div>
-                        <h1 style="margin: 0 0 5px 0; font-size: 1.8rem; color: #1e293b;">📋 Registro de Asistencia</h1>
-                        <p style="margin: 0; color: #64748b;">{{ clase.asignatura.nombre }} - {{ clase.curso.nombre }}</p>
+                        <h1 class="kpi-value">📋 Registro de Asistencia</h1>
+                        <p class="text-muted m-0">{{ clase.asignatura.nombre }} - {{ clase.curso.nombre }}</p>
                     </div>
-                    <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-primary" style="text-decoration: none;">
+                    <a href="{% url 'reporte_asistencia_clase' clase.id %}" class="btn-primary no-decoration">
                         📊 Ver Reportes
         </a>
     </div>
 
     {# Selector de Fecha #}
-    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <form method="get" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.2rem;">📅</span>
-                <label for="fecha" style="font-weight: 600; color: #1e293b; margin: 0;">Seleccionar fecha:</label>
+    <div class="section-card">
+        <form method="get" class="actions-bar">
+            <div class="d-flex align-center gap-sm">
+                <span class="icon-sm">📅</span>
+                <label for="fecha" class="font-semibold m-0">Seleccionar fecha:</label>
             </div>
             <input type="date" name="fecha" id="fecha" value="{{ fecha_str }}" 
                    max="{{ fecha_hoy }}" 

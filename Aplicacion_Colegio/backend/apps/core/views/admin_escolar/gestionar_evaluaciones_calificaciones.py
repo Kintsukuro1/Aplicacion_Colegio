@@ -61,7 +61,7 @@ def gestionar_evaluaciones_calificaciones(request):
 	try:
 		if accion in {"crear_evaluacion", "editar_evaluacion", "eliminar_evaluacion"}:
 			# Delegar gestión de evaluaciones al servicio
-			result = GradesService.process_evaluation_action(request.user, colegio, request.POST)
+			result = GradesService.process_evaluation_action(request.user, colegio, request.POST, request.FILES)
 			if result['success']:
 				messages.success(request, result['message'])
 				if 'redirect_url' in result:

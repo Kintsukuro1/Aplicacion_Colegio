@@ -61,7 +61,11 @@ class TenantMiddleware:
     def __call__(self, request):
         user = getattr(request, "user", None)
         school_id = getattr(user, "rbd_colegio", None) if getattr(user, "is_authenticated", False) else None
-        tenant_school_id = None if self._is_global_scope_user(user) else school_id
+        tenant_from_subdomain = getattr(request, "tenant_school_id", None)
+        if self._is_global_scope_user(user):
+            tenant_school_id = tenant_from_subdomain
+        else:
+            tenant_school_id = school_id
         token = set_current_tenant_school_id(tenant_school_id)
 
         try:

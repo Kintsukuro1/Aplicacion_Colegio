@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 import GroupedSidebar from './components/GroupedSidebar';
+import MobileBottomNav from './components/MobileBottomNav';
 import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
@@ -228,6 +229,34 @@ function AccessDeniedPage() {
 
 function ShellLayout({ children, me, visibleRoutes }) {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // Lock body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   async function onLogout() {
     try {
@@ -245,14 +274,43 @@ function ShellLayout({ children, me, visibleRoutes }) {
 
   return (
     <div className="app-shell">
-      <GroupedSidebar me={me} visibleRoutes={visibleRoutes} onLogout={onLogout} />
+      {/* Mobile overlay backdrop */}
+      <div
+        className={`sidebar-overlay${sidebarOpen ? ' sidebar-overlay-visible' : ''}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
+
+      <GroupedSidebar
+        me={me}
+        visibleRoutes={visibleRoutes}
+        onLogout={onLogout}
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+      />
+
       <main>
         <div className="main-topbar">
-          <div />
+          <button
+            type="button"
+            className="sidebar-toggle-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={sidebarOpen}
+            aria-controls="primary-sidebar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
           <NotificationBell />
         </div>
         {children}
       </main>
+
+      <MobileBottomNav visibleRoutes={visibleRoutes} />
     </div>
   );
 }

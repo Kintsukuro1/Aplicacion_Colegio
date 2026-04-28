@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
+import StatCard from '../../components/charts/StatCard';
+import LineChart from '../../components/charts/LineChart';
+import DonutChart from '../../components/charts/DonutChart';
+import BarChart from '../../components/charts/BarChart';
 
 const SCOPES = ['auto', 'self', 'school', 'analytics'];
 
@@ -12,28 +16,217 @@ const SCOPE_LABELS = {
   analytics: 'Analítica',
 };
 
-function KpiCard({ title, value, subtitle, trend, color }) {
-  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : null;
-  const trendClass = trend === 'up' ? 'badge-active' : trend === 'down' ? 'badge-danger' : '';
+/* ── Helpers ────────────────────────────────────────── */
 
-  return (
-    <article className="card" style={{ position: 'relative' }}>
-      <small style={{ color: 'var(--muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {title}
-      </small>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.3rem' }}>
-        <strong style={{ fontSize: '1.8rem', color: color || 'var(--ink)' }}>
-          {value ?? '—'}
-        </strong>
-        {trendIcon ? (
-          <span className={`badge ${trendClass}`}>{trendIcon}</span>
-        ) : null}
-      </div>
-      {subtitle ? (
-        <p style={{ margin: '0.3rem 0 0', color: 'var(--muted)', fontSize: '0.82rem' }}>{subtitle}</p>
-      ) : null}
-    </article>
-  );
+function formatLabel(rawKey) {
+  return rawKey
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function buildStatCards(data, scope) {
+  if (!data?.sections) return [];
+  const cards = [];
+
+  if (scope === 'school' || scope === 'auto') {
+    const s = data.sections.school || {};
+    if (s.students !== undefined) {
+      cards.push({ title: 'Estudiantes', value: s.students, icon: '👥', variant: 'default' });
+    }
+    if (s.teachers !== undefined) {
+      cards.push({ title: 'Profesores', value: s.teachers, icon: '👨‍🏫', variant: 'default' });
+    }
+    if (s.courses_active !== undefined) {
+      cards.push({ title: 'Cursos Activos', value: s.courses_active, icon: '📚', variant: 'success' });
+    }
+    if (s.classes_active !== undefined) {
+      cards.push({ title: 'Clases Activas', value: s.classes_active, icon: '🏫', variant: 'success' });
+    }
+    if (s.attendance_today !== undefined) {
+      cards.push({
+        title: 'Asistencia Hoy',
+        value: s.attendance_today,
+        subtitle: 'Registros del día',
+        icon: '📋',
+        variant: 'default',
+      });
+    }
+    if (s.evaluations_upcoming !== undefined) {
+      cards.push({
+        title: 'Evaluaciones Próximas',
+        value: s.evaluations_upcoming,
+        icon: '📝',
+        variant: s.evaluations_upcoming > 0 ? 'warning' : 'success',
+      });
+    }
+  }
+
+  if (scope === 'analytics' || scope === 'auto') {
+    const a = data.sections.analytics || {};
+    if (a.attendance_today_total !== undefined) {
+      const rate = a.attendance_rate_today ?? 0;
+      cards.push({
+        title: 'Tasa Asistencia Hoy',
+        value: `${rate}%`,
+        trend: rate >= 85 ? 'up' : rate < 70 ? 'down' : 'stable',
+        trendValue: rate >= 85 ? 'Buena' : rate < 70 ? 'Baja' : '',
+        subtitle: `${a.attendance_today_present ?? 0} de ${a.attendance_today_total} presentes`,
+        icon: '✅',
+        variant: rate >= 85 ? 'success' : rate < 70 ? 'danger' : 'warning',
+      });
+    }
+    if (a.evaluations_next_7_days !== undefined) {
+      cards.push({
+        title: 'Evaluaciones 7 Días',
+        value: a.evaluations_next_7_days,
+        icon: '📅',
+        variant: 'default',
+      });
+    }
+    if (a.grades_below_approval !== undefined) {
+      cards.push({
+        title: `Notas Bajo ${a.nota_aprobacion ?? 4.0}`,
+        value: a.grades_below_approval,
+        icon: '⚠️',
+        variant: a.grades_below_approval > 0 ? 'danger' : 'success',
+      });
+    }
+  }
+
+  if (scope === 'self') {
+    const s = data.sections.self || {};
+
+    // Role-specific handling
+    if (s.mis_clases !== undefined) {
+      cards.push({ title: 'Mis Clases', value: s.mis_clases, icon: '🏫', variant: 'default' });
+    }
+    if (s.promedio_general !== undefined && s.promedio_general !== null) {
+      const nota = s.nota_aprobacion ?? 4.0;
+      cards.push({
+        title: 'Promedio General',
+        value: s.promedio_general,
+        icon: '📊',
+        variant: s.promedio_general >= nota ? 'success' : 'danger',
+      });
+    }
+    if (s.porcentaje_asistencia !== undefined) {
+      cards.push({
+        title: 'Mi Asistencia',
+        value: `${s.porcentaje_asistencia}%`,
+        icon: '✅',
+        variant: s.porcentaje_asistencia >= 85 ? 'success' : 'warning',
+      });
+    }
+    if (s.tareas_pendientes !== undefined) {
+      cards.push({
+        title: 'Tareas Pendientes',
+        value: s.tareas_pendientes,
+        icon: '📝',
+        variant: s.tareas_pendientes > 0 ? 'warning' : 'success',
+      });
+    }
+    if (s.total_estudiantes !== undefined) {
+      cards.push({ title: 'Mis Estudiantes', value: s.total_estudiantes, icon: '👥', variant: 'default' });
+    }
+    if (s.tareas_por_revisar !== undefined) {
+      cards.push({
+        title: 'Tareas por Revisar',
+        value: s.tareas_por_revisar,
+        icon: '📋',
+        variant: s.tareas_por_revisar > 0 ? 'warning' : 'success',
+      });
+    }
+    if (s.asistencia_pendiente_hoy !== undefined) {
+      cards.push({
+        title: 'Asistencia Pendiente',
+        value: s.asistencia_pendiente_hoy,
+        icon: '⏳',
+        variant: s.asistencia_pendiente_hoy > 0 ? 'danger' : 'success',
+      });
+    }
+    if (s.matriculas_activas !== undefined) {
+      cards.push({ title: 'Matrículas Activas', value: s.matriculas_activas, icon: '🎓', variant: 'default' });
+    }
+    if (s.asistencia_promedio_mes !== undefined) {
+      cards.push({
+        title: 'Asistencia Promedio Mes',
+        value: `${s.asistencia_promedio_mes}%`,
+        icon: '📊',
+        variant: s.asistencia_promedio_mes >= 85 ? 'success' : 'warning',
+      });
+    }
+    if (s.total_morosidad !== undefined) {
+      cards.push({
+        title: 'Morosidad Total',
+        value: `$${s.total_morosidad.toLocaleString()}`,
+        subtitle: s.alumnos_morosos ? `${s.alumnos_morosos} alumnos` : undefined,
+        icon: '💰',
+        variant: s.total_morosidad > 0 ? 'danger' : 'success',
+      });
+    }
+
+    // Pupilos (apoderado)
+    if (s.pupilos?.length > 0) {
+      s.pupilos.forEach((pupilo) => {
+        cards.push({
+          title: pupilo.nombre,
+          value: pupilo.promedio ?? '—',
+          subtitle: `Asistencia: ${pupilo.porcentaje_asistencia}%`,
+          icon: '🧒',
+          variant: (pupilo.promedio ?? 0) >= 4 ? 'success' : 'warning',
+        });
+      });
+    }
+    if (s.comunicados_sin_leer !== undefined) {
+      cards.push({
+        title: 'Comunicados Sin Leer',
+        value: s.comunicados_sin_leer,
+        icon: '📬',
+        variant: s.comunicados_sin_leer > 0 ? 'warning' : 'success',
+      });
+    }
+    if (s.plan_actual) {
+      cards.push({
+        title: 'Plan Actual',
+        value: s.plan_actual,
+        icon: '💎',
+        variant: 'default',
+      });
+    }
+  }
+
+  return cards;
+}
+
+function buildChartData(data, scope) {
+  const charts = { attendance: null, grades: null, courses: null };
+
+  // These require the executive endpoint with chart data
+  if (data?.charts) {
+    if (data.charts.attendance_trend_30d?.length) {
+      const trend = data.charts.attendance_trend_30d;
+      charts.attendance = {
+        labels: trend.map((d) => d.date?.substring(5) || d.label || ''),
+        data: trend.map((d) => d.rate ?? d.value ?? 0),
+      };
+    }
+    if (data.charts.grade_distribution?.length) {
+      const dist = data.charts.grade_distribution;
+      charts.grades = {
+        labels: dist.map((d) => d.range || d.label || ''),
+        data: dist.map((d) => d.count ?? d.value ?? 0),
+      };
+    }
+    if (data.charts.attendance_by_course?.length) {
+      const byc = data.charts.attendance_by_course;
+      charts.courses = {
+        labels: byc.map((d) => d.course || d.label || ''),
+        data: byc.map((d) => d.rate ?? d.value ?? 0),
+      };
+    }
+  }
+
+  return charts;
 }
 
 function QuickActions({ scope }) {
@@ -55,23 +248,14 @@ function QuickActions({ scope }) {
   if (actions.length === 0) return null;
 
   return (
-    <article className="card" style={{ marginTop: '0.8rem' }}>
+    <article className="card section-card">
       <h3>Acciones Rápidas</h3>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="actions-wrap">
         {actions.map((a) => (
           <Link
             key={a.to}
             to={a.to}
-            style={{
-              padding: '0.5rem 0.8rem',
-              borderRadius: '8px',
-              background: 'var(--brand-light)',
-              color: 'var(--brand-strong)',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              textDecoration: 'none',
-              transition: 'background 0.15s',
-            }}
+            className="quick-action-link"
           >
             {a.label}
           </Link>
@@ -81,58 +265,128 @@ function QuickActions({ scope }) {
   );
 }
 
-function formatLabel(rawKey) {
-  return rawKey
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (match) => match.toUpperCase());
-}
+function AlertsList({ data, scope }) {
+  const alerts = [];
 
-function extractKpis(data, scope) {
-  if (!data?.sections) return [];
-
-  const kpis = [];
-
-  if (scope === 'school' || scope === 'auto') {
-    const s = data.sections.school || {};
-    if (s.students !== undefined) kpis.push({ title: 'Estudiantes', value: s.students, color: 'var(--brand)' });
-    if (s.teachers !== undefined) kpis.push({ title: 'Profesores', value: s.teachers, color: 'var(--brand)' });
-    if (s.courses_active !== undefined) kpis.push({ title: 'Cursos Activos', value: s.courses_active });
-    if (s.classes_active !== undefined) kpis.push({ title: 'Clases Activas', value: s.classes_active });
-    if (s.attendance_today !== undefined) kpis.push({ title: 'Asistencia Hoy', value: s.attendance_today, subtitle: 'Registros del día' });
-    if (s.evaluations_upcoming !== undefined) kpis.push({ title: 'Evaluaciones Próximas', value: s.evaluations_upcoming, color: s.evaluations_upcoming > 0 ? 'var(--warning)' : undefined });
-  }
-
-  if (scope === 'analytics' || scope === 'auto') {
-    const a = data.sections.analytics || {};
-    if (a.attendance_today_total !== undefined) {
-      const rate = a.attendance_rate_today ?? 0;
-      kpis.push({
-        title: 'Tasa Asistencia Hoy',
-        value: `${rate}%`,
-        trend: rate >= 85 ? 'up' : rate < 70 ? 'down' : null,
-        subtitle: `${a.attendance_today_present ?? 0} de ${a.attendance_today_total} presentes`,
-        color: rate >= 85 ? 'var(--success)' : rate < 70 ? 'var(--danger)' : undefined,
-      });
-    }
-    if (a.evaluations_next_7_days !== undefined) kpis.push({ title: 'Evaluaciones 7 Días', value: a.evaluations_next_7_days });
-    if (a.grades_below_4 !== undefined) kpis.push({ title: 'Notas Bajo 4.0', value: a.grades_below_4, color: a.grades_below_4 > 0 ? 'var(--danger)' : 'var(--success)' });
-  }
-
-  if (scope === 'self') {
-    const s = data.sections.self || {};
-    Object.entries(s).filter(([k, v]) => k !== 'today' && v !== null && v !== undefined).forEach(([key, val]) => {
-      kpis.push({ title: formatLabel(key), value: String(val) });
+  // Subscription alerts
+  if (data?.subscription_alert) {
+    alerts.push({
+      type: data.subscription_alert.type || 'info',
+      icon: data.subscription_alert.type === 'danger' ? '🔴' : data.subscription_alert.type === 'warning' ? '🟡' : '🔵',
+      message: data.subscription_alert.message,
     });
   }
 
-  return kpis;
+  // Usage warnings
+  if (data?.usage_warnings?.length) {
+    data.usage_warnings.forEach((w) => {
+      alerts.push({
+        type: w.type || 'warning',
+        icon: w.type === 'danger' ? '⛔' : '⚠️',
+        message: w.message,
+      });
+    });
+  }
+
+  // Analytics alerts
+  const analytics = data?.sections?.analytics;
+  if (analytics) {
+    const rate = analytics.attendance_rate_today;
+    if (rate !== undefined && rate < 70) {
+      alerts.push({
+        type: 'danger',
+        icon: '📉',
+        message: `Asistencia crítica hoy: ${rate}%. Se recomienda revisar las ausencias.`,
+      });
+    }
+    if (analytics.grades_below_approval > 10) {
+      alerts.push({
+        type: 'warning',
+        icon: '📝',
+        message: `${analytics.grades_below_approval} estudiantes con notas bajo el mínimo de aprobación.`,
+      });
+    }
+  }
+
+  // Self alerts for teachers
+  const selfSection = data?.sections?.self;
+  if (selfSection?.asistencia_pendiente_hoy > 0) {
+    alerts.push({
+      type: 'warning',
+      icon: '⏰',
+      message: `Tienes ${selfSection.asistencia_pendiente_hoy} clase(s) sin asistencia registrada hoy.`,
+    });
+  }
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <div className="exec-alerts-list">
+      {alerts.map((alert, i) => (
+        <div key={i} className={`exec-alert-item alert-${alert.type}`}>
+          <span className="exec-alert-icon">{alert.icon}</span>
+          <span className="exec-alert-text">{alert.message}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
+
+function TeacherSchedule({ clases }) {
+  if (!clases?.length) return null;
+
+  return (
+    <article className="card section-card">
+      <h3>📅 Clases de Hoy</h3>
+      <div className="exec-activity-list">
+        {clases.map((c, i) => (
+          <div key={i} className="exec-activity-item">
+            <span className="exec-activity-dot" />
+            <div className="exec-activity-content">
+              <strong>{c.asignatura}</strong> — {c.curso}
+              <div className="exec-activity-time">
+                🕐 {c.hora_inicio} – {c.hora_fin} · Bloque {c.bloque}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function UpcomingEvaluations({ evaluaciones }) {
+  if (!evaluaciones?.length) return null;
+
+  return (
+    <article className="card section-card">
+      <h3>📝 Próximas Evaluaciones</h3>
+      <div className="exec-activity-list">
+        {evaluaciones.map((ev, i) => (
+          <div key={i} className="exec-activity-item">
+            <span className="exec-activity-dot" style={{ background: '#f59e0b' }} />
+            <div className="exec-activity-content">
+              <strong>{ev.nombre}</strong>
+              {ev.asignatura ? ` — ${ev.asignatura}` : ''}
+              <div className="exec-activity-time">
+                📅 {ev.fecha} · {ev.tipo || 'Evaluación'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+/* ── Main Component ─────────────────────────────────── */
 
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialScope = searchParams.get('scope');
   const [scope, setScope] = useState(SCOPES.includes(initialScope) ? initialScope : 'auto');
   const [data, setData] = useState(null);
+  const [execData, setExecData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -153,9 +407,23 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
       try {
+        // Load standard dashboard
         const response = await apiClient.get(`/api/v1/dashboard/resumen/?scope=${scope}`);
         if (active) {
           setData(response);
+        }
+
+        // Try to load executive dashboard (may not exist yet)
+        try {
+          const execResponse = await apiClient.get(`/api/v1/dashboard/executive/?scope=${scope}`);
+          if (active) {
+            setExecData(execResponse);
+          }
+        } catch {
+          // Executive endpoint not available yet — that's ok
+          if (active) {
+            setExecData(null);
+          }
         }
       } catch (err) {
         if (active) {
@@ -174,7 +442,10 @@ export default function DashboardPage() {
     };
   }, [scope]);
 
-  const kpis = extractKpis(data, data?.scope || scope);
+  const resolvedScope = data?.scope || scope;
+  const statCards = buildStatCards(data, resolvedScope);
+  const chartData = buildChartData(execData || data, resolvedScope);
+  const selfSection = data?.sections?.self;
 
   return (
     <section>
@@ -212,16 +483,75 @@ export default function DashboardPage() {
 
       {!loading && data ? (
         <>
-          <div className="grid-2">
-            {kpis.map((kpi) => (
-              <KpiCard key={kpi.title} {...kpi} />
+          {/* Alerts Banner */}
+          <AlertsList data={data} scope={resolvedScope} />
+
+          {/* KPI Stat Cards */}
+          <div className="exec-dashboard-grid">
+            {statCards.map((card) => (
+              <StatCard key={card.title} {...card} />
             ))}
           </div>
 
+          {/* Charts Row — only if chart data is available */}
+          {(chartData.attendance || chartData.grades) ? (
+            <div className="exec-chart-row">
+              {chartData.attendance ? (
+                <div className="chart-card">
+                  <h3>📈 Tendencia de Asistencia (30 días)</h3>
+                  <LineChart
+                    labels={chartData.attendance.labels}
+                    data={chartData.attendance.data}
+                    label="% Asistencia"
+                    color="#10b981"
+                    height={240}
+                  />
+                </div>
+              ) : null}
+              {chartData.grades ? (
+                <div className="chart-card">
+                  <h3>📊 Distribución de Notas</h3>
+                  <DonutChart
+                    labels={chartData.grades.labels}
+                    data={chartData.grades.data}
+                    height={240}
+                    centerLabel="Total"
+                    centerValue={chartData.grades.data.reduce((a, b) => a + b, 0)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Course-level attendance bar chart */}
+          {chartData.courses ? (
+            <div className="chart-card" style={{ marginTop: '1rem' }}>
+              <h3>🏫 Asistencia por Curso</h3>
+              <BarChart
+                labels={chartData.courses.labels}
+                data={chartData.courses.data}
+                label="% Asistencia"
+                color="#6366f1"
+                height={220}
+              />
+            </div>
+          ) : null}
+
+          {/* Teacher-specific: Today's schedule */}
+          {selfSection?.clases_hoy ? (
+            <TeacherSchedule clases={selfSection.clases_hoy} />
+          ) : null}
+
+          {/* Student-specific: Upcoming evaluations */}
+          {selfSection?.proximas_evaluaciones ? (
+            <UpcomingEvaluations evaluaciones={selfSection.proximas_evaluaciones} />
+          ) : null}
+
+          {/* Available scopes */}
           {data.available_scopes?.length > 0 ? (
-            <article className="card" style={{ marginTop: '0.8rem' }}>
+            <article className="card section-card">
               <h3>Scopes Disponibles</h3>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <div className="actions-wrap">
                 {data.available_scopes.map((s) => (
                   <span key={s} className={`badge ${s === data.scope ? 'badge-active' : 'badge-inactive'}`}>
                     {s}
@@ -231,7 +561,7 @@ export default function DashboardPage() {
             </article>
           ) : null}
 
-          <QuickActions scope={data.scope || scope} />
+          <QuickActions scope={resolvedScope} />
         </>
       ) : null}
     </section>

@@ -4,6 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     {% block head_meta %}
     <meta name="description" content="Sistema de Gestión Escolar">
@@ -19,6 +23,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Sistema UI/UX Moderno -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     
@@ -29,13 +34,14 @@
     <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
     
     <!-- Navbar -->
-    <nav class="navbar" role="navigation" style="background-color: var(--color-primary); color: var(--color-white); padding: var(--spacing-md) 0; box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: var(--z-sticky);">
+    {% if not hide_top_navbar %}
+    <nav class="navbar navbar-primary" role="navigation">
         <div class="container-xl">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="navbar-layout">
                 
                 <!-- Logo y Nombre (Brand) -->
                 {% block navbar_brand %}
-                <a href="{% url 'dashboard' %}" style="font-size: var(--text-xl); font-weight: var(--font-bold); color: var(--color-white); text-decoration: none; display: flex; align-items: center; gap: var(--spacing-sm);">
+                <a href="{% url 'dashboard' %}" class="navbar-brand">
                     <i class="fas fa-graduation-cap"></i>
                     <span class="hidden md:inline-block">
                         {% if user.role.nombre == 'estudiante' %}Portal Estudiante
@@ -51,66 +57,66 @@
                 
                 <!-- Menú Desktop por Rol -->
                 {% block navbar_menu %}
-                <div class="hidden lg:flex" style="gap: var(--spacing-md);">
+                <div class="nav-desktop">
                     {% if user.role.nombre == 'estudiante' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="{% url 'ver_mis_clases' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'ver_mis_clases' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-book"></i> Mis Clases
                         </a>
-                        <a href="{% url 'ver_tareas_estudiante' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'ver_tareas_estudiante' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-tasks"></i> Tareas
                         </a>
-                        <a href="{% url 'mi_asistencia_estudiante' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'mi_asistencia_estudiante' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-calendar-check"></i> Asistencia
                         </a>
-                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-bullhorn"></i> Comunicados
                         </a>
                     
                     {% elif user.role.nombre in 'profesor,coordinador,jefe_utp,inspector' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="{% url 'ver_mis_clases_profesor' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'ver_mis_clases_profesor' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-chalkboard-teacher"></i> Mis Clases
                         </a>
-                        <a href="{% url 'registrar_asistencia' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'registrar_asistencia' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-clipboard-check"></i> Asistencia
                         </a>
-                        <a href="{% url 'gestionar_evaluaciones' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'gestionar_evaluaciones' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-graduation-cap"></i> Evaluaciones
                         </a>
-                        <a href="{% url 'libro_clases' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'libro_clases' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-book-open"></i> Libro de Clases
                         </a>
                     
                     {% elif user.role.nombre in 'apoderado,tutor_legal' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="#" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="#" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-user-graduate"></i> Mis Hijos
                         </a>
-                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-bullhorn"></i> Comunicados
                         </a>
-                        <a href="#" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="#" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-dollar-sign"></i> Pagos
                         </a>
                     
                     {% elif user.role.nombre in 'admin,admin_escolar,secretario,contador' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="{% url 'gestionar_estudiantes' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'gestionar_estudiantes' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-users"></i> Estudiantes
                         </a>
-                        <a href="{% url 'gestionar_cursos' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'gestionar_cursos' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-school"></i> Cursos
                         </a>
-                        <a href="{% url 'gestionar_infraestructura' %}" class="btn btn-ghost" style="color: var(--color-white);">
+                        <a href="{% url 'gestionar_infraestructura' %}" class="btn btn-ghost nav-link-white">
                             <i class="fas fa-building"></i> Infraestructura
                         </a>
                     {% endif %}
@@ -119,36 +125,36 @@
                 
                 <!-- Acciones de Usuario (Notificaciones, Theme, User Menu) -->
                 {% block navbar_actions %}
-                <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                <div class="navbar-actions">
                     <!-- Dark Mode Toggle -->
-                    <button id="theme-toggle" class="btn btn-ghost btn-icon" aria-label="Cambiar tema" style="color: var(--color-white);">
+                    <button id="theme-toggle" class="btn btn-ghost btn-icon text-white" aria-label="Cambiar tema">
                         <i class="fas fa-moon"></i>
                     </button>
                     
                     <!-- Notificaciones -->
                     {% if user.is_authenticated %}
-                    <div class="dropdown" id="notifications-dropdown" style="position: relative;">
-                        <button class="btn btn-ghost btn-icon" data-dropdown-toggle="notifications-dropdown" aria-label="Notificaciones" style="color: var(--color-white); position: relative;">
+                    <div class="dropdown pos-relative" id="notifications-dropdown">
+                        <button class="btn btn-ghost btn-icon text-white pos-relative" data-dropdown-toggle="notifications-dropdown" aria-label="Notificaciones">
                             <i class="fas fa-bell"></i>
                             {% if notificaciones_count > 0 %}
-                            <span class="badge badge-error" style="position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;">
+                            <span class="badge badge-error notif-badge">
                                 {{ notificaciones_count }}
                             </span>
                             {% endif %}
                         </button>
-                        <div class="dropdown-menu" style="right: 0; left: auto; min-width: 320px; max-height: 400px; overflow-y: auto;">
-                            <div style="padding: var(--spacing-md); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--color-surface); z-index: 1;">
+                        <div class="dropdown-menu dropdown-wide">
+                            <div class="dropdown-header-sticky">
                                 <h4 class="text-sm font-semibold">Notificaciones</h4>
                             </div>
                             {% if notificaciones_recientes %}
                                 {% for notif in notificaciones_recientes %}
-                                <a href="{{ notif.url }}" class="dropdown-item" style="padding: var(--spacing-sm) var(--spacing-md);">
-                                    <div style="display: flex; gap: var(--spacing-sm);">
-                                        <div style="color: var(--color-primary); flex-shrink: 0;">
+                                <a href="{{ notif.url }}" class="dropdown-item notif-item">
+                                    <div class="notif-item-layout">
+                                        <div class="notif-icon">
                                             <i class="fas fa-{{ notif.icono|default:'bell' }}"></i>
                                         </div>
-                                        <div style="flex: 1; min-width: 0;">
-                                            <div class="text-sm font-medium" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ notif.titulo }}</div>
+                                        <div class="notif-content">
+                                            <div class="text-sm font-medium truncate">{{ notif.titulo }}</div>
                                             <div class="text-xs text-secondary">{{ notif.fecha|timesince }} atrás</div>
                                         </div>
                                     </div>
@@ -159,8 +165,8 @@
                                     Ver todas las notificaciones
                                 </a>
                             {% else %}
-                                <div class="dropdown-item text-center text-secondary" style="padding: var(--spacing-xl);">
-                                    <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: var(--spacing-sm);"></i>
+                                <div class="dropdown-item text-center text-secondary notif-empty">
+                                    <i class="fas fa-inbox notif-empty-icon"></i>
                                     <p class="text-sm">No hay notificaciones</p>
                                 </div>
                             {% endif %}
@@ -170,8 +176,8 @@
                     
                     <!-- Usuario Dropdown -->
                     {% if user.is_authenticated %}
-                    <div class="dropdown" id="user-dropdown" style="position: relative;">
-                        <button class="btn btn-ghost dropdown-toggle" data-dropdown-toggle="user-dropdown" style="color: var(--color-white); display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <div class="dropdown pos-relative" id="user-dropdown">
+                        <button class="btn btn-ghost dropdown-toggle user-dropdown-toggle" data-dropdown-toggle="user-dropdown">
                             <div class="avatar avatar-sm">
                                 {% if user.estudiante.foto %}
                                     <img src="{{ user.estudiante.foto.url }}" alt="{{ user.get_full_name }}">
@@ -183,8 +189,8 @@
                             </div>
                             <span class="hidden md:inline-block">{{ user.get_full_name|truncatewords:2 }}</span>
                         </button>
-                        <div class="dropdown-menu" style="right: 0; left: auto; min-width: 200px;">
-                            <div style="padding: var(--spacing-md); border-bottom: 1px solid var(--border-color);">
+                        <div class="dropdown-menu dropdown-right">
+                            <div class="user-dropdown-header">
                                 <div class="text-sm font-semibold">{{ user.get_full_name }}</div>
                                 <div class="text-xs text-secondary">{{ user.role.nombre|title }}</div>
                             </div>
@@ -208,7 +214,7 @@
                     {% endif %}
                     
                     <!-- Menu Mobile Toggle -->
-                    <button id="mobile-menu-toggle" class="btn btn-ghost btn-icon lg:hidden" aria-label="Menú" style="color: var(--color-white);">
+                    <button id="mobile-menu-toggle" class="btn btn-ghost btn-icon lg:hidden text-white" aria-label="Menú">
                         <i class="fas fa-bars"></i>
                     </button>
                 </div>
@@ -216,45 +222,45 @@
             </div>
             
             <!-- Menú Mobile -->
-            <div id="mobile-menu" class="lg:hidden" style="display: none; margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid rgba(255,255,255,0.2);">
-                <div style="display: flex; flex-direction: column; gap: var(--spacing-xs);">
+            <div id="mobile-menu" class="mobile-menu lg:hidden">
+                <div class="mobile-nav-col">
                     {% if user.role.nombre == 'estudiante' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="{% url 'ver_mis_clases' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'ver_mis_clases' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-book"></i> Mis Clases
                         </a>
-                        <a href="{% url 'ver_tareas_estudiante' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'ver_tareas_estudiante' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-tasks"></i> Tareas
                         </a>
-                        <a href="{% url 'mi_asistencia_estudiante' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'mi_asistencia_estudiante' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-calendar-check"></i> Asistencia
                         </a>
-                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-bullhorn"></i> Comunicados
                         </a>
                     {% elif user.role.nombre in 'profesor,coordinador,jefe_utp,inspector' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="{% url 'ver_mis_clases_profesor' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'ver_mis_clases_profesor' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-chalkboard-teacher"></i> Mis Clases
                         </a>
-                        <a href="{% url 'registrar_asistencia' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'registrar_asistencia' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-clipboard-check"></i> Asistencia
                         </a>
-                        <a href="{% url 'gestionar_evaluaciones' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'gestionar_evaluaciones' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-graduation-cap"></i> Evaluaciones
                         </a>
                     {% elif user.role.nombre in 'apoderado,tutor_legal' %}
-                        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'dashboard' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-home"></i> Inicio
                         </a>
-                        <a href="#" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="#" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-user-graduate"></i> Mis Hijos
                         </a>
-                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost" style="color: var(--color-white); justify-content: flex-start;">
+                        <a href="{% url 'comunicados:lista' %}" class="btn btn-ghost nav-link-mobile">
                             <i class="fas fa-bullhorn"></i> Comunicados
                         </a>
                     {% endif %}
@@ -262,6 +268,7 @@
             </div>
         </div>
     </nav>
+    {% endif %}
     
     <!-- Breadcrumbs -->
     {% block breadcrumbs %}{% endblock %}
@@ -294,18 +301,18 @@
     {% endif %}
     
     <!-- Layout con Sidebar (opcional) -->
-    <div class="{% block layout_class %}container-xl{% endblock %}" style="{% block layout_style %}{% endblock %}">
+    <div class="{% block layout_class %}container-xl{% endblock %}" {% block layout_style %}{% endblock %}>
         {% if sidebar_template %}
-        <div style="display: flex; gap: var(--spacing-lg); margin-top: var(--spacing-xl);">
+        <div class="sidebar-layout">
             <!-- Sidebar -->
             {% block sidebar %}
-            <aside style="width: 250px; flex-shrink: 0;" class="hidden lg:block">
+            <aside class="sidebar-aside hidden lg:block">
                 {% include sidebar_template %}
             </aside>
             {% endblock %}
             
             <!-- Content Area -->
-            <div style="flex: 1; min-width: 0;">
+            <div class="content-area">
                 {% endif %}
                 
                 <!-- Page Header -->
@@ -347,14 +354,14 @@
                 </div>
                 <div>
                     <h4 class="font-semibold mb-md">Enlaces Rápidos</h4>
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: var(--spacing-xs);"><a href="{% url 'dashboard' %}" class="text-sm text-secondary hover:text-primary">Inicio</a></li>
+                    <ul class="footer-links">
+                        <li><a href="{% url 'dashboard' %}" class="text-sm text-secondary">Inicio</a></li>
                         {% if user.role.nombre == 'estudiante' %}
-                        <li style="margin-bottom: var(--spacing-xs);"><a href="{% url 'ver_tareas_estudiante' %}" class="text-sm text-secondary hover:text-primary">Tareas</a></li>
-                        <li style="margin-bottom: var(--spacing-xs);"><a href="{% url 'mi_asistencia_estudiante' %}" class="text-sm text-secondary hover:text-primary">Asistencia</a></li>
+                        <li><a href="{% url 'ver_tareas_estudiante' %}" class="text-sm text-secondary">Tareas</a></li>
+                        <li><a href="{% url 'mi_asistencia_estudiante' %}" class="text-sm text-secondary">Asistencia</a></li>
                         {% elif user.role.nombre in 'profesor,coordinador,jefe_utp,inspector' %}
-                        <li style="margin-bottom: var(--spacing-xs);"><a href="{% url 'ver_mis_clases_profesor' %}" class="text-sm text-secondary hover:text-primary">Mis Clases</a></li>
-                        <li style="margin-bottom: var(--spacing-xs);"><a href="{% url 'libro_clases' %}" class="text-sm text-secondary hover:text-primary">Libro de Clases</a></li>
+                        <li><a href="{% url 'ver_mis_clases_profesor' %}" class="text-sm text-secondary">Mis Clases</a></li>
+                        <li><a href="{% url 'libro_clases' %}" class="text-sm text-secondary">Libro de Clases</a></li>
                         {% endif %}
                     </ul>
                 </div>
@@ -362,7 +369,7 @@
                     <h4 class="font-semibold mb-md">Soporte</h4>
                     <p class="text-sm text-secondary mb-sm">¿Necesitas ayuda?</p>
                     {% url 'mensajeria:bandeja_mensajes' as soporte_mensajes_url %}
-                    <a href="{% if soporte_mensajes_url %}{{ soporte_mensajes_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="text-sm text-primary hover:text-primary-dark">
+                    <a href="{% if soporte_mensajes_url %}{{ soporte_mensajes_url }}{% else %}{% url 'dashboard' %}{% endif %}" class="text-sm text-primary">
                         <i class="fas fa-envelope"></i> Enviar mensaje
                     </a>
                 </div>
@@ -370,7 +377,7 @@
             
             {% block footer_extra %}{% endblock %}
             
-            <div class="text-center mt-lg pt-lg" style="border-top: 1px solid var(--border-color);">
+            <div class="text-center mt-lg pt-lg footer-divider">
                 <p class="text-sm text-tertiary">
                     © {{ year|default:"2026" }} Sistema Escolar. Todos los derechos reservados.
                 </p>
@@ -383,6 +390,8 @@
     
     <!-- JavaScript Core -->
     <script src="{% static 'js/ui-system.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/notificaciones.js' %}"></script>
     
     <script>
         // Toggle Mobile Menu
@@ -401,13 +410,56 @@
                 document.getElementById('mobile-menu').style.display = 'none';
             });
         });
-        
+
+        // Dropdowns del navbar compartido
+        const navbarDropdownButtons = document.querySelectorAll('[data-dropdown-toggle]');
+
+        const closeNavbarDropdowns = () => {
+            document.querySelectorAll('.dropdown-menu.show').forEach((menu) => {
+                menu.classList.remove('show');
+            });
+            navbarDropdownButtons.forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
+        };
+
+        navbarDropdownButtons.forEach((button) => {
+            const targetId = button.getAttribute('data-dropdown-toggle');
+            const dropdownContainer = targetId ? document.getElementById(targetId) : null;
+            const dropdownMenu = dropdownContainer ? dropdownContainer.querySelector('.dropdown-menu') : null;
+
+            if (!dropdownContainer || !dropdownMenu) {
+                return;
+            }
+
+            button.setAttribute('aria-expanded', 'false');
+
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const isOpen = dropdownMenu.classList.contains('show');
+                closeNavbarDropdowns();
+
+                if (!isOpen) {
+                    dropdownMenu.classList.add('show');
+                    button.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            dropdownMenu.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+        });
+
         // Cerrar dropdowns al hacer clic fuera
         document.addEventListener('click', function(event) {
             if (!event.target.closest('.dropdown')) {
-                document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                    menu.style.display = 'none';
-                });
+                closeNavbarDropdowns();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeNavbarDropdowns();
             }
         });
 

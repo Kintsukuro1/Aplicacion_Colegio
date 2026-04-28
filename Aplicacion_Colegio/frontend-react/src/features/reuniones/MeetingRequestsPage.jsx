@@ -178,7 +178,7 @@ export default function MeetingRequestsPage({ me }) {
                 <td>{row.estado_display || row.estado}</td>
                 <td>{row.fecha_propuesta || '-'}</td>
                 <td>
-                  <div className="actions-cell" style={{ flexWrap: 'wrap' }}>
+                  <div className="actions-cell actions-wrap">
                     <input
                       className="small"
                       placeholder="Respuesta"

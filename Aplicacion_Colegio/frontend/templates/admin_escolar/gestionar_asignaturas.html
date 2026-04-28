@@ -182,8 +182,8 @@
             <h2>Horario Semanal{% if curso_seleccionado %} - {{ curso_seleccionado.nombre }}{% endif %}</h2>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <label for="selectorCursoHorario" style="font-weight: 600; color: #2d3748;">Ver curso:</label>
+            <div class="d-flex align-center gap-sm">
+                <label for="selectorCursoHorario" class="font-semibold">Ver curso:</label>
                 <select id="selectorCursoHorario" onchange="cambiarCursoHorario()" 
                         style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; min-width: 150px; cursor: pointer;">
                     {% for curso in cursos %}
@@ -273,7 +273,7 @@
 </div>
 
 <!-- Modal Crear/Editar Asignatura -->
-<div id="modalAsignatura" class="modal-overlay" style="display: none;">
+<div id="modalAsignatura" class="modal-overlay d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitulo">Nueva Asignatura</h3>
@@ -317,7 +317,7 @@
 </div>
 
 <!-- Modal Asignar a Curso/Profesor -->
-<div id="modalAsignar" class="modal-overlay" style="display: none;">
+<div id="modalAsignar" class="modal-overlay d-none">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3>Asignar Asignatura a Curso/Profesor</h3>
@@ -377,14 +377,14 @@
 </div>
 
 <!-- Form Eliminar (Hidden) -->
-<form id="formEliminar" method="POST" action="{% url 'gestionar_asignaturas' %}" style="display: none;">
+<form id="formEliminar" method="POST" action="{% url 'gestionar_asignaturas' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="eliminar">
     <input type="hidden" name="id" id="eliminarId">
 </form>
 
 <!-- Modal Asignar Bloque Horario -->
-<div id="modalAsignarBloque" class="modal-overlay" style="display: none;">
+<div id="modalAsignarBloque" class="modal-overlay d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Asignar Bloque Horario</h3>
@@ -435,7 +435,7 @@
                 </div>
             </div>
             
-            <div id="alerta-conflicto" class="alert-warning" style="display: none;">
+            <div id="alerta-conflicto" class="alert-warning d-none">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p><strong>Conflicto detectado:</strong> <span id="mensaje-conflicto"></span></p>
             </div>
@@ -453,14 +453,14 @@
 </div>
 
 <!-- Form Eliminar Bloque (Hidden) -->
-<form id="formEliminarBloque" method="POST" action="{% url 'gestionar_asignaturas' %}" style="display: none;">
+<form id="formEliminarBloque" method="POST" action="{% url 'gestionar_asignaturas' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="eliminar_bloque">
     <input type="hidden" name="bloque_id" id="eliminarBloqueId">
 </form>
 
 <!-- Form Mover Bloque (Hidden) -->
-<form id="formMoverBloque" method="POST" action="{% url 'gestionar_asignaturas' %}" style="display: none;">
+<form id="formMoverBloque" method="POST" action="{% url 'gestionar_asignaturas' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="mover_bloque">
     <input type="hidden" name="bloque_id" id="moverBloqueId">
@@ -469,7 +469,7 @@
 </form>
 
 <!-- Form Cambiar Curso (Hidden) -->
-<form id="formCambiarCurso" method="POST" action="{% url 'gestionar_asignaturas' %}" style="display: none;">
+<form id="formCambiarCurso" method="POST" action="{% url 'gestionar_asignaturas' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="cambiar_curso_bloque">
     <input type="hidden" name="bloque_id" id="cambiarCursoBloqueId">
@@ -477,7 +477,7 @@
 </form>
 
 <!-- Selector de Curso (Dropdown) -->
-<div id="selectorCurso" class="selector-curso-dropdown" style="display: none;">
+<div id="selectorCurso" class="selector-curso-dropdown d-none">
     <div class="selector-header">
         <h4>Cambiar a curso:</h4>
         <button onclick="cerrarSelectorCurso()" class="btn-close-selector">×</button>

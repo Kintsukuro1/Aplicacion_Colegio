@@ -127,7 +127,7 @@ export default function TeacherClassesPage() {
       {loading ? <p>Cargando clases...</p> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
-      <article className="card" style={{ marginBottom: '0.8rem' }}>
+      <article className="card section-card">
         <h3>Tendencias del Profesor</h3>
         <div className="actions">
           <label>
@@ -155,7 +155,7 @@ export default function TeacherClassesPage() {
         {trendsError ? <div className="error-box">{trendsError}</div> : null}
 
         {!loadingTrends && !trendsError && trends?.tendencia_general ? (
-          <div className="summary-grid" style={{ marginTop: '0.6rem' }}>
+          <div className="summary-grid section-card">
             <div className="summary-tile">
               <small>Promedio general</small>
               <strong>{trends.tendencia_general.promedio_general ?? '-'}</strong>
@@ -172,8 +172,8 @@ export default function TeacherClassesPage() {
         ) : null}
 
         {!loadingTrends && !trendsError && Array.isArray(trends?.asistencia_mensual) && trends.asistencia_mensual.length ? (
-          <div style={{ marginTop: '0.6rem' }}>
-            <h4 style={{ margin: '0 0 0.3rem' }}>Asistencia mensual</h4>
+          <div className="monthly-list section-card">
+            <h4>Asistencia mensual</h4>
             <ul>
               {trends.asistencia_mensual.map((item) => (
                 <li key={item.mes}>
@@ -185,20 +185,20 @@ export default function TeacherClassesPage() {
         ) : null}
       </article>
 
-      <article className="card" style={{ marginBottom: '0.8rem' }}>
+      <article className="card section-card">
         <h3>Mi Horario Semanal</h3>
         {loadingSchedule ? <p>Cargando horario...</p> : null}
         {scheduleError ? <div className="error-box">{scheduleError}</div> : null}
 
         {!loadingSchedule && !scheduleError && schedule ? (
           <>
-            <p style={{ margin: '0 0 0.5rem' }}>
+            <p className="section-card">
               Bloques totales: <strong>{schedule.total_bloques ?? 0}</strong>
             </p>
             <div className="grid-2">
               {Object.entries(schedule.horario || {}).map(([dia, bloques]) => (
-                <article key={dia} className="info-box">
-                  <h4 style={{ marginTop: 0 }}>{dia}</h4>
+                <article key={dia} className="card info-box">
+                  <h4>{dia}</h4>
                   {Array.isArray(bloques) && bloques.length ? (
                     <ul>
                       {bloques.map((bloque) => (
@@ -248,7 +248,7 @@ export default function TeacherClassesPage() {
       </div>
 
       {!loadingTrends && !trendsError && Array.isArray(trends?.tendencias_por_clase) && trends.tendencias_por_clase.length ? (
-        <div className="table-wrap" style={{ marginTop: '0.8rem' }}>
+        <div className="table-wrap section-card">
           <table>
             <thead>
               <tr>

@@ -133,6 +133,22 @@
     margin-left: -1em;
 }
 
+.status-color {
+    font-weight: 700;
+}
+
+.status-available {
+    color: #2ecc71;
+}
+
+.status-unavailable {
+    color: #e74c3c;
+}
+
+.status-assigned {
+    color: #3498db;
+}
+
 /* Formulario */
 .disponibilidad-form {
     background: white;

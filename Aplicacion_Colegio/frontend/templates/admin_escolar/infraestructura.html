@@ -170,7 +170,7 @@
                                     onclick="abrirModalEditar(this)">
                                     ✏️ Editar
                                 </button>
-                                <form method="POST" action="{% url 'gestionar_infraestructura' %}" style="display: inline;" onsubmit="return confirm('¿Eliminar este espacio?');">
+                                <form method="POST" action="{% url 'gestionar_infraestructura' %}" class="d-inline-block" onsubmit="return confirm('¿Eliminar este espacio?');">
                                     {% csrf_token %}
                                     <input type="hidden" name="accion" value="eliminar">
                                     <input type="hidden" name="id" value="{{ item.id }}">
@@ -263,7 +263,7 @@
                 <textarea name="observaciones" rows="3" placeholder="Notas adicionales sobre el espacio..."></textarea>
             </div>
             
-            <div class="area-preview" id="areaPreviewCrear" style="display: none;">
+            <div class="area-preview d-none" id="areaPreviewCrear">
                 <strong>Área calculada:</strong> <span id="areaValueCrear">0</span> m²
             </div>
             
@@ -353,7 +353,7 @@
                 <textarea name="observaciones" id="edit_observaciones" rows="3"></textarea>
             </div>
             
-            <div class="area-preview" id="areaPreviewEditar" style="display: none;">
+            <div class="area-preview d-none" id="areaPreviewEditar">
                 <strong>Área calculada:</strong> <span id="areaValueEditar">0</span> m²
             </div>
             

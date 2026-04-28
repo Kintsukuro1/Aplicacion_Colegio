@@ -44,11 +44,13 @@ from backend.apps.api.resources_views import (
     CursoViewSet,
     MatriculaViewSet,
     StudentViewSet,
+    ActividadResolubleViewSet,
     TeacherAttendanceViewSet,
     TeacherClassViewSet,
     TeacherEvaluationViewSet,
     TeacherGradeViewSet,
     dashboard_summary,
+    dashboard_executive,
     ministerial_monthly_report,
     student_my_attendance,
     student_my_classes,
@@ -57,6 +59,7 @@ from backend.apps.api.resources_views import (
 )
 from backend.apps.api.profile_views import my_profile, change_password
 from backend.apps.api.views import api_health, me, operational_metrics
+from backend.apps.api.tenant_views import tenant_config, tenant_info
 from backend.apps.core.views.coordinador_academico.api import (
     actualizar_estado_planificacion as legacy_coordinador_actualizar_planificacion,
     listar_planificaciones as legacy_coordinador_listar_planificaciones,
@@ -155,6 +158,7 @@ router.register(r'profesor/clases', TeacherClassViewSet, basename='api-profesor-
 router.register(r'profesor/asistencias', TeacherAttendanceViewSet, basename='api-profesor-asistencias')
 router.register(r'profesor/evaluaciones', TeacherEvaluationViewSet, basename='api-profesor-evaluaciones')
 router.register(r'profesor/calificaciones', TeacherGradeViewSet, basename='api-profesor-calificaciones')
+router.register(r'actividades-resolubles', ActividadResolubleViewSet, basename='api-actividades-resolubles')
 # ── Semana 3-4 ──
 router.register(r'profesores', TeacherAdminViewSet, basename='api-profesores-admin')
 router.register(r'firmas', FirmaDigitalViewSet, basename='api-firmas')
@@ -172,6 +176,8 @@ router.register(r'finanzas/estados-cuenta', EstadoCuentaViewSet, basename='api-f
 
 urlpatterns = [
     path('health/', api_health, name='health'),
+    path('tenant/info/', tenant_info, name='tenant_info'),
+    path('tenant/config/', tenant_config, name='tenant_config'),
     path('ops/metrics/', operational_metrics, name='operational_metrics'),
     path('me/', me, name='me_root'),
     path('auth/token/', ColegioTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -187,6 +193,7 @@ urlpatterns = [
     path('notificaciones/dispositivos/<int:device_id>/desactivar/', device_deactivate, name='notifications_device_deactivate'),
     path('notificaciones/stream/', notifications_sse_stream, name='notifications_sse_stream'),
     path('dashboard/resumen/', dashboard_summary, name='dashboard_summary'),
+    path('dashboard/executive/', dashboard_executive, name='dashboard_executive'),
     path(
         'reportes/ministeriales/resumen-mensual/',
         ministerial_monthly_report,

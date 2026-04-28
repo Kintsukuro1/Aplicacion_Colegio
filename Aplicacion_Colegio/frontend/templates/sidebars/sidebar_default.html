@@ -1,0 +1,29 @@
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h2>📘 Portal Escolar</h2>
+        <p class="user-role">Navegación general</p>
+    </div>
+
+    <nav class="sidebar-nav">
+        <ul>
+            <li>
+                <a href="{% url 'dashboard' %}">
+                    <span class="icon">🏠</span>
+                    <span>Inicio</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard' %}?pagina=perfil">
+                    <span class="icon">👤</span>
+                    <span>Mi Perfil</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'accounts:logout' %}">
+                    <span class="icon">🚪</span>
+                    <span>Cerrar sesión</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</aside>

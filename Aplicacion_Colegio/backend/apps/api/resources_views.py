@@ -9,7 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.apps.accounts.models import Apoderado, User
-from backend.apps.academico.models import Asistencia, Calificacion, Evaluacion
+from backend.apps.academico.models import ActividadResoluble, Asistencia, Calificacion, Evaluacion
+from backend.apps.academico.services.resoluble_service import ResolubleService
 from backend.apps.api.base import CapabilityModelViewSet
 from backend.apps.api.helpers import (
     apply_search_filter,
@@ -49,6 +50,10 @@ from backend.apps.api.resources_serializers import (
     EvaluationCompactSerializer,
     GradeSerializer,
     GradeCompactSerializer,
+    ActividadResolubleSerializer,
+    IntentoApproveSerializer,
+    IntentoResolubleSerializer,
+    IntentoSubmitSerializer,
     MatriculaListSerializer,
     MatriculaSerializer,
     StudentCreateUpdateSerializer,
@@ -633,6 +638,98 @@ class TeacherGradeViewSet(CapabilityModelViewSet):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+class ActividadResolubleViewSet(viewsets.ModelViewSet):
+    queryset = ActividadResoluble.objects.select_related('colegio', 'content_type').prefetch_related('preguntas__opciones', 'intentos__respuestas')
+    serializer_class = ActividadResolubleSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        base_qs = super().get_queryset()
+        if not is_global_admin(user):
+            base_qs = base_qs.filter(colegio_id=school_id(user))
+            if is_teacher(user):
+                base_qs = base_qs.filter(
+                    Q(tarea_resoluble__clase__profesor_id=user.id)
+                    | Q(evaluacion_resoluble__clase__profesor_id=user.id)
+                )
+            else:
+                base_qs = base_qs.filter(estado__in=['PUBLICADA', 'APROBADA']).filter(
+                    Q(tarea_resoluble__clase__estudiantes__estudiante_id=user.id)
+                    | Q(evaluacion_resoluble__clase__estudiantes__estudiante_id=user.id)
+                )
+        return base_qs.distinct().order_by('-fecha_creacion', '-id_actividad_resoluble')
+
+    def create(self, request, *args, **kwargs):
+        if not is_global_admin(request.user) and not is_teacher(request.user):
+            raise PermissionDenied('No tiene permisos para crear actividades resolubles.')
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        actividad = serializer.save()
+        output = self.get_serializer(actividad)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        if not is_global_admin(request.user) and not is_teacher(request.user):
+            raise PermissionDenied('No tiene permisos para modificar actividades resolubles.')
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        actividad = serializer.save()
+        output = self.get_serializer(actividad)
+        return Response(output.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        if not is_global_admin(request.user) and not is_teacher(request.user):
+            raise PermissionDenied('No tiene permisos para eliminar actividades resolubles.')
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], url_path='submit')
+    @transaction.atomic
+    def submit(self, request, pk=None):
+        actividad = self.get_object()
+        serializer = IntentoSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if serializer.validated_data['actividad_resoluble_id'] != actividad.id_actividad_resoluble:
+            raise ValidationError({'actividad_resoluble_id': 'No coincide con la actividad solicitada.'})
+
+        intento = ResolubleService.submit_attempt(
+            actividad=actividad,
+            estudiante=request.user,
+            responses=serializer.validated_data['respuestas'],
+        )
+        return Response(IntentoResolubleSerializer(intento, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='approve-attempt')
+    @transaction.atomic
+    def approve_attempt(self, request, pk=None):
+        actividad = self.get_object()
+        serializer = IntentoApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        intento = actividad.intentos.select_related('estudiante').get(id_intento=serializer.validated_data['intento_id'])
+        if not is_global_admin(request.user) and not is_teacher(request.user):
+            raise PermissionDenied('No tiene permisos para aprobar este intento.')
+
+        if not is_global_admin(request.user):
+            if actividad.actividad.__class__.__name__ == 'Tarea' and actividad.actividad.clase.profesor_id != request.user.id:
+                raise PermissionDenied('No puede aprobar intentos de otra clase.')
+            if actividad.actividad.__class__.__name__ == 'Evaluacion' and actividad.actividad.clase.profesor_id != request.user.id:
+                raise PermissionDenied('No puede aprobar intentos de otra clase.')
+
+        calificacion = ResolubleService.approve_attempt(
+            intento=intento,
+            profesor=request.user,
+            retroalimentacion=serializer.validated_data.get('retroalimentacion', ''),
+        )
+        return Response(
+            GradeSerializer(calificacion, context={'request': request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
@@ -640,6 +737,34 @@ def dashboard_summary(request):
         payload = DashboardApiService.build_dashboard_payload(
             user=request.user,
             query_params=request.query_params,
+        )
+    except PermissionDenied as exc:
+        detail = getattr(exc, 'detail', 'No autorizado')
+        return Response({'detail': str(detail)}, status=status.HTTP_403_FORBIDDEN)
+
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_executive(request):
+    """Vista ejecutiva del dashboard con datos para gráficos y alertas."""
+    from backend.apps.api.services.dashboard_analytics_service import DashboardAnalyticsService
+
+    scope = request.query_params.get('scope', 'auto')
+    user_school_id = getattr(request.user, 'rbd_colegio', None)
+    requested_school = request.query_params.get('colegio_id')
+
+    try:
+        effective_school_id = int(requested_school) if requested_school else user_school_id
+    except (TypeError, ValueError):
+        effective_school_id = user_school_id
+
+    try:
+        payload = DashboardAnalyticsService.get_executive_payload(
+            user=request.user,
+            school_id=effective_school_id,
+            scope=scope,
         )
     except PermissionDenied as exc:
         detail = getattr(exc, 'detail', 'No autorizado')

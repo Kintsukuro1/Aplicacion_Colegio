@@ -96,7 +96,7 @@ export default function ActiveSessionsPage({ me }) {
       {loading ? <p>Cargando...</p> : null}
 
       {!loading && !error && dashboard ? (
-        <div className="summary-grid" style={{ marginBottom: '0.8rem' }}>
+        <div className="summary-grid section-card">
           <div className="summary-tile">
             <small>Colegio</small>
             <strong>{dashboard.colegio || '-'}</strong>
@@ -121,12 +121,12 @@ export default function ActiveSessionsPage({ me }) {
       ) : null}
 
       {!loading && !error && dashboard && Array.isArray(dashboard.ips_bloqueadas_lista) ? (
-        <article className="card" style={{ marginBottom: '0.8rem' }}>
+        <article className="card section-card">
           <h3>IPs bloqueadas</h3>
           {dashboard.ips_bloqueadas_lista.length ? (
             <ul>
               {dashboard.ips_bloqueadas_lista.map((ip) => (
-                <li key={ip} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <li key={ip} className="blocked-ip-item">
                   <span>{ip}</span>
                   <button type="button" className="small secondary" onClick={() => unblockIp(ip)}>
                     Desbloquear

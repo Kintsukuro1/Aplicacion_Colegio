@@ -73,6 +73,40 @@
 .badge-info     { background: #4299e1; }
 .badge-secondary { background: #a0aec0; }
 
+.entrevista-modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.label-note {
+    color: #888;
+    font-weight: 400;
+}
+
+.entrevista-followup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.checkbox-inline-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
 @media (max-width: 768px) {
     .psicologo-dashboard { padding: 10px; }
+
+    .entrevista-followup-grid {
+        grid-template-columns: 1fr;
+    }
 }

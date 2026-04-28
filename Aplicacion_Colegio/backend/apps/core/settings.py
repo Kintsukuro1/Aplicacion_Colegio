@@ -102,6 +102,7 @@ MIDDLEWARE = [
     'backend.apps.core.middleware.api_deprecation.ApiDeprecationHeadersMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'backend.common.subdomain_middleware.SubdomainMiddleware',
     'backend.apps.core.middleware.tenant.TenantMiddleware',
     
     # Middleware de suscripción (debe ir DESPUÉS de AuthenticationMiddleware)
@@ -476,6 +477,9 @@ API_ALLOWED_ORIGINS = config(
 )
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in API_ALLOWED_ORIGINS.split(',') if origin.strip()]
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
+
+# Dominio base para resolver subdominios tenant (ej: redpanda.cl).
+TENANT_ROOT_DOMAIN = config('TENANT_ROOT_DOMAIN', default='')
 
 
 # ============================================================================

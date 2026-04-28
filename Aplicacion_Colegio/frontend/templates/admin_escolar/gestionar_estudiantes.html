@@ -249,7 +249,7 @@
 </div>
 
 <!-- Modal Crear/Editar Estudiante -->
-<div id="modalEstudiante" class="modal-overlay" style="display: none;">
+<div id="modalEstudiante" class="modal-overlay d-none">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3 id="modalTitulo">Nuevo Estudiante</h3>
@@ -368,7 +368,7 @@
                 </div>
             </div>
             
-            <div class="form-section" id="observacionesSection" style="display: none;">
+            <div class="form-section d-none" id="observacionesSection">
                 <h4><i class="fas fa-comment-alt"></i> Observaciones</h4>
                 <div class="form-group full-width">
                     <textarea id="observaciones" name="observaciones" rows="3" placeholder="Información adicional..."></textarea>
@@ -388,7 +388,7 @@
 </div>
 
 <!-- Modal Asignar Curso -->
-<div id="modalAsignarCurso" class="modal-overlay" style="display: none;">
+<div id="modalAsignarCurso" class="modal-overlay d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Asignar Curso</h3>
@@ -429,14 +429,14 @@
 </div>
 
 <!-- Form Eliminar (Hidden) -->
-<form id="formEliminar" method="POST" action="{% url 'gestionar_estudiantes' %}" style="display: none;">
+<form id="formEliminar" method="POST" action="{% url 'gestionar_estudiantes' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="eliminar">
     <input type="hidden" name="id" id="eliminarId">
 </form>
 
 <!-- Form Resetear Password (Hidden) -->
-<form id="formResetPassword" method="POST" action="{% url 'gestionar_estudiantes' %}" style="display: none;">
+<form id="formResetPassword" method="POST" action="{% url 'gestionar_estudiantes' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="resetear_password">
     <input type="hidden" name="id" id="resetPasswordId">

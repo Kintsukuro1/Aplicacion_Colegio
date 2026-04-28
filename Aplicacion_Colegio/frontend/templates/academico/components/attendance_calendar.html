@@ -4,11 +4,11 @@
 
 <div class="attendance-calendar card">
     <div class="card-header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="d-flex justify-between align-center">
             <h4 class="card-title">
                 {% if month_name %}{{ month_name }}{% else %}Mes{% endif %} {{ year }}
             </h4>
-            <div style="display: flex; gap: var(--spacing-sm);">
+            <div class="d-flex gap-sm">
                 {% if prev_url %}
                 <a href="{{ prev_url }}" class="btn btn-ghost btn-sm btn-icon" aria-label="Mes anterior">
                     <i class="fas fa-chevron-left"></i>
@@ -69,19 +69,19 @@
         
         {# Leyenda #}
         <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-md); margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color);">
-            <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+            <div class="d-flex align-center gap-xs">
                 <div style="width: 16px; height: 16px; border-radius: var(--radius-sm); background-color: var(--color-success-light);"></div>
                 <span class="text-xs text-secondary">Presente</span>
             </div>
-            <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+            <div class="d-flex align-center gap-xs">
                 <div style="width: 16px; height: 16px; border-radius: var(--radius-sm); background-color: var(--color-error-light);"></div>
                 <span class="text-xs text-secondary">Ausente</span>
             </div>
-            <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+            <div class="d-flex align-center gap-xs">
                 <div style="width: 16px; height: 16px; border-radius: var(--radius-sm); background-color: var(--color-warning-light);"></div>
                 <span class="text-xs text-secondary">Justificado</span>
             </div>
-            <div style="display: flex; align-items: center; gap: var(--spacing-xs);">
+            <div class="d-flex align-center gap-xs">
                 <div style="width: 16px; height: 16px; border-radius: var(--radius-sm); background-color: var(--color-info-light);"></div>
                 <span class="text-xs text-secondary">Tarde</span>
             </div>

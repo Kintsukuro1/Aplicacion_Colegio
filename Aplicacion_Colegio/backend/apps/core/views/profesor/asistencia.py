@@ -5,6 +5,7 @@ from django.urls import reverse
 from backend.apps.academico.services.attendance_service import AttendanceService
 from backend.apps.cursos.models import Clase
 from backend.apps.core.services.orm_access_service import ORMAccessService
+from backend.apps.core.services.dashboard_service import DashboardService
 from backend.common.services.policy_service import PolicyService
 
 
@@ -143,6 +144,11 @@ def registro_asistencia_clase(request, clase_id):
         return redirect('dashboard')
     
     sidebar_template, rol_nombre = _resolve_sidebar_and_role(request.user)
+    navigation_access = DashboardService.get_navigation_access(
+        rol_nombre,
+        user=request.user,
+        school_id=request.user.rbd_colegio,
+    )
     
     context = {
         'clase': clase,
@@ -155,6 +161,7 @@ def registro_asistencia_clase(request, clase_id):
         'escuela_nombre': request.user.colegio.nombre if hasattr(request.user, 'colegio') and request.user.colegio else 'Sistema',
         'year': datetime.now().year,
         'pagina_actual': 'mis_clases',
+        **navigation_access,
     }
     
     return render(request, 'profesor/registro_asistencia.html', context)
@@ -204,6 +211,11 @@ def reporte_asistencia_clase(request, clase_id):
         })
     
     sidebar_template, rol_nombre = _resolve_sidebar_and_role(request.user)
+    navigation_access = DashboardService.get_navigation_access(
+        rol_nombre,
+        user=request.user,
+        school_id=request.user.rbd_colegio,
+    )
     
     context = {
         'clase': clase,
@@ -217,6 +229,7 @@ def reporte_asistencia_clase(request, clase_id):
         'escuela_nombre': request.user.colegio.nombre if hasattr(request.user, 'colegio') and request.user.colegio else 'Sistema',
         'year': datetime.now().year,
         'pagina_actual': 'mis_clases',
+        **navigation_access,
     }
     
     return render(request, 'profesor/reporte_asistencia.html', context)

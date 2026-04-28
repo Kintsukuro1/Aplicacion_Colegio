@@ -299,7 +299,7 @@ export default function AdminImportExportPage({ me }) {
               ))}
             </select>
           </label>
-          <div className="actions" style={{ marginTop: '0.7rem' }}>
+          <div className="actions section-card">
             <button type="button" onClick={onDownloadTemplate} disabled={exporting || importing}>
               Descargar Plantilla
             </button>
@@ -307,7 +307,7 @@ export default function AdminImportExportPage({ me }) {
         </article>
       </div>
 
-      <article className="card" style={{ marginTop: '0.8rem' }}>
+      <article className="card section-card">
         <h3>Importacion Masiva</h3>
         <form className="form-grid" onSubmit={onImportSubmit}>
           <label>
@@ -360,7 +360,7 @@ export default function AdminImportExportPage({ me }) {
         ) : null}
       </article>
 
-      <article className="card" style={{ marginTop: '0.8rem' }}>
+      <article className="card section-card">
         <h3>Exportacion de Reportes</h3>
         <div className="form-grid">
           <label>

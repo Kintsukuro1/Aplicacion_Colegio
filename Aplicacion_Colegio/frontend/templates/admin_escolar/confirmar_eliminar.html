@@ -35,7 +35,7 @@
                     
                     <div class="button-group">
                         <a href="{% url 'importar_datos' %}" class="btn btn-cancel">❌ Cancelar</a>
-                        <form method="POST" style="display: inline;">
+                        <form method="POST" class="d-inline-block">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-delete">🗑️ Sí, Eliminar Usuario</button>
                         </form>

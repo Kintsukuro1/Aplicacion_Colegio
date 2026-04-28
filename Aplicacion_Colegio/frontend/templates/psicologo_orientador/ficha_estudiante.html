@@ -6,12 +6,12 @@
         <h2><span class="section-icon">📋</span> Ficha integral del estudiante</h2>
     </div>
 
-    <div class="module-card" style="margin-bottom: 1.25rem;">
+    <div class="module-card mb-3">
         <div class="module-card-header">
             <h3>Seleccionar estudiante</h3>
         </div>
         <div class="module-card-body">
-            <select id="selector-estudiante" class="form-control" style="max-width: 420px;" onchange="if(this.value){ window.location.href='?pagina=ficha_estudiante&estudiante_id='+this.value; }">
+            <select id="selector-estudiante" class="form-control selector-estudiante" onchange="if(this.value){ window.location.href='?pagina=ficha_estudiante&estudiante_id='+this.value; }">
                 <option value="">-- Seleccione un estudiante --</option>
                 {% for est in estudiantes %}
                 <option value="{{ est.id }}" {% if estudiante_seleccionado and est.id == estudiante_seleccionado.id %}selected{% endif %}>{{ est.apellido_paterno }} {{ est.apellido_materno|default:"" }}, {{ est.nombre }}</option>
@@ -44,21 +44,21 @@
         </div>
     </div>
 
-    <div style="display:flex; gap:0.75rem; margin: 0 0 1.25rem 0; flex-wrap:wrap; align-items:center;">
+    <div class="ficha-actions-row">
         <button id="btn-nueva-entrevista" class="btn btn-primary">Registrar entrevista</button>
         <button id="btn-nueva-derivacion" class="btn btn-secondary">Registrar derivación</button>
 
-        <div style="margin-left:auto; display:flex; align-items:center; gap:0.5rem; background:#f8f9fa; padding:0.5rem 1rem; border-radius:8px; border:1px solid #ddd;">
+        <div class="pie-status-wrap">
             <strong>Programa PIE:</strong>
-            <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 24px; margin: 0;">
-                <input type="checkbox" id="toggle-pie" onchange="togglePieStatus({{ estudiante_seleccionado.id }}, this.checked)" {% if ficha.es_pie %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
-                <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px;"></span>
+            <label class="switch pie-switch">
+                <input type="checkbox" id="toggle-pie" class="switch-input" onchange="togglePieStatus({{ estudiante_seleccionado.id }}, this.checked)" {% if ficha.es_pie %}checked{% endif %}>
+                <span class="slider pie-slider"></span>
             </label>
-            <span id="pie-status-text" style="font-weight: 600; color:{% if ficha.es_pie %}#28a745{% else %}#6c757d{% endif %};">{% if ficha.es_pie %}Activo{% else %}Inactivo{% endif %}</span>
+            <span id="pie-status-text" class="pie-status-text {% if ficha.es_pie %}pie-active{% else %}pie-inactive{% endif %}">{% if ficha.es_pie %}Activo{% else %}Inactivo{% endif %}</span>
         </div>
     </div>
 
-    <div class="module-card" style="margin-bottom: 1.25rem;">
+    <div class="module-card mb-3">
         <div class="module-card-header">
             <h3>🗣️ Historial de entrevistas</h3>
         </div>
@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    <div class="module-card" style="margin-bottom: 1.25rem;">
+    <div class="module-card mb-3">
         <div class="module-card-header">
             <h3>📝 Anotaciones de convivencia</h3>
         </div>
@@ -161,14 +161,14 @@
     </div>
     {% else %}
     <div class="module-card">
-        <div class="module-card-body" style="text-align:center; padding: 3rem;">
-            <p style="color: var(--text-secondary); font-size: 1.05rem;">Seleccione un estudiante para ver su ficha integral</p>
+        <div class="module-card-body empty-ficha-state">
+            <p class="empty-ficha-text">Seleccione un estudiante para ver su ficha integral</p>
         </div>
     </div>
     {% endif %}
 </div>
 
-<div id="modal-entrevista" class="modal" style="display:none;">
+<div id="modal-entrevista" class="modal d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h4>Nueva entrevista</h4>
@@ -177,7 +177,7 @@
         <div class="modal-body">
             <label>Fecha y hora</label>
             <input type="datetime-local" id="ent-fecha" class="form-control" />
-            <label style="margin-top:0.5rem;">Motivo</label>
+            <label class="mt-2">Motivo</label>
             <select id="ent-motivo" class="form-control">
                 <option value="ACADEMICO">Académico</option>
                 <option value="SOCIOEMOCIONAL">Socioemocional</option>
@@ -185,25 +185,25 @@
                 <option value="FAMILIAR">Familiar</option>
                 <option value="DERIVACION">Derivación</option>
             </select>
-            <label style="margin-top:0.5rem;">Observaciones</label>
+            <label class="mt-2">Observaciones</label>
             <textarea id="ent-observaciones" class="form-control" rows="3"></textarea>
-            <label style="margin-top:0.5rem;">Acuerdos (opcional)</label>
+            <label class="mt-2">Acuerdos (opcional)</label>
             <textarea id="ent-acuerdos" class="form-control" rows="2"></textarea>
-            <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
-                <input type="checkbox" id="ent-seguimiento" /> <label for="ent-seguimiento" style="margin:0;">Requiere seguimiento</label>
+            <div class="modal-inline-row-gap">
+                <input type="checkbox" id="ent-seguimiento" /> <label for="ent-seguimiento" class="m-0">Requiere seguimiento</label>
             </div>
-            <label style="margin-top:0.5rem;">Próxima sesión (opcional)</label>
+            <label class="mt-2">Próxima sesión (opcional)</label>
             <input type="date" id="ent-proxima" class="form-control" />
-            <div id="ent-error" style="color:#c00; margin-top:0.5rem;"></div>
+            <div id="ent-error" class="text-error-sm"></div>
         </div>
-        <div class="modal-footer" style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <div class="modal-footer actions-end">
             <button class="btn btn-secondary" data-close="modal-entrevista">Cancelar</button>
             <button class="btn btn-primary" id="ent-guardar">Guardar</button>
         </div>
     </div>
 </div>
 
-<div id="modal-derivacion" class="modal" style="display:none;">
+<div id="modal-derivacion" class="modal d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h4>Nueva derivación</h4>
@@ -212,15 +212,15 @@
         <div class="modal-body">
             <label>Profesional destino</label>
             <input type="text" id="der-profesional" class="form-control" />
-            <label style="margin-top:0.5rem;">Especialidad</label>
+            <label class="mt-2">Especialidad</label>
             <input type="text" id="der-especialidad" class="form-control" />
-            <label style="margin-top:0.5rem;">Motivo</label>
+            <label class="mt-2">Motivo</label>
             <textarea id="der-motivo" class="form-control" rows="3"></textarea>
-            <label style="margin-top:0.5rem;">Fecha derivación</label>
+            <label class="mt-2">Fecha derivación</label>
             <input type="date" id="der-fecha" class="form-control" value="{{ today|default:'' }}" />
-            <div id="der-error" style="color:#c00; margin-top:0.5rem;"></div>
+            <div id="der-error" class="text-error-sm"></div>
         </div>
-        <div class="modal-footer" style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <div class="modal-footer actions-end">
             <button class="btn btn-secondary" data-close="modal-derivacion">Cancelar</button>
             <button class="btn btn-primary" id="der-guardar">Guardar</button>
         </div>

@@ -27,23 +27,23 @@
 </div>
 
 <!-- Resumen Académico -->
-<div class="card mb-xl" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: var(--color-white); border: none;">
+<div class="card mb-xl gradient-header">
     <div class="card-body py-xl">
         <h2 class="text-2xl font-bold mb-lg">📈 Resumen Académico</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-lg">
             <div class="text-center">
-                <p class="text-sm mb-sm" style="opacity: 0.9;">Promedio General</p>
+                <p class="text-sm mb-sm opacity-90">Promedio General</p>
                 <p class="text-5xl font-bold" style="color: #fbbf24;">{{ promedio_general|default:"0.0"|floatformat:1 }}</p>
                 <div class="progress mt-md" style="background-color: rgba(255,255,255,0.2);">
                     <div class="progress-bar" style="width: {{ promedio_general|default:0|floatformat:0 }}0%; background-color: #fbbf24;"></div>
                 </div>
             </div>
             <div class="text-center">
-                <p class="text-sm mb-sm" style="opacity: 0.9;">Total Evaluaciones</p>
+                <p class="text-sm mb-sm opacity-90">Total Evaluaciones</p>
                 <p class="text-5xl font-bold">{{ total_notas|default:"0" }}</p>
             </div>
             <div class="text-center">
-                <p class="text-sm mb-sm" style="opacity: 0.9;">Curso Actual</p>
+                <p class="text-sm mb-sm opacity-90">Curso Actual</p>
                 <p class="text-2xl font-bold">{{ curso_actual.nombre|default:"No asignado" }}</p>
             </div>
         </div>
@@ -57,12 +57,12 @@
     </h2>
     
     {% if notas_por_asignatura %}
-        <div style="display: flex; flex-direction: column; gap: var(--spacing-lg);">
+        <div class="d-flex flex-col gap-lg">
             {% for item in notas_por_asignatura %}
             <div class="card {% if item.promedio < 4.0 %}border-error{% endif %} transition hover:shadow-lg">
                 <div class="card-header" style="background-color: {% if item.promedio >= 4.0 %}rgba(72, 187, 120, 0.1){% else %}rgba(239, 68, 68, 0.1){% endif %};">
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-md">
-                        <div style="flex: 1;">
+                        <div class="flex-1">
                             <h3 class="text-xl font-bold mb-xs">{{ item.asignatura }}</h3>
                             <p class="text-sm text-secondary">
                                 <i class="fas fa-chalkboard-teacher"></i> {{ item.profesor }}
@@ -144,7 +144,7 @@
                         <span class="text-sm text-secondary">
                             <i class="fas fa-clipboard-list"></i> Total evaluaciones: {{ item.total_evaluaciones }}
                         </span>
-                        <div class="progress" style="width: 200px;">
+                        <div class="progress w-200">
                             <div class="progress-bar {% if item.promedio >= 4.0 %}progress-bar-success{% else %}progress-bar-error{% endif %}" 
                                  style="width: {{ item.promedio|default:0|floatformat:0 }}0%">
                             </div>
@@ -157,7 +157,7 @@
     {% else %}
         <div class="card">
             <div class="card-body py-3xl text-center">
-                <div style="width: 6rem; height: 6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; background-color: var(--bg-secondary); margin: 0 auto var(--spacing-lg);">
+                <div class="icon-circle-lg">
                     <i class="fas fa-clipboard-list text-secondary"></i>
                 </div>
                 <h3 class="text-xl font-semibold mb-sm">No tienes calificaciones registradas</h3>

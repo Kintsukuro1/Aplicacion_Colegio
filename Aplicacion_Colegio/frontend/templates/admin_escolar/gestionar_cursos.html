@@ -196,7 +196,7 @@
 </div>
 
 <!-- Modal Crear/Editar Curso -->
-<div id="modalCurso" class="modal-overlay" style="display: none;">
+<div id="modalCurso" class="modal-overlay d-none">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitulo">Nuevo Curso</h3>
@@ -243,7 +243,7 @@
 </div>
 
 <!-- Modal Asignar Estudiantes -->
-<div id="modalEstudiantes" class="modal-overlay" style="display: none;">
+<div id="modalEstudiantes" class="modal-overlay d-none">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3>Asignar Estudiantes</h3>
@@ -303,7 +303,7 @@
 </div>
 
 <!-- Modal Asignar Profesores -->
-<div id="modalProfesores" class="modal-overlay" style="display: none;">
+<div id="modalProfesores" class="modal-overlay d-none">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3>Asignar Profesores a Asignaturas</h3>
@@ -356,7 +356,7 @@
 </div>
 
 <!-- Form Eliminar (Hidden) -->
-<form id="formEliminar" method="POST" action="{% url 'gestionar_cursos' %}" style="display: none;">
+<form id="formEliminar" method="POST" action="{% url 'gestionar_cursos' %}" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="eliminar">
     <input type="hidden" name="id" id="eliminarId">

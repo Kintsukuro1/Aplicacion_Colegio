@@ -174,10 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBadge() {
         if (unreadCount > 0) {
-            badge.style.display = 'inline-flex';
+            badge.classList.remove('d-none');
             badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
         } else {
-            badge.style.display = 'none';
+            badge.classList.add('d-none');
             badge.textContent = '0';
         }
     }
@@ -260,15 +260,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const isOpen = () => dropdown.style.display !== 'none';
+    const isOpen = () => !dropdown.classList.contains('d-none');
 
     const open = () => {
-        dropdown.style.display = 'block';
+        dropdown.classList.remove('d-none');
         fetchNotifications();
     };
 
     const close = () => {
-        dropdown.style.display = 'none';
+        dropdown.classList.add('d-none');
     };
 
     const toggle = () => {
@@ -280,8 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Asegura estado inicial consistente
-    if (!dropdown.style.display) {
-        dropdown.style.display = 'none';
+    if (!dropdown.classList.contains('d-none')) {
+        dropdown.classList.add('d-none');
     }
 
     btn.addEventListener('click', (event) => {

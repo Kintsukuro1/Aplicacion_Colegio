@@ -4,15 +4,15 @@
 <!-- CATÁLOGO - BIBLIOTECARIO DIGITAL -->
 
 <div class="bibliotecario-dashboard">
-    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="section-header d-flex justify-between align-center">
         <h2><span class="section-icon">📖</span> Catálogo de Recursos Digitales</h2>
         <button class="btn btn-primary" onclick="abrirModalRecurso()">+ Nuevo Recurso</button>
     </div>
-    <div id="msg-catalogo-global" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1rem;"></div>
+    <div id="msg-catalogo-global" class="feedback-box"></div>
 
     <div
         style="margin-bottom:1rem;display:flex;gap:1.5rem;align-items:center;background:#f8f9fa;padding:1rem;border-radius:8px;">
-        <span style="font-weight:600;">Filtros:</span>
+        <span class="font-semibold">Filtros:</span>
         <label style="cursor:pointer;"><input type="checkbox" id="filter-plan-lector" onchange="filtrarCatalogo()">
             Mostrar solo Plan Lector</label>
         <select id="filter-tipo" onchange="filtrarCatalogo()"
@@ -81,22 +81,22 @@
 
 <!-- Modal Nuevo Recurso -->
 <div id="modal-recurso"
-    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
+    class="modal-overlay">
     <div
-        style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
-        <h3 style="margin-bottom:1.5rem;">📖 Nuevo Recurso Digital</h3>
-        <div id="msg-recurso" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1rem;"></div>
+        class="modal-content">
+        <h3 class="mb-4">📖 Nuevo Recurso Digital</h3>
+        <div id="msg-recurso" class="feedback-box"></div>
         <form id="form-recurso" onsubmit="enviarRecurso(event)">
             {% csrf_token %}
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Título *</label>
+            <div class="mb-3">
+                <label class="label-block">Título *</label>
                 <input type="text" id="rec-titulo" required placeholder="Nombre del recurso"
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    class="form-input">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div class="grid-2col">
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Tipo</label>
-                    <select id="rec-tipo" style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Tipo</label>
+                    <select id="rec-tipo" class="form-input">
                         <option value="LIBRO">Libro</option>
                         <option value="VIDEO">Video</option>
                         <option value="DOCUMENTO" selected>Documento</option>
@@ -107,31 +107,31 @@
                 </div>
                 <div>
                     <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1.6rem;cursor:pointer;">
-                        <input type="checkbox" id="rec-publicado" style="width:18px;height:18px;">
-                        <span style="font-weight:600;">Publicar de inmediato</span>
+                        <input type="checkbox" id="rec-publicado" class="chip-sm">
+                        <span class="font-semibold">Publicar de inmediato</span>
                     </label>
                     <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.8rem;cursor:pointer;">
-                        <input type="checkbox" id="rec-plan-lector" style="width:18px;height:18px;">
-                        <span style="font-weight:600;">Es Plan Lector</span>
+                        <input type="checkbox" id="rec-plan-lector" class="chip-sm">
+                        <span class="font-semibold">Es Plan Lector</span>
                     </label>
                 </div>
             </div>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">URL Externa</label>
+            <div class="mb-3">
+                <label class="label-block">URL Externa</label>
                 <input type="url" id="rec-url" placeholder="https://..."
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    class="form-input">
             </div>
-            <div style="margin-bottom:1.5rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Descripción</label>
+            <div class="mb-4">
+                <label class="label-block">Descripción</label>
                 <textarea id="rec-descripcion" rows="3"
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;resize:vertical;"
+                    class="form-textarea"
                     placeholder="Descripción del recurso..."></textarea>
             </div>
-            <div style="display:flex;gap:1rem;justify-content:flex-end;">
+            <div class="d-flex gap-sm">
                 <button type="button" onclick="cerrarModalRecurso()"
-                    style="padding:0.6rem 1.5rem;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;">Cancelar</button>
+                    class="btn-outline">Cancelar</button>
                 <button type="submit" id="btn-submit-recurso"
-                    style="padding:0.6rem 1.5rem;border:none;border-radius:6px;background:#f39c12;color:#fff;cursor:pointer;font-weight:600;">Crear
+                    class="btn-warning-solid">Crear
                     Recurso</button>
             </div>
         </form>

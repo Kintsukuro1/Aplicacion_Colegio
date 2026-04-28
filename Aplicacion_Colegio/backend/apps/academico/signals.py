@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from backend.apps.academico.models import Calificacion, EntregaTarea, Evaluacion, Tarea
+from backend.apps.academico.models import Calificacion, EntregaTarea, Evaluacion, IntentoResoluble, Tarea
 from backend.apps.notificaciones.models import Notificacion
 
 
@@ -51,28 +51,15 @@ def notificar_evaluacion_nueva(sender, instance, created, **kwargs):
     if not created:
         return
 
-    enlace = _build_clase_link(instance.clase_id, f'&evaluacion={instance.id_evaluacion}')
-
-    for clase_estudiante in instance.clase.estudiantes.select_related('estudiante').filter(activo=True):
-        estudiante = clase_estudiante.estudiante
-        Notificacion.objects.create(
-            destinatario=estudiante,
-            tipo='evaluacion',
-            titulo=f'Evaluacion planificada: {instance.nombre}',
-            mensaje=f'Fecha programada: {instance.fecha_evaluacion}.',
-            enlace=enlace,
-            prioridad='normal',
-        )
-
     profesor = instance.clase.profesor
     if profesor:
         Notificacion.objects.create(
             destinatario=profesor,
             tipo='evaluacion',
-            titulo=f'Evaluacion programada: {instance.nombre}',
-            mensaje='La evaluacion fue agendada correctamente.',
-            enlace=enlace,
-            prioridad='normal',
+            titulo=f'Revisión pendiente: {instance.nombre}',
+            mensaje='La evaluación quedó pendiente de revisión antes de publicarse.',
+            enlace=_build_clase_link(instance.clase_id, f'&evaluacion={instance.id_evaluacion}'),
+            prioridad='alta',
         )
 
 
@@ -107,4 +94,29 @@ def notificar_entrega_tarea(sender, instance, created, **kwargs):
         mensaje=f'{instance.estudiante.get_full_name()} envio su tarea.',
         enlace=_build_clase_link(instance.tarea.clase_id, '&tab=entregas'),
         prioridad='normal',
+    )
+
+
+def _resolver_profesor_desde_actividad_resoluble(instance):
+    actividad = getattr(instance.actividad_resoluble, 'actividad', None)
+    clase = getattr(actividad, 'clase', None)
+    return getattr(clase, 'profesor', None), getattr(clase, 'id_curso', None) or getattr(clase, 'id', None)
+
+
+@receiver(post_save, sender=IntentoResoluble)
+def notificar_intento_resoluble_pendiente(sender, instance, created, **kwargs):
+    if instance.estado != 'PENDIENTE_APROBACION':
+        return
+
+    profesor, clase_id = _resolver_profesor_desde_actividad_resoluble(instance)
+    if not profesor or not clase_id:
+        return
+
+    Notificacion.objects.create(
+        destinatario=profesor,
+        tipo='sistema',
+        titulo='Revisión pendiente de actividad online',
+        mensaje=f'{instance.estudiante.get_full_name()} completó una actividad lista para revisión.',
+        enlace='/profesor/evaluaciones/',
+        prioridad='alta',
     )

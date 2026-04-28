@@ -5,10 +5,10 @@
 
 {% block content %}
 <!-- Banner de Bienvenida -->
-<div class="card mb-xl" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: var(--color-white); border: none;">
+<div class="card mb-xl gradient-header">
     <div class="card-body py-3xl">
         <h1 class="text-4xl font-bold mb-sm">¡Bienvenido, {{ nombre_usuario }}! 👋</h1>
-        <p class="text-xl" style="opacity: 0.9;">{{ year }} - Portal Académico</p>
+        <p class="text-xl opacity-90">{{ year }} - Portal Académico</p>
     </div>
 </div>
 
@@ -18,7 +18,7 @@
     <div class="card card-compact transition hover:scale-105">
         <div class="card-body">
             <div class="flex items-center justify-between">
-                <div style="flex: 1;">
+                <div class="flex-1">
                     <p class="text-sm text-secondary mb-xs">Clases Hoy</p>
                     <h3 class="text-3xl font-bold">{{ clases_hoy|default:"0" }}</h3>
                 </div>
@@ -33,7 +33,7 @@
     <div class="card card-compact transition hover:scale-105">
         <div class="card-body">
             <div class="flex items-center justify-between">
-                <div style="flex: 1;">
+                <div class="flex-1">
                     <p class="text-sm text-secondary mb-xs">Tareas Pendientes</p>
                     <h3 class="text-3xl font-bold">{{ tareas_pendientes|default:"0" }}</h3>
                     {% if tareas_urgentes > 0 %}
@@ -53,10 +53,10 @@
     <div class="card card-compact transition hover:scale-105">
         <div class="card-body">
             <div class="flex items-center justify-between">
-                <div style="flex: 1;">
+                <div class="flex-1">
                     <p class="text-sm text-secondary mb-xs">Promedio General</p>
                     <h3 class="text-3xl font-bold">{{ promedio_general|default:"0.0"|floatformat:1 }}</h3>
-                    <div class="progress mt-sm" style="height: 6px;">
+                    <div class="progress mt-sm progress-bar-sm">
                         <div class="progress-bar progress-bar-success" style="width: {{ promedio_general|default:0|floatformat:0 }}0%"></div>
                     </div>
                 </div>
@@ -71,7 +71,7 @@
     <div class="card card-compact transition hover:scale-105">
         <div class="card-body">
             <div class="flex items-center justify-between">
-                <div style="flex: 1;">
+                <div class="flex-1">
                     <p class="text-sm text-secondary mb-xs">Asistencia</p>
                     <h3 class="text-3xl font-bold">{{ porcentaje_asistencia|default:"100"|floatformat:0 }}%</h3>
                     {% if porcentaje_asistencia >= 85 %}
@@ -235,7 +235,7 @@
                     <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-2xl); background-color: rgba(239, 68, 68, 0.1); color: var(--color-error); flex-shrink: 0;">
                         <i class="fas fa-bullhorn"></i>
                     </div>
-                    <div style="flex: 1;">
+                    <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-xs">Comunicados</h3>
                         <p class="text-sm text-secondary mb-sm">Leer avisos y comunicados importantes</p>
                         <a href="{% url 'comunicados:lista' %}" class="btn btn-primary btn-sm">
@@ -253,7 +253,7 @@
                     <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-2xl); background-color: rgba(102, 126, 234, 0.1); color: var(--color-primary); flex-shrink: 0;">
                         <i class="fas fa-envelope"></i>
                     </div>
-                    <div style="flex: 1;">
+                    <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-xs">Mensajes</h3>
                         <p class="text-sm text-secondary mb-sm">Comunicarte con profesores</p>
                         {% url 'mensajeria:bandeja_mensajes' as mensajes_url %}
@@ -284,7 +284,7 @@
                     <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-2xl); background-color: rgba(246, 173, 85, 0.1); color: var(--color-warning); flex-shrink: 0;">
                         <i class="fas fa-certificate"></i>
                     </div>
-                    <div style="flex: 1;">
+                    <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-xs">Certificados</h3>
                         <p class="text-sm text-secondary mb-sm">Descargar certificados oficiales</p>
                         <a href="{% url 'dashboard' %}?pagina=mis_certificados" class="btn btn-outline btn-sm">
@@ -302,7 +302,7 @@
                     <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--text-2xl); background-color: rgba(139, 92, 246, 0.1); color: var(--color-secondary); flex-shrink: 0;">
                         <i class="fas fa-user-circle"></i>
                     </div>
-                    <div style="flex: 1;">
+                    <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-xs">Mi Perfil</h3>
                         <p class="text-sm text-secondary mb-sm">Ver y editar tu información</p>
                         <a href="{% url 'dashboard' %}?pagina=perfil" class="btn btn-outline btn-sm">

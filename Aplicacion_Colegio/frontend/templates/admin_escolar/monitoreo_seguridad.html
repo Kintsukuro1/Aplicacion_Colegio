@@ -57,7 +57,7 @@
                     <tr>
                         <td><span class="ip-address">{{ ip.ip_address }}</span></td>
                         <td>
-                            <form method="post" action="{% url 'desbloquear_ip' %}" style="display: inline;">
+                            <form method="post" action="{% url 'desbloquear_ip' %}" class="d-inline-block">
                                 {% csrf_token %}
                                 <input type="hidden" name="ip_address" value="{{ ip.ip_address }}">
                                 <button type="submit" class="btn-desbloquear" onclick="return confirm('¿Desbloquear esta IP?')">

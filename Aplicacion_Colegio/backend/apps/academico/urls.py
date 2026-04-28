@@ -12,6 +12,7 @@ from backend.apps.academico.views.academic_views import (
 )
 from backend.apps.academico.views.academic_management_views import (
     gestionar_asistencia_profesor,
+    crear_evaluacion_online_profesor,
     gestionar_evaluaciones_calificaciones,
     libro_clases,
 )
@@ -55,6 +56,7 @@ urlpatterns = [
     # Teacher management views (FASE 7)
     path('profesor/gestionar-asistencia/', gestionar_asistencia_profesor, name='gestionar_asistencia_profesor'),
     path('profesor/gestionar-evaluaciones/', gestionar_evaluaciones_calificaciones, name='gestionar_evaluaciones_calificaciones'),
+    path('profesor/evaluaciones-online/', crear_evaluacion_online_profesor, name='crear_evaluacion_online_profesor'),
     path('profesor/libro-clases/', libro_clases, name='libro_clases'),
     
     # Reports & Export (FASE 8)

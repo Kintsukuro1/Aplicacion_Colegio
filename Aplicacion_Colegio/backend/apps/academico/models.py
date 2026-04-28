@@ -5,7 +5,10 @@ Compatible con autopoblar.py sin modificaciones
 """
 import hashlib
 import json
+from decimal import Decimal
 
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -228,6 +231,12 @@ class Evaluacion(models.Model):
     )
     activa = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    actividades_resolubles = GenericRelation(
+        'ActividadResoluble',
+        content_type_field='content_type',
+        object_id_field='object_id',
+        related_query_name='evaluacion_resoluble',
+    )
     objects = TenantManager(school_field='colegio_id')
 
     class Meta:
@@ -513,6 +522,12 @@ class Tarea(models.Model):
     es_publica = models.BooleanField(default=True)
     creada_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='tareas_creadas')
     activa = models.BooleanField(default=True)
+    actividades_resolubles = GenericRelation(
+        'ActividadResoluble',
+        content_type_field='content_type',
+        object_id_field='object_id',
+        related_query_name='tarea_resoluble',
+    )
     objects = TenantManager(school_field='colegio_id')
     
     class Meta:
@@ -591,6 +606,261 @@ class EntregaTarea(models.Model):
             return f"{size:.1f} TB"
         except:
             return "N/A"
+
+
+class ActividadResoluble(models.Model):
+    """Capa común para tareas y evaluaciones con resolución PDF u online."""
+
+    MODALIDADES = [
+        ('PDF', 'PDF'),
+        ('ONLINE', 'Online'),
+        ('MIXTA', 'Mixta'),
+    ]
+
+    ESTADOS = [
+        ('BORRADOR', 'Borrador'),
+        ('PUBLICADA', 'Publicada'),
+        ('EN_REVISION', 'En revisión'),
+        ('APROBADA', 'Aprobada'),
+        ('RECHAZADA', 'Rechazada'),
+    ]
+
+    id_actividad_resoluble = models.AutoField(primary_key=True)
+    colegio = models.ForeignKey(Colegio, on_delete=models.CASCADE, related_name='actividades_resolubles')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    actividad = GenericForeignKey('content_type', 'object_id')
+    titulo = models.CharField(max_length=200, blank=True, default='')
+    modalidad = models.CharField(max_length=10, choices=MODALIDADES, default='PDF')
+    archivo_pdf = models.FileField(upload_to='actividades/pdf/%Y/%m/', blank=True, null=True)
+    requiere_aprobacion_docente = models.BooleanField(default=True)
+    auto_correccion_activa = models.BooleanField(default=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='BORRADOR')
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='colegio_id')
+
+    class Meta:
+        db_table = 'actividad_resoluble'
+        verbose_name = 'Actividad Resoluble'
+        verbose_name_plural = 'Actividades Resolubles'
+        unique_together = ('content_type', 'object_id')
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        etiqueta = self.titulo or getattr(self.actividad, 'titulo', None) or getattr(self.actividad, 'nombre', None) or 'Actividad'
+        return f"{etiqueta} - {self.get_modalidad_display()}"
+
+    def es_online(self):
+        return self.modalidad in {'ONLINE', 'MIXTA'}
+
+    def tiene_pdf(self):
+        return bool(self.archivo_pdf)
+
+
+class PreguntaResoluble(models.Model):
+    """Pregunta configurable para resolución online."""
+
+    TIPOS = [
+        ('opcion_multiple', 'Opción múltiple'),
+        ('respuesta_corta', 'Respuesta corta'),
+        ('abierta', 'Abierta'),
+    ]
+
+    id_pregunta = models.AutoField(primary_key=True)
+    actividad_resoluble = models.ForeignKey(
+        ActividadResoluble,
+        on_delete=models.CASCADE,
+        related_name='preguntas',
+    )
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='opcion_multiple')
+    enunciado = models.TextField()
+    orden = models.PositiveIntegerField(default=1)
+    puntaje_maximo = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('1.00'))
+    respuesta_correcta_texto = models.TextField(blank=True, default='')
+    respuesta_correcta_normalizada = models.TextField(blank=True, default='')
+    requiere_revision_docente = models.BooleanField(default=False)
+    activa = models.BooleanField(default=True)
+    objects = TenantManager(school_field='actividad_resoluble__colegio_id')
+
+    class Meta:
+        db_table = 'pregunta_resoluble'
+        verbose_name = 'Pregunta Resoluble'
+        verbose_name_plural = 'Preguntas Resolubles'
+        ordering = ['orden', 'id_pregunta']
+
+    def __str__(self):
+        return f"P{self.orden} - {self.actividad_resoluble}"
+
+    def clean(self):
+        super().clean()
+        if self.pk and self.tipo != 'opcion_multiple' and self.opciones.exists():
+            raise ValidationError('Solo las preguntas de opción múltiple pueden tener opciones.')
+
+    def es_objetiva(self):
+        return self.tipo in {'opcion_multiple', 'respuesta_corta'} and not self.requiere_revision_docente
+
+
+class OpcionPreguntaResoluble(models.Model):
+    """Opciones disponibles para una pregunta de opción múltiple."""
+
+    id_opcion = models.AutoField(primary_key=True)
+    pregunta = models.ForeignKey(
+        PreguntaResoluble,
+        on_delete=models.CASCADE,
+        related_name='opciones',
+    )
+    texto = models.CharField(max_length=300)
+    es_correcta = models.BooleanField(default=False)
+    orden = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        db_table = 'opcion_pregunta_resoluble'
+        verbose_name = 'Opción de Pregunta Resoluble'
+        verbose_name_plural = 'Opciones de Preguntas Resolubles'
+        ordering = ['orden', 'id_opcion']
+
+    def __str__(self):
+        return f"Opción {self.orden} - {self.pregunta_id}"
+
+
+class IntentoResoluble(models.Model):
+    """Intento de resolución para una tarea o evaluación."""
+
+    ESTADOS = [
+        ('BORRADOR', 'Borrador'),
+        ('ENVIADO', 'Enviado'),
+        ('AUTOCORREGIDO', 'Autocorregido'),
+        ('PENDIENTE_APROBACION', 'Pendiente de aprobación'),
+        ('APROBADO', 'Aprobado'),
+        ('RECHAZADO', 'Rechazado'),
+    ]
+
+    id_intento = models.AutoField(primary_key=True)
+    actividad_resoluble = models.ForeignKey(
+        ActividadResoluble,
+        on_delete=models.CASCADE,
+        related_name='intentos',
+    )
+    estudiante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='intentos_resolubles')
+    estado = models.CharField(max_length=30, choices=ESTADOS, default='BORRADOR')
+    puntaje_maximo = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'))
+    puntaje_obtenido = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    nota_sugerida = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+    retroalimentacion = models.TextField(blank=True, default='')
+    requiere_revision_docente = models.BooleanField(default=False)
+    aprobado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='intentos_resolubles_aprobados',
+    )
+    fecha_envio = models.DateTimeField(null=True, blank=True)
+    fecha_revision = models.DateTimeField(null=True, blank=True)
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    resultado_publicado = models.OneToOneField(
+        'Calificacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='origen_intento_resoluble',
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    objects = TenantManager(school_field='actividad_resoluble__colegio_id')
+
+    class Meta:
+        db_table = 'intento_resoluble'
+        verbose_name = 'Intento Resoluble'
+        verbose_name_plural = 'Intentos Resolubles'
+        unique_together = ('actividad_resoluble', 'estudiante')
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        return f"{self.estudiante.get_full_name()} - {self.actividad_resoluble}"
+
+    def recalcular_resultado(self):
+        total = Decimal('0.00')
+        maximo = Decimal('0.00')
+        requiere_revision = False
+
+        for respuesta in self.respuestas.select_related('pregunta').all():
+            maximo += respuesta.pregunta.puntaje_maximo or Decimal('0.00')
+            total += respuesta.puntaje_obtenido or Decimal('0.00')
+            if respuesta.pregunta.requiere_revision_docente or respuesta.pregunta.tipo == 'abierta':
+                requiere_revision = True
+
+        self.puntaje_maximo = maximo
+        self.puntaje_obtenido = total
+        self.requiere_revision_docente = requiere_revision
+        if maximo > 0:
+            self.nota_sugerida = (Decimal('1.0') + (Decimal('6.0') * (total / maximo))).quantize(Decimal('0.1'))
+        else:
+            self.nota_sugerida = None
+
+        if self.estado == 'BORRADOR':
+            self.estado = 'PENDIENTE_APROBACION' if requiere_revision else 'AUTOCORREGIDO'
+
+    def aprobar(self, *, profesor, retroalimentacion=''):
+        self.aprobado_por = profesor
+        self.retroalimentacion = retroalimentacion or self.retroalimentacion
+        self.estado = 'APROBADO'
+        self.fecha_aprobacion = timezone.now()
+        self.fecha_revision = self.fecha_revision or self.fecha_aprobacion
+        self.save(update_fields=['aprobado_por', 'retroalimentacion', 'estado', 'fecha_aprobacion', 'fecha_revision', 'fecha_actualizacion'])
+
+
+class RespuestaResoluble(models.Model):
+    """Respuesta del estudiante para una pregunta resoluble."""
+
+    id_respuesta = models.AutoField(primary_key=True)
+    intento = models.ForeignKey(
+        IntentoResoluble,
+        on_delete=models.CASCADE,
+        related_name='respuestas',
+    )
+    pregunta = models.ForeignKey(
+        PreguntaResoluble,
+        on_delete=models.CASCADE,
+        related_name='respuestas',
+    )
+    respuesta_texto = models.TextField(blank=True, default='')
+    opcion_seleccionada = models.ForeignKey(
+        OpcionPreguntaResoluble,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='respuestas',
+    )
+    es_correcta = models.BooleanField(default=False)
+    puntaje_obtenido = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'))
+    observaciones = models.TextField(blank=True, default='')
+    revisado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='respuestas_resolubles_revisadas',
+    )
+    fecha_revision = models.DateTimeField(null=True, blank=True)
+
+    objects = TenantManager(school_field='intento__actividad_resoluble__colegio_id')
+
+    class Meta:
+        db_table = 'respuesta_resoluble'
+        verbose_name = 'Respuesta Resoluble'
+        verbose_name_plural = 'Respuestas Resolubles'
+        unique_together = ('intento', 'pregunta')
+        ordering = ['pregunta__orden', 'id_respuesta']
+
+    def __str__(self):
+        return f"{self.intento_id} - {self.pregunta_id}"
+
+    def normalizar_respuesta(self):
+        texto = (self.respuesta_texto or '').strip().lower()
+        return ' '.join(texto.split())
 
 
 class InformeAcademico(models.Model):

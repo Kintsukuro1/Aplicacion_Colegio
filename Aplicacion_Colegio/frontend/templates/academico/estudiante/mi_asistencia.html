@@ -14,7 +14,7 @@
 {% block page_header %}
 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
     <div>
-        <h1 class="text-4xl font-bold" style="margin-bottom: var(--spacing-sm);">
+        <h1 class="text-4xl font-bold mb-sm">
             <i class="fas fa-calendar-check"></i> Mi Asistencia
         </h1>
         <p class="text-lg text-secondary">Revisa tu historial de asistencia</p>
@@ -115,11 +115,11 @@
                             </td>
                             <td data-label="Porcentaje">
                                 <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                                    <div class="progress" style="flex: 1;">
+                                    <div class="progress flex-1">
                                         <div class="progress-bar {% if asignatura.porcentaje >= 85 %}progress-bar-success{% elif asignatura.porcentaje >= 75 %}progress-bar-warning{% else %}progress-bar-error{% endif %}" 
                                              style="width: {{ asignatura.porcentaje }}%"></div>
                                     </div>
-                                    <span class="text-sm font-semibold" style="min-width: 45px;">{{ asignatura.porcentaje|floatformat:0 }}%</span>
+                                    <span class="text-sm font-semibold min-w-45">{{ asignatura.porcentaje|floatformat:0 }}%</span>
                                 </div>
                             </td>
                             <td data-label="Estado" class="text-center">

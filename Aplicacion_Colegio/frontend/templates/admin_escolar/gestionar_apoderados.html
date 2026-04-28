@@ -201,7 +201,7 @@
 </div>
 
 <!-- Modal Crear/Editar Apoderado -->
-<div id="modalApoderado" class="modal-overlay" style="display: none;">
+<div id="modalApoderado" class="modal-overlay d-none">
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h3 id="modalTitulo">Nuevo Apoderado</h3>
@@ -339,7 +339,7 @@
                 </div>
             </div>
             
-            <div class="form-section" id="observacionesSection" style="display: none;">
+            <div class="form-section d-none" id="observacionesSection">
                 <h4><i class="fas fa-comment-alt"></i> Observaciones</h4>
                 <div class="form-group full-width">
                     <textarea id="observaciones" name="observaciones" rows="3" placeholder="Información adicional..."></textarea>
@@ -359,13 +359,13 @@
 </div>
 
 <!-- Formularios ocultos para acciones -->
-<form method="POST" action="{% url 'gestionar_apoderados' %}" id="formEliminar" style="display: none;">
+<form method="POST" action="{% url 'gestionar_apoderados' %}" id="formEliminar" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="eliminar">
     <input type="hidden" name="id" id="eliminarId">
 </form>
 
-<form method="POST" action="{% url 'gestionar_apoderados' %}" id="formResetPassword" style="display: none;">
+<form method="POST" action="{% url 'gestionar_apoderados' %}" id="formResetPassword" class="d-none">
     {% csrf_token %}
     <input type="hidden" name="accion" value="resetear_password">
     <input type="hidden" name="id" id="resetPasswordId">

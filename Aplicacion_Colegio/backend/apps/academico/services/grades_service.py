@@ -5,6 +5,7 @@ Maneja calificaciones, evaluaciones y cálculos académicos.
 from decimal import Decimal
 from typing import Dict, List, Tuple, Optional, Any
 from django.db.models import Count, Avg
+from django.db import transaction
 import logging
 
 from backend.common.validations import CommonValidations
@@ -20,6 +21,8 @@ logger = logging.getLogger('academico')
 
 class GradesService:
     """Service para gestión de notas y evaluaciones académicas"""
+
+    EVALUATION_PUBLISH_STATES = {'BORRADOR', 'EN_REVISION', 'PUBLICADA', 'APROBADA'}
 
     @staticmethod
     def validations(data: Dict[str, Any]) -> None:
@@ -137,6 +140,141 @@ class GradesService:
         )
 
     @staticmethod
+    def _build_preguntas_desde_post(post_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        preguntas: List[Dict[str, Any]] = []
+
+        for indice in range(1, 5):
+            enunciado = (post_data.get(f'pregunta_{indice}_enunciado') or '').strip()
+            if not enunciado:
+                continue
+
+            tipo = (post_data.get(f'pregunta_{indice}_tipo') or 'opcion_multiple').strip()
+            respuesta_texto = (post_data.get(f'pregunta_{indice}_respuesta_texto') or '').strip()
+            pregunta = {
+                'tipo': tipo,
+                'enunciado': enunciado,
+                'orden': indice,
+                'puntaje_maximo': post_data.get(f'pregunta_{indice}_puntaje') or '1.0',
+                'respuesta_correcta_texto': respuesta_texto,
+                'respuesta_correcta_normalizada': respuesta_texto,
+                'requiere_revision_docente': str(
+                    post_data.get(f'pregunta_{indice}_requiere_revision_docente', '')
+                ).lower() in ('1', 'true', 'on', 'yes', 'si', 'sí'),
+                'activa': True,
+            }
+
+            if tipo == 'opcion_multiple':
+                opciones: List[Dict[str, Any]] = []
+                for opcion_indice in range(1, 5):
+                    texto = (post_data.get(f'pregunta_{indice}_opcion_{opcion_indice}_texto') or '').strip()
+                    if not texto:
+                        continue
+                    opciones.append(
+                        {
+                            'texto': texto,
+                            'es_correcta': str(
+                                post_data.get(f'pregunta_{indice}_opcion_{opcion_indice}_correcta', '')
+                            ).lower() in ('1', 'true', 'on', 'yes', 'si', 'sí'),
+                            'orden': opcion_indice,
+                        }
+                    )
+
+                if not opciones:
+                    raise ValueError(f'La pregunta {indice} debe tener al menos una opción.')
+                if not any(opcion['es_correcta'] for opcion in opciones):
+                    raise ValueError(f'Debe marcar al menos una opción correcta en la pregunta {indice}.')
+                pregunta['opciones'] = opciones
+            else:
+                if not respuesta_texto:
+                    raise ValueError(f'La pregunta {indice} requiere respuesta correcta escrita.')
+
+            preguntas.append(pregunta)
+
+        return preguntas
+
+    @staticmethod
+    def _get_primary_activity(evaluacion):
+        actividad = evaluacion.actividades_resolubles.order_by('-fecha_actualizacion').first()
+        if actividad is not None:
+            evaluacion.actividad_resoluble_principal = actividad
+            evaluacion.estado_publicacion = actividad.estado
+            evaluacion.modalidad_publicacion = actividad.modalidad
+        else:
+            evaluacion.actividad_resoluble_principal = None
+            evaluacion.estado_publicacion = 'SIN_ACTIVIDAD'
+            evaluacion.modalidad_publicacion = None
+        return actividad
+
+    @staticmethod
+    def _notificar_revision_pendiente(evaluacion, user) -> None:
+        from backend.apps.notificaciones.models import Notificacion
+
+        destinatario = evaluacion.clase.profesor or user
+        Notificacion.objects.create(
+            destinatario=destinatario,
+            tipo='evaluacion',
+            titulo=f'Revisión pendiente: {evaluacion.nombre}',
+            mensaje='La evaluación quedó pendiente de revisión antes de su publicación.',
+            enlace=f'/dashboard/?pagina=notas&clase_id={evaluacion.clase_id}',
+            prioridad='alta',
+        )
+
+    @staticmethod
+    def _notificar_publicacion_evaluacion(evaluacion, user) -> None:
+        from backend.apps.notificaciones.models import Notificacion
+
+        enlace_estudiante = f'/estudiante/clase/{evaluacion.clase_id}/?evaluacion={evaluacion.id_evaluacion}'
+        for clase_estudiante in evaluacion.clase.estudiantes.select_related('estudiante').filter(activo=True):
+            Notificacion.objects.create(
+                destinatario=clase_estudiante.estudiante,
+                tipo='evaluacion',
+                titulo=f'Evaluación disponible: {evaluacion.nombre}',
+                mensaje='La evaluación fue aprobada y ya está disponible.',
+                enlace=enlace_estudiante,
+                prioridad='normal',
+            )
+
+        profesor = evaluacion.clase.profesor or user
+        if profesor:
+            Notificacion.objects.create(
+                destinatario=profesor,
+                tipo='evaluacion',
+                titulo=f'Evaluación publicada: {evaluacion.nombre}',
+                mensaje='La evaluación fue aprobada correctamente.',
+                enlace=f'/dashboard/?pagina=notas&clase_id={evaluacion.clase_id}',
+                prioridad='normal',
+            )
+
+    @staticmethod
+    def approve_evaluation_publication(user, colegio, evaluacion_id: int) -> bool:
+        from backend.apps.academico.models import Evaluacion
+
+        GradesService._validate_school_integrity(colegio, 'APPROVE_EVALUATION_PUBLICATION')
+        evaluacion = Evaluacion.objects.select_related('clase').prefetch_related('actividades_resolubles').get(
+            id_evaluacion=evaluacion_id,
+            colegio=colegio,
+        )
+
+        GradesService._validate_clase_relationships(evaluacion.clase, colegio)
+        actividad = GradesService._get_primary_activity(evaluacion)
+        if actividad is None:
+            raise ValueError('La evaluación no tiene una actividad resoluble asociada.')
+        if actividad.estado == 'APROBADA':
+            return True
+        if actividad.modalidad == 'PDF' and not actividad.archivo_pdf:
+            raise ValueError('La evaluación en formato PDF requiere un archivo adjunto.')
+        if actividad.es_online() and not actividad.preguntas.exists():
+            raise ValueError('La evaluación online requiere al menos una pregunta configurada.')
+
+        actividad.estado = 'APROBADA'
+        actividad.requiere_aprobacion_docente = False
+        actividad.activa = True
+        actividad.save(update_fields=['estado', 'requiere_aprobacion_docente', 'activa', 'fecha_actualizacion'])
+
+        GradesService._notificar_publicacion_evaluacion(evaluacion, user)
+        return True
+
+    @staticmethod
     def _validate_clase_active_state(clase) -> None:
         """
         Valida que la clase y sus relaciones estén en estado activo.
@@ -228,7 +366,17 @@ class GradesService:
 
     @staticmethod
     @PermissionService.require_permission('ACADEMICO', 'EDIT_GRADES')
-    def create_evaluation(user, colegio, clase, nombre: str, fecha_evaluacion, ponderacion: Decimal):
+    def create_evaluation(
+        user,
+        colegio,
+        clase,
+        nombre: str,
+        fecha_evaluacion,
+        ponderacion: Decimal,
+        periodo=None,
+        tipo_evaluacion: str = 'sumativa',
+        es_recuperacion: bool = False,
+    ):
         """
         Crea una nueva evaluación para una clase.
 
@@ -263,12 +411,25 @@ class GradesService:
             clase=clase,
             nombre=nombre,
             fecha_evaluacion=fecha_evaluacion,
-            ponderacion=ponderacion
+            ponderacion=ponderacion,
+            periodo=periodo,
+            tipo_evaluacion=tipo_evaluacion,
+            es_recuperacion=es_recuperacion,
         )
 
     @staticmethod
     @PermissionService.require_permission('ACADEMICO', 'EDIT_GRADES')
-    def update_evaluation(user, colegio, evaluacion_id: int, nombre: str, fecha_evaluacion, ponderacion: Decimal) -> bool:
+    def update_evaluation(
+        user,
+        colegio,
+        evaluacion_id: int,
+        nombre: str,
+        fecha_evaluacion,
+        ponderacion: Decimal,
+        periodo=None,
+        tipo_evaluacion: Optional[str] = None,
+        es_recuperacion: Optional[bool] = None,
+    ) -> bool:
         """
         Actualiza una evaluación existente.
 
@@ -294,6 +455,12 @@ class GradesService:
             evaluacion.nombre = nombre
             evaluacion.fecha_evaluacion = fecha_evaluacion
             evaluacion.ponderacion = ponderacion
+            if periodo is not None:
+                evaluacion.periodo = periodo
+            if tipo_evaluacion:
+                evaluacion.tipo_evaluacion = tipo_evaluacion
+            if es_recuperacion is not None:
+                evaluacion.es_recuperacion = es_recuperacion
             evaluacion.save()
             return True
         except Evaluacion.DoesNotExist:
@@ -340,12 +507,18 @@ class GradesService:
         """
         from backend.apps.academico.models import Evaluacion
 
-        return Evaluacion.objects.filter(
+        evaluaciones = Evaluacion.objects.filter(
             clase=clase,
             activa=True
-        ).annotate(
-            total_calificaciones=Count('calificaciones')
+        ).prefetch_related('actividades_resolubles').annotate(
+            total_calificaciones=Count('calificaciones'),
+            promedio_calculado=Avg('calificaciones__nota')
         ).order_by('-fecha_evaluacion')
+
+        for evaluacion in evaluaciones:
+            GradesService._get_primary_activity(evaluacion)
+
+        return list(evaluaciones)
 
     @staticmethod
     @PermissionService.require_permission('ACADEMICO', 'EDIT_GRADES')
@@ -662,7 +835,7 @@ class GradesService:
 
     @staticmethod
     @PermissionService.require_permission('ACADEMICO', 'EDIT_GRADES')
-    def process_evaluation_action(user, colegio, post_data: Dict) -> Dict:
+    def process_evaluation_action(user, colegio, post_data: Dict, files: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Procesa una acción de evaluación (crear, editar, eliminar).
 
@@ -682,33 +855,103 @@ class GradesService:
             school_id = getattr(user, 'rbd_colegio', None)
             is_teacher_scope = PolicyService.has_capability(user, 'TEACHER_VIEW', school_id=school_id)
             is_admin_scope = PolicyService.has_capability(user, 'SYSTEM_CONFIGURE', school_id=school_id)
+            archivos = files or {}
             
             if action == 'crear_evaluacion':
                 clase_id = int(post_data.get('clase_id', 0))
                 clase = Clase.objects.get(id=clase_id, colegio=colegio, activo=True)
+                periodo = post_data.get('periodo') or None
+                tipo_evaluacion = post_data.get('tipo_evaluacion') or 'sumativa'
+                es_recuperacion = str(post_data.get('es_recuperacion', '')).lower() in ('1', 'true', 'on', 'si', 'sí')
+                formato_evaluacion = (post_data.get('formato_evaluacion') or 'form').strip().lower()
+                archivo_pdf = archivos.get('archivo_pdf')
+                preguntas = GradesService._build_preguntas_desde_post(post_data)
+                preguntas_payload = preguntas if formato_evaluacion != 'pdf' else None
+                inferir_desde_pdf = formato_evaluacion == 'pdf' and archivo_pdf is not None
+
+                if formato_evaluacion == 'pdf':
+                    if not archivo_pdf:
+                        return {'success': False, 'message': 'Debes adjuntar un PDF para este formato.'}
+                elif not preguntas:
+                    return {'success': False, 'message': 'Debes crear al menos una pregunta para la evaluación.'}
                 
                 # Validar permisos
                 is_valid, error_msg = CommonValidations.validate_class_ownership(user, clase)
                 if not is_valid:
                     return {'success': False, 'message': error_msg}
-                
-                evaluacion = GradesService.create_evaluation(
-                    user=user,
-                    colegio=colegio,
-                    clase=clase,
-                    nombre=post_data.get('nombre'),
-                    fecha_evaluacion=post_data.get('fecha_evaluacion'),
-                    ponderacion=Decimal(post_data.get('ponderacion', '100.00'))
-                )
+
+                with transaction.atomic():
+                    evaluacion = GradesService.create_evaluation(
+                        user=user,
+                        colegio=colegio,
+                        clase=clase,
+                        nombre=post_data.get('nombre'),
+                        fecha_evaluacion=post_data.get('fecha') or post_data.get('fecha_evaluacion'),
+                        ponderacion=Decimal(post_data.get('ponderacion', '100.00')),
+                        periodo=periodo,
+                        tipo_evaluacion=tipo_evaluacion,
+                        es_recuperacion=es_recuperacion,
+                    )
+                    from backend.apps.academico.services.resoluble_service import ResolubleService
+
+                    ResolubleService.create_or_update_activity(
+                        actor=user,
+                        payload={
+                            'origen_tipo': 'evaluacion',
+                            'origen_id': evaluacion.id_evaluacion,
+                            'titulo': evaluacion.nombre,
+                            'modalidad': 'MIXTA' if formato_evaluacion == 'pdf' else 'ONLINE',
+                            'archivo_pdf': archivo_pdf,
+                            'requiere_aprobacion_docente': True,
+                            'auto_correccion_activa': True,
+                            'estado': 'EN_REVISION',
+                            'activa': True,
+                            'preguntas': preguntas_payload,
+                            'inferir_desde_pdf': inferir_desde_pdf,
+                        },
+                    )
+                    GradesService._notificar_revision_pendiente(evaluacion, user)
+
                 return {
                     'success': True,
-                    'message': 'Evaluación creada exitosamente.',
+                    'message': 'Evaluación creada. Quedó pendiente de revisión antes de publicarse.',
                     'redirect_url': f"{reverse('dashboard')}?pagina=notas&clase_id={clase.id}"
                 }
                 
             elif action == 'editar_evaluacion':
                 clase_id = int(post_data.get('clase_id', 0))
                 clase = Clase.objects.get(id=clase_id, colegio=colegio, activo=True)
+                periodo = post_data.get('periodo') or None
+                tipo_evaluacion = post_data.get('tipo_evaluacion') or None
+                es_recuperacion = None
+                if post_data.get('es_recuperacion') is not None:
+                    es_recuperacion = str(post_data.get('es_recuperacion', '')).lower() in ('1', 'true', 'on', 'si', 'sí')
+                formato_evaluacion = (post_data.get('formato_evaluacion') or 'form').strip().lower()
+                archivo_pdf = archivos.get('archivo_pdf')
+                preguntas_presentes = any(
+                    (post_data.get(f'pregunta_{indice}_enunciado') or '').strip()
+                    for indice in range(1, 5)
+                )
+                preguntas = GradesService._build_preguntas_desde_post(post_data) if preguntas_presentes else None
+                inferir_desde_pdf = formato_evaluacion == 'pdf' and archivo_pdf is not None
+
+                actividad_existente = None
+                from backend.apps.academico.models import Evaluacion
+                actividad_existente = Evaluacion.objects.prefetch_related('actividades_resolubles').filter(
+                    id_evaluacion=int(post_data.get('id')),
+                    colegio=colegio,
+                ).first()
+                actividad_actual = None
+                if formato_evaluacion == 'pdf' and archivo_pdf is None and actividad_existente is not None:
+                    actividad_actual = actividad_existente.actividades_resolubles.order_by('-fecha_actualizacion').first()
+                    if actividad_actual and actividad_actual.archivo_pdf:
+                        archivo_pdf = actividad_actual.archivo_pdf
+                elif actividad_existente is not None:
+                    actividad_actual = actividad_existente.actividades_resolubles.order_by('-fecha_actualizacion').first()
+                if formato_evaluacion == 'pdf' and not archivo_pdf and not (actividad_actual and actividad_actual.archivo_pdf):
+                    return {'success': False, 'message': 'Debes adjuntar un PDF para cambiar el formato a PDF.'}
+                if formato_evaluacion != 'pdf' and not preguntas_presentes and not (actividad_actual and actividad_actual.preguntas.exists()):
+                    return {'success': False, 'message': 'Debes crear preguntas para publicar una evaluación en formulario.'}
                 
                 # Validar permisos
                 is_valid, error_msg = CommonValidations.validate_class_ownership(user, clase)
@@ -720,17 +963,66 @@ class GradesService:
                     colegio=colegio,
                     evaluacion_id=int(post_data.get('id')),
                     nombre=post_data.get('nombre'),
-                    fecha_evaluacion=post_data.get('fecha_evaluacion'),
-                    ponderacion=Decimal(post_data.get('ponderacion'))
+                    fecha_evaluacion=post_data.get('fecha') or post_data.get('fecha_evaluacion'),
+                    ponderacion=Decimal(post_data.get('ponderacion')),
+                    periodo=periodo,
+                    tipo_evaluacion=tipo_evaluacion,
+                    es_recuperacion=es_recuperacion,
                 )
                 if success:
+                    from backend.apps.academico.models import Evaluacion
+                    from backend.apps.academico.services.resoluble_service import ResolubleService
+
+                    evaluacion = Evaluacion.objects.select_related('clase').prefetch_related('actividades_resolubles').get(
+                        id_evaluacion=int(post_data.get('id')),
+                        colegio=colegio,
+                    )
+                    preguntas_payload = preguntas if formato_evaluacion == 'pdf' or preguntas else None
+                    ResolubleService.create_or_update_activity(
+                        actor=user,
+                        payload={
+                            'origen_tipo': 'evaluacion',
+                            'origen_id': evaluacion.id_evaluacion,
+                            'titulo': evaluacion.nombre,
+                            'modalidad': 'MIXTA' if formato_evaluacion == 'pdf' else 'ONLINE',
+                            'archivo_pdf': archivo_pdf,
+                            'requiere_aprobacion_docente': True,
+                            'auto_correccion_activa': True,
+                            'estado': 'EN_REVISION',
+                            'activa': True,
+                            **({'preguntas': None} if formato_evaluacion == 'pdf' else ({'preguntas': preguntas} if preguntas is not None else {})),
+                            'inferir_desde_pdf': inferir_desde_pdf,
+                        },
+                    )
+                    GradesService._notificar_revision_pendiente(evaluacion, user)
                     return {
-                        'success': True, 
-                        'message': 'Evaluación actualizada exitosamente.',
+                        'success': True,
+                        'message': 'Evaluación actualizada. Quedó pendiente de revisión antes de publicarse.',
                         'redirect_url': f"{reverse('dashboard')}?pagina=notas&clase_id={clase.id}"
                     }
                 else:
                     return {'success': False, 'message': 'No se encontró la evaluación.'}
+            elif action == 'aprobar_publicacion_evaluacion':
+                evaluacion_id = int(post_data.get('id', 0))
+
+                from backend.apps.academico.models import Evaluacion
+
+                evaluacion = Evaluacion.objects.select_related('clase').get(
+                    id_evaluacion=evaluacion_id,
+                    colegio=colegio,
+                )
+
+                if is_teacher_scope and not is_admin_scope:
+                    is_valid, error_msg = CommonValidations.validate_class_ownership(user, evaluacion.clase)
+                    if not is_valid:
+                        return {'success': False, 'message': error_msg}
+
+                GradesService.approve_evaluation_publication(user, colegio, evaluacion_id)
+                return {
+                    'success': True,
+                    'message': 'La evaluación fue aprobada y publicada para los estudiantes.',
+                    'redirect_url': f"{reverse('dashboard')}?pagina=notas&clase_id={evaluacion.clase_id}"
+                }
                     
             elif action == 'eliminar_evaluacion':
                 evaluacion_id = int(post_data.get('id', 0))

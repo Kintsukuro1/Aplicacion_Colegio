@@ -144,6 +144,12 @@
     font-weight: 600;
 }
 
+.btn-estadisticas-link {
+    color: #6366f1;
+    font-weight: 600;
+    text-decoration: none;
+}
+
 .empty-state {
     padding: 3rem 1rem;
     text-align: center;

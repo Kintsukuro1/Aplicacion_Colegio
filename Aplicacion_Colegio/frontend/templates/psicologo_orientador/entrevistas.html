@@ -4,7 +4,7 @@
 <!-- ENTREVISTAS - PSICÓLOGO ORIENTADOR -->
 
 <div class="psicologo-dashboard">
-    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="section-header d-flex justify-between align-center">
         <h2><span class="section-icon">🗣️</span> Entrevistas de Orientación</h2>
         <button class="btn btn-primary" onclick="abrirModalEntrevista()">+ Nueva Entrevista</button>
     </div>
@@ -39,26 +39,26 @@
 </div>
 
 <!-- Modal Nueva Entrevista -->
-<div id="modal-entrevista" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
-    <div style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:540px;max-height:90vh;overflow-y:auto;">
-        <h3 style="margin-bottom:1.5rem;">🗣️ Nueva Entrevista de Orientación</h3>
-        <div id="msg-entrevista" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1rem;"></div>
+<div id="modal-entrevista" class="modal-overlay">
+    <div class="entrevista-modal-card">
+        <h3 class="mb-4">🗣️ Nueva Entrevista de Orientación</h3>
+        <div id="msg-entrevista" class="feedback-box"></div>
         <form id="form-entrevista" onsubmit="enviarEntrevista(event)">
             {% csrf_token %}
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Estudiante *</label>
-                <select id="ent-estudiante" required style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+            <div class="mb-3">
+                <label class="label-block">Estudiante *</label>
+                <select id="ent-estudiante" required class="form-input">
                     <option value="">Cargando...</option>
                 </select>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div class="grid-2col">
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Fecha y Hora *</label>
-                    <input type="datetime-local" id="ent-fecha" required style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Fecha y Hora *</label>
+                    <input type="datetime-local" id="ent-fecha" required class="form-input">
                 </div>
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Motivo *</label>
-                    <select id="ent-motivo" required style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Motivo *</label>
+                    <select id="ent-motivo" required class="form-input">
                         <option value="ACADEMICO">Académico</option>
                         <option value="SOCIOEMOCIONAL">Socioemocional</option>
                         <option value="CONDUCTUAL">Conductual</option>
@@ -67,33 +67,33 @@
                     </select>
                 </div>
             </div>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Observaciones * <span style="color:#888;font-weight:400;">(confidencial)</span></label>
+            <div class="mb-3">
+                <label class="label-block">Observaciones * <span class="label-note">(confidencial)</span></label>
                 <textarea id="ent-observaciones" required rows="4"
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;resize:vertical;"
+                    class="form-textarea"
                     placeholder="Notas confidenciales de la entrevista..."></textarea>
             </div>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Acuerdos</label>
+            <div class="mb-3">
+                <label class="label-block">Acuerdos</label>
                 <textarea id="ent-acuerdos" rows="2"
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;resize:vertical;"
+                    class="form-textarea"
                     placeholder="Acuerdos tomados en la sesión..."></textarea>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;align-items:center;">
+            <div class="entrevista-followup-grid">
                 <div>
-                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-                        <input type="checkbox" id="ent-seguimiento" style="width:18px;height:18px;">
-                        <span style="font-weight:600;">Requiere seguimiento</span>
+                    <label class="checkbox-inline-label">
+                        <input type="checkbox" id="ent-seguimiento" class="chip-sm">
+                        <span class="font-semibold">Requiere seguimiento</span>
                     </label>
                 </div>
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Próxima sesión</label>
-                    <input type="date" id="ent-proxima" style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Próxima sesión</label>
+                    <input type="date" id="ent-proxima" class="form-input">
                 </div>
             </div>
-            <div style="display:flex;gap:1rem;justify-content:flex-end;">
-                <button type="button" onclick="cerrarModalEntrevista()" style="padding:0.6rem 1.5rem;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;">Cancelar</button>
-                <button type="submit" id="btn-submit-ent" style="padding:0.6rem 1.5rem;border:none;border-radius:6px;background:#1abc9c;color:#fff;cursor:pointer;font-weight:600;">Registrar</button>
+            <div class="d-flex gap-sm">
+                <button type="button" onclick="cerrarModalEntrevista()" class="btn-outline">Cancelar</button>
+                <button type="submit" id="btn-submit-ent" class="btn-teal">Registrar</button>
             </div>
         </form>
     </div>

@@ -8,50 +8,50 @@
     <!-- Estadísticas -->
     <div class="estadisticas-tareas"
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <div class="stat-box pendientes"
-            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #f59e0b;">
-            <div class="stat-icon" style="font-size: 2rem;">⏳</div>
-            <div class="stat-info" style="display: flex; flex-direction: column;">
-                <span class="stat-numero" style="font-size: 1.75rem; font-weight: 700; color: #1e3a8a;">{{ total_pendientes }}</span>
-                <span class="stat-label" style="font-size: 0.9rem; color: #64748b;">Pendientes</span>
+        <div class="stat-box pendientes kpi-card"
+           >
+            <div class="stat-icon icon-lg">⏳</div>
+            <div class="stat-info d-flex flex-col">
+                <span class="stat-numero title-accent">{{ total_pendientes }}</span>
+                <span class="stat-label text-muted">Pendientes</span>
             </div>
         </div>
-        <div class="stat-box entregadas"
-            style="background: white; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #10b981;">
-            <div class="stat-icon" style="font-size: 2rem;">✅</div>
-            <div class="stat-info" style="display: flex; flex-direction: column;">
-                <span class="stat-numero" style="font-size: 1.75rem; font-weight: 700; color: #1e3a8a;">{{ tareas_entregadas|length }}</span>
-                <span class="stat-label" style="font-size: 0.9rem; color: #64748b;">Entregadas</span>
+        <div class="stat-box entregadas kpi-card"
+           >
+            <div class="stat-icon icon-lg">✅</div>
+            <div class="stat-info d-flex flex-col">
+                <span class="stat-numero title-accent">{{ tareas_entregadas|length }}</span>
+                <span class="stat-label text-muted">Entregadas</span>
             </div>
         </div>
     </div>
 
     <!-- Tareas Pendientes -->
-    <h2 style="color: #1e3a8a; margin-bottom: 1rem;">Tareas Pendientes</h2>
+    <h2 class="text-primary-dark">Tareas Pendientes</h2>
     <div class="tareas-lista" style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 3rem;">
         {% for tarea in tareas_pendientes %}
-        <div class="tarea-card {% if tarea.vencida %}vencida{% endif %}"
-            style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid {% if tarea.vencida %}#ef4444{% else %}#3b82f6{% endif %}; transition: all 0.2s;">
-            <div class="tarea-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="tarea-badge"
-                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+        <div class="tarea-card {% if tarea.vencida %}vencida{% endif %} card-accent"
+           >
+            <div class="tarea-header header-flex"
+               >
+                <div class="tarea-badge pill-gradient"
+                   >
                     {{ tarea.asignatura }}</div>
                 {% if tarea.vencida %}
-                <span class="badge-vencida"
-                    style="padding: 0.3rem 0.7rem; background: #fee2e2; color: #dc2626; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">Vencida</span>
+                <span class="badge-vencida pill-danger"
+                   >Vencida</span>
                 {% else %}
                 <span class="badge-proximo"
                     style="padding: 0.3rem 0.7rem; background: #fef3c7; color: #d97706; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">Pendiente</span>
                 {% endif %}
             </div>
 
-            <h3 style="color: #1e3a8a; margin: 0 0 0.75rem 0; font-size: 1.25rem;">{{ tarea.titulo }}</h3>
+            <h3 class="title-primary">{{ tarea.titulo }}</h3>
 
-            <div class="tarea-meta"
-                style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-                <span class="meta-item"
-                    style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #64748b;">
+            <div class="tarea-meta filter-bar"
+               >
+                <span class="meta-item meta-info"
+                   >
                     <span class="icon">📅</span>
                     Vence: {{ tarea.fecha_entrega|date:"d/m/Y H:i" }}
                 </span>
@@ -65,33 +65,33 @@
             </div>
         </div>
         {% empty %}
-        <div style="text-align: center; padding: 2rem; background: white; border-radius: 12px; color: #64748b;">
+        <div class="empty-state-sm">
             <p>¡No tienes tareas pendientes! Estás al día. 🎉</p>
         </div>
         {% endfor %}
     </div>
 
     <!-- Tareas Entregadas -->
-    <h2 style="color: #1e3a8a; margin-bottom: 1rem;">Tareas Entregadas</h2>
-    <div class="tareas-lista" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <h2 class="text-primary-dark">Tareas Entregadas</h2>
+    <div class="tareas-lista d-flex flex-col gap-md">
         {% for tarea in tareas_entregadas %}
-        <div class="tarea-card"
-            style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #10b981; transition: all 0.2s;">
-            <div class="tarea-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="tarea-badge"
-                    style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: white; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <div class="tarea-card card-accent"
+           >
+            <div class="tarea-header header-flex"
+               >
+                <div class="tarea-badge pill-gradient"
+                   >
                     {{ tarea.asignatura }}</div>
-                <span class="badge-entregada"
-                    style="padding: 0.3rem 0.7rem; background: #dbeafe; color: #2563eb; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">{{ tarea.estado_entrega }}</span>
+                <span class="badge-entregada pill-gradient tag-info"
+                   >{{ tarea.estado_entrega }}</span>
             </div>
 
-            <h3 style="color: #1e3a8a; margin: 0 0 0.75rem 0; font-size: 1.25rem;">{{ tarea.titulo }}</h3>
+            <h3 class="title-primary">{{ tarea.titulo }}</h3>
 
-            <div class="tarea-meta"
-                style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-                <span class="meta-item"
-                    style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #64748b;">
+            <div class="tarea-meta filter-bar"
+               >
+                <span class="meta-item meta-info"
+                   >
                     <span class="icon">📅</span>
                     Vencimiento: {{ tarea.fecha_entrega|date:"d/m/Y H:i" }}
                 </span>
@@ -103,7 +103,7 @@
                 <div class="nota"
                     style="font-size: 2.5rem; font-weight: 700; color: #16a34a; min-width: 80px; display: flex; align-items: center; justify-content: center;">
                     {{ tarea.calificacion }}</div>
-                <div class="retroalimentacion" style="flex: 1;">
+                <div class="retroalimentacion flex-1">
                     <strong style="color: #16a34a; display: block; margin-bottom: 0.5rem;">Retroalimentación:</strong>
                     <p style="margin: 0; color: #475569; line-height: 1.6;">{{ tarea.retroalimentacion }}</p>
                 </div>
@@ -111,7 +111,7 @@
             {% endif %}
         </div>
         {% empty %}
-        <div style="text-align: center; padding: 2rem; background: white; border-radius: 12px; color: #64748b;">
+        <div class="empty-state-sm">
             <p>Aún no tienes tareas entregadas.</p>
         </div>
         {% endfor %}
@@ -133,18 +133,18 @@
             <input type="hidden" id="tarea_id" name="tarea_id">
             <p id="tareaTituloMuestra" style="margin: 0; padding: 16px 24px 0; font-weight: 600; color: #3b82f6;"></p>
 
-            <div style="padding: 16px 24px 0;">
-                <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #475569;">Archivo
+            <div class="p-4">
+                <label class="form-label-light">Archivo
                     adjunto</label>
                 <input type="file" name="archivo" required
-                    style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+                    class="form-control-bordered">
             </div>
 
-            <div style="padding: 16px 24px 0;">
-                <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #475569;">Comentario
+            <div class="p-4">
+                <label class="form-label-light">Comentario
                     (opcional)</label>
                 <textarea name="comentario" rows="3" placeholder="Añade un comentario..."
-                    style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;"></textarea>
+                    class="form-control-bordered"></textarea>
             </div>
 
             <div style="padding: 24px; display: flex; justify-content: flex-end; gap: 12px;">

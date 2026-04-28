@@ -5,12 +5,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Portal Académico - {{ rol|title }}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Design System -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <!-- Dashboard CSS -->
@@ -63,10 +67,10 @@
                     <div class="notificaciones-container" data-csrf-token="{{ csrf_token }}">
                         <button class="btn-notificaciones" id="btnNotificaciones">
                             <span class="icon">🔔</span>
-                            <span class="badge-notificaciones" id="badgeNotificaciones" style="display: none;">0</span>
+                            <span class="badge-notificaciones d-none" id="badgeNotificaciones">0</span>
                         </button>
 
-                        <div class="dropdown-notificaciones" id="dropdownNotificaciones" style="display: none;">
+                        <div class="dropdown-notificaciones d-none" id="dropdownNotificaciones">
                             <div class="notif-header">
                                 <h3>Notificaciones</h3>
                                 <button class="btn-marcar-todas" id="btnMarcarTodas" title="Marcar todas como leídas">
@@ -90,12 +94,12 @@
                         <div class="user-dropdown" id="userDropdown">
                             <div class="dropdown-header">
                                 <strong>{{ nombre_usuario }}</strong>
-                                <span style="font-size: 0.85rem; color: #666;">{{ rol|title }}</span>
-                                <span style="font-size: 0.8rem; color: #999; margin-top: 5px;">
+                                <span class="user-dropdown-role">{{ rol|title }}</span>
+                                <span class="user-dropdown-school">
                                     🏫 {{ escuela_nombre }}
                                 </span>
                             </div>
-                            <hr style="margin: 10px 0; border: none; border-top: 1px solid #e0e0e0;">
+                            <hr class="user-dropdown-divider">
                             <a href="{% url 'dashboard' %}?pagina=perfil" class="dropdown-item">
                                 👤 Mi Perfil
                             </a>
@@ -104,10 +108,9 @@
                                 🏫 Cambiar Escuela
                             </a>
                             {% endif %}
-                            <form method="POST" action="{% url 'accounts:logout' %}" style="margin: 0;">
+                            <form method="POST" action="{% url 'accounts:logout' %}" class="m-0">
                                 {% csrf_token %}
-                                <button type="submit" class="dropdown-item logout"
-                                    style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit;">
+                                <button type="submit" class="dropdown-item logout logout-btn">
                                     🚪 Cerrar Sesión
                                 </button>
                             </form>
@@ -120,22 +123,20 @@
 
                 {# Banner de Configuración Incompleta (solo para admin/admin_escolar) #}
                 {% if setup_incomplete %}
-                <div class="setup-alert-banner"
-                    style="background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%); color: white; padding: 1.2rem 1.8rem; border-radius: 16px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 16px rgba(255, 138, 0, 0.3);">
-                    <div style="display: flex; align-items: center; gap: 1.2rem;">
-                        <div style="font-size: 2.5rem;">⚙️</div>
+                <div class="setup-banner">
+                    <div class="setup-banner-content">
+                        <div class="setup-banner-icon">⚙️</div>
                         <div>
-                            <div style="font-weight: 600; font-size: 1.15rem; margin-bottom: 0.4rem;">
+                            <div class="setup-banner-title">
                                 Configuración Incompleta
                             </div>
-                            <div style="font-size: 0.95rem; opacity: 0.95;">
+                            <div class="setup-banner-desc">
                                 Tu colegio está configurado al {{ setup_progress }}%. Completa los pasos pendientes para
                                 desbloquear todas las funcionalidades.
                             </div>
                         </div>
                     </div>
-                    <a href="{% url 'setup_checklist' %}"
-                        style="background: white; color: #ff8a00; padding: 0.8rem 1.8rem; border-radius: 10px; text-decoration: none; font-weight: 600; white-space: nowrap; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="{% url 'setup_checklist' %}" class="setup-banner-cta">
                         Ver Checklist →
                     </a>
                 </div>
@@ -167,7 +168,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Dashboard scripts -->
     <script src="{% static 'js/dashboard.js' %}"></script>
-    <script src="{% static 'js/notificaciones.js' %}?v=20260405-notif-link-fix"></script>
+    <script src="{% static 'js/notificaciones.js' %}?v=20260415-notif-toggle-fix"></script>
 </body>
 
 </html>

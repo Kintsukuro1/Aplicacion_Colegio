@@ -41,6 +41,16 @@
     color: #991b1b;
 }
 
+.tipo-prioritario {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.tipo-destacado {
+    background: #fde68a;
+    color: #78350f;
+}
+
 .tipo-comunicado {
     background: #dbeafe;
     color: #1d4ed8;
@@ -147,6 +157,11 @@
 
 .btn-confirmar:hover {
     filter: brightness(0.95);
+}
+
+.confirmacion-texto {
+    margin-bottom: 1.5rem;
+    color: #374151;
 }
 
 @media (max-width: 768px) {

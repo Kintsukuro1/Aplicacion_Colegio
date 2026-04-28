@@ -86,7 +86,7 @@
 
                 <div class="ciclo-actions">
                     {% if ciclo.estado == 'INACTIVO' %}
-                    <form method="POST" action="{% url 'gestionar_ciclos' %}" style="display: inline;">
+                    <form method="POST" action="{% url 'gestionar_ciclos' %}" class="d-inline-block">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="activar">
                         <input type="hidden" name="ciclo_id" value="{{ ciclo.id }}">

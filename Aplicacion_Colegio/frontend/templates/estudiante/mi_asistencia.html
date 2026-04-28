@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Asistencia - Portal Académico</title>
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-    <link rel="stylesheet" href="{% static 'css/asistencia.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/estudiante/asistencia.css' %}">
 </head>
 <body>
     <div class="dashboard-container">
@@ -15,24 +16,22 @@
         <main class="main-content">
             <div class="content-area">
                 {# Header #}
-                <div class="page-header" style="margin-bottom: 30px;">
-                    <h1 style="margin: 0 0 5px 0; font-size: 1.8rem; color: #1e293b;">📅 Mi Asistencia</h1>
-                    <p style="margin: 0; color: #64748b;">Registro de asistencia y estadísticas</p>
+                <div class="page-header mb-5">
+                    <h1 class="kpi-value">📅 Mi Asistencia</h1>
+                    <p class="text-muted m-0">Registro de asistencia y estadísticas</p>
                 </div>
 
     {# Selector de Mes #}
-    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-            <form method="get" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.2rem;">📅</span>
-                    <label style="font-weight: 600; color: #1e293b; margin: 0;">Período:</label>
+    <div class="section-card">
+        <div class="header-bar-wrap">
+            <form method="get" class="actions-bar">
+                <div class="d-flex align-center gap-sm">
+                    <span class="icon-sm">📅</span>
+                    <label class="font-semibold m-0">Período:</label>
                 </div>
                 <select name="mes" 
-                        style="padding: 10px 35px 10px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; color: #1e293b; background: white; cursor: pointer; transition: all 0.2s; appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="%23334155" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>'); background-repeat: no-repeat; background-position: right 10px center;"
-                        onchange="this.form.submit()"
-                        onfocus="this.style.borderColor='#6366f1';"
-                        onblur="this.style.borderColor='#e2e8f0';">
+                    class="form-select-styled"
+                        onchange="this.form.submit()">
                     {% for m in meses %}
                     <option value="{{ m.0 }}" {% if m.0 == mes %}selected{% endif %}>
                         {{ m.1 }}
@@ -40,10 +39,8 @@
                     {% endfor %}
                 </select>
                 <select name="anio" 
-                        style="padding: 10px 35px 10px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; color: #1e293b; background: white; cursor: pointer; transition: all 0.2s; appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="%23334155" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>'); background-repeat: no-repeat; background-position: right 10px center;"
-                        onchange="this.form.submit()"
-                        onfocus="this.style.borderColor='#6366f1';"
-                        onblur="this.style.borderColor='#e2e8f0';">
+                    class="form-select-styled"
+                        onchange="this.form.submit()">
                     {% for a in anios %}
                     <option value="{{ a }}" {% if a == anio %}selected{% endif %}>
                         {{ a }}
@@ -51,30 +48,30 @@
                     {% endfor %}
                 </select>
             </form>
-            <h2 style="margin: 0; color: #1e293b; font-size: 1.3rem; font-weight: 600;">📅 {{ mes_nombre }} {{ anio }}</h2>
+            <h2 class="section-title-large">📅 {{ mes_nombre }} {{ anio }}</h2>
         </div>
     </div>
 
     {# Estadísticas Generales #}
-    <div style="margin-bottom: 30px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 35px; color: white; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden;">
+    <div class="mb-5">
+        <div class="attendance-hero-card">
             {# Decorative circles #}
-            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+            <div class="attendance-hero-orb attendance-hero-orb-top"></div>
+            <div class="attendance-hero-orb attendance-hero-orb-bottom"></div>
             
-            <div style="display: flex; align-items: center; gap: 30px; position: relative; z-index: 1;">
-                <div style="width: 110px; height: 110px; background: rgba(255,255,255,0.2); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div class="attendance-hero-content">
+                <div class="attendance-hero-icon-wrap">
                     📊
                 </div>
-                <div style="flex: 1;">
-                    <div style="font-size: 4rem; font-weight: 800; line-height: 1; margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                <div class="flex-1">
+                    <div class="attendance-hero-percentage">
                         {{ porcentaje_asistencia }}%
                     </div>
-                    <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 5px; opacity: 0.95;">
+                    <div class="attendance-hero-title">
                         Porcentaje de Asistencia
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; opacity: 0.85;">
-                        <span style="padding: 4px 12px; background: rgba(255,255,255,0.2); border-radius: 20px; backdrop-filter: blur(5px);">
+                    <div class="attendance-hero-meta-row">
+                        <span class="attendance-hero-chip">
                             ✓ {{ presentes }} presentes
                         </span>
                         <span>•</span>
@@ -82,19 +79,19 @@
                     </div>
                 </div>
                 {% if porcentaje_asistencia >= 90 %}
-                <div style="padding: 12px 20px; background: rgba(16, 185, 129, 0.3); border-radius: 12px; backdrop-filter: blur(5px); border: 2px solid rgba(255,255,255,0.3);">
-                    <div style="font-size: 2rem; text-align: center; margin-bottom: 5px;">🏆</div>
-                    <div style="font-size: 0.85rem; font-weight: 600; text-align: center;">Excelente</div>
+                <div class="attendance-hero-badge attendance-hero-badge-excellent">
+                    <div class="icon-lg text-center mb-1">🏆</div>
+                    <div class="kpi-badge">Excelente</div>
                 </div>
                 {% elif porcentaje_asistencia >= 75 %}
-                <div style="padding: 12px 20px; background: rgba(245, 158, 11, 0.3); border-radius: 12px; backdrop-filter: blur(5px); border: 2px solid rgba(255,255,255,0.3);">
-                    <div style="font-size: 2rem; text-align: center; margin-bottom: 5px;">👍</div>
-                    <div style="font-size: 0.85rem; font-weight: 600; text-align: center;">Bueno</div>
+                <div class="attendance-hero-badge attendance-hero-badge-good">
+                    <div class="icon-lg text-center mb-1">👍</div>
+                    <div class="kpi-badge">Bueno</div>
                 </div>
                 {% else %}
-                <div style="padding: 12px 20px; background: rgba(239, 68, 68, 0.3); border-radius: 12px; backdrop-filter: blur(5px); border: 2px solid rgba(255,255,255,0.3);">
-                    <div style="font-size: 2rem; text-align: center; margin-bottom: 5px;">⚠️</div>
-                    <div style="font-size: 0.85rem; font-weight: 600; text-align: center;">Mejorable</div>
+                <div class="attendance-hero-badge attendance-hero-badge-improvable">
+                    <div class="icon-lg text-center mb-1">⚠️</div>
+                    <div class="kpi-badge">Mejorable</div>
                 </div>
                 {% endif %}
             </div>
@@ -103,28 +100,28 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon" style="background: #d1fae5; color: #059669;">🟢</div>
+            <div class="stat-icon tag-success">🟢</div>
             <div class="stat-content">
                 <div class="stat-value">{{ presentes }}</div>
                 <div class="stat-label">Presentes</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: #fef3c7; color: #f59e0b;">🟡</div>
+            <div class="stat-icon tag-warning">🟡</div>
             <div class="stat-content">
                 <div class="stat-value">{{ tardanzas }}</div>
                 <div class="stat-label">Tardanzas</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: #fee2e2; color: #ef4444;">🔴</div>
+            <div class="stat-icon tag-error">🔴</div>
             <div class="stat-content">
                 <div class="stat-value">{{ ausentes }}</div>
                 <div class="stat-label">Ausentes</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: #dbeafe; color: #3b82f6;">🔵</div>
+            <div class="stat-icon tag-info">🔵</div>
             <div class="stat-content">
                 <div class="stat-value">{{ justificadas }}</div>
                 <div class="stat-label">Justificadas</div>

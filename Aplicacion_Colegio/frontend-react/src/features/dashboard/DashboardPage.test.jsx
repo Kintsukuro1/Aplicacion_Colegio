@@ -51,10 +51,8 @@ describe('DashboardPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');
     });
 
-    expect(screen.getByText('Version contrato:')).toBeInTheDocument();
     expect(screen.getByText('1.0.0')).toBeInTheDocument();
-    expect(screen.getByText('Metricas School')).toBeInTheDocument();
-    expect(screen.getByText('Students')).toBeInTheDocument();
+    expect(screen.getByText('Estudiantes')).toBeInTheDocument();
     expect(screen.getByText('120')).toBeInTheDocument();
   });
 
@@ -92,7 +90,7 @@ describe('DashboardPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=self');
     });
 
-    await user.selectOptions(screen.getByLabelText('Scope'), 'school');
+    await user.selectOptions(screen.getByLabelText('Vista'), 'school');
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');

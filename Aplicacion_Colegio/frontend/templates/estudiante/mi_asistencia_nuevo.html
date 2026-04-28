@@ -29,9 +29,9 @@
 <!-- Estadísticas Principales -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-xl">
     <!-- Porcentaje Total -->
-    <div class="card card-compact" style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%); color: var(--color-white); border: none;">
+    <div class="card card-compact gradient-header">
         <div class="card-body text-center">
-            <p class="text-sm mb-sm" style="opacity: 0.9;">Asistencia Total</p>
+            <p class="text-sm mb-sm opacity-90">Asistencia Total</p>
             <p class="text-5xl font-bold mb-md">{{ porcentaje_total|default:"100"|floatformat:0 }}%</p>
             <div class="progress" style="background-color: rgba(255,255,255,0.3);">
                 <div class="progress-bar" style="width: {{ porcentaje_total|default:100 }}%; background-color: var(--color-white);"></div>
@@ -131,12 +131,12 @@
                             </td>
                             <td data-label="Porcentaje">
                                 <div class="flex items-center gap-sm">
-                                    <div class="progress" style="flex: 1;">
+                                    <div class="progress flex-1">
                                         <div class="progress-bar {% if asignatura.porcentaje >= 85 %}progress-bar-success{% elif asignatura.porcentaje >= 75 %}progress-bar-warning{% else %}progress-bar-error{% endif %}" 
                                              style="width: {{ asignatura.porcentaje }}%">
                                         </div>
                                     </div>
-                                    <span class="text-sm font-semibold" style="min-width: 45px;">{{ asignatura.porcentaje|floatformat:0 }}%</span>
+                                    <span class="text-sm font-semibold min-w-45">{{ asignatura.porcentaje|floatformat:0 }}%</span>
                                 </div>
                             </td>
                             <td data-label="Estado" class="text-center">
@@ -169,7 +169,7 @@
     </div>
     <div class="card-body">
         {% if historial_reciente %}
-            <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+            <div class="d-flex flex-col gap-md">
                 {% for registro in historial_reciente %}
                 <div class="flex items-center justify-between p-md border-b-sm" style="border-color: var(--border-color);">
                     <div class="flex items-center gap-md">

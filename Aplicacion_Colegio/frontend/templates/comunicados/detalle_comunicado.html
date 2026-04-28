@@ -17,12 +17,12 @@
                 {{ comunicado.get_tipo_display }}
             </span>
             {% if comunicado.es_prioritario %}
-            <span class="tipo-badge" style="background: #fecaca; color: #991b1b;">
+            <span class="tipo-badge tipo-prioritario">
                 🚨 Prioritario
             </span>
             {% endif %}
             {% if comunicado.es_destacado %}
-            <span class="tipo-badge" style="background: #fde68a; color: #78350f;">
+            <span class="tipo-badge tipo-destacado">
                 ⭐ Destacado
             </span>
             {% endif %}
@@ -88,7 +88,7 @@
                     <div>
                         <strong>{{ adjunto.nombre_archivo }}</strong>
                         <br>
-                        <small style="color: #6b7280;">{{ adjunto.get_tamanio_legible }}</small>
+                        <small class="text-subtle">{{ adjunto.get_tamanio_legible }}</small>
                     </div>
                 </div>
                 <a href="{{ adjunto.archivo.url }}" download class="btn-descargar">
@@ -108,7 +108,7 @@
                 </p>
             {% else %}
                 <h3>⚠️ Se requiere confirmación de asistencia</h3>
-                <p style="margin-bottom: 1.5rem; color: #374151;">
+                <p class="confirmacion-texto">
                     Por favor, confirma tu asistencia a este evento.
                 </p>
                 <form method="post">

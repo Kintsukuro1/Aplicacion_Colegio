@@ -1,4 +1,4 @@
-﻿{% extends 'estudiante/base_estudiante.html' %}
+{% extends 'estudiante/base_estudiante.html' %}
 {% load static %}
 
 {% block title %}Mi Perfil{% endblock %}
@@ -17,12 +17,12 @@
 {% block content %}
 <!-- Header -->
 <div class="mb-xl">
-    <h1 class="text-4xl font-bold mb-sm">ðŸ‘¤ Mi Perfil</h1>
-    <p class="text-lg text-secondary">Gestiona tu informaciÃ³n personal y configuraciÃ³n</p>
+    <h1 class="text-4xl font-bold mb-sm">👤 Mi Perfil</h1>
+    <p class="text-lg text-secondary">Gestiona tu información personal y configuración</p>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-    <!-- Columna Izquierda - InformaciÃ³n Principal -->
+    <!-- Columna Izquierda - Información Principal -->
     <div class="lg:col-span-1">
         <!-- Card de Perfil -->
         <div class="card mb-lg">
@@ -41,7 +41,7 @@
                             onclick="document.getElementById('foto-input').click()">
                         <i class="fas fa-camera"></i>
                     </button>
-                    <input type="file" id="foto-input" accept="image/*" style="display: none;" onchange="cambiarFoto(this)">
+                    <input type="file" id="foto-input" accept="image/*" class="d-none" onchange="cambiarFoto(this)">
                 </div>
                 
                 <h3 class="text-2xl font-bold mb-xs">{{ user.get_full_name }}</h3>
@@ -51,32 +51,32 @@
                 
                 <div class="flex flex-col gap-xs text-sm text-secondary">
                     <div class="flex items-center gap-sm">
-                        <i class="fas fa-id-card" style="width: 1.25rem;"></i>
+                        <i class="fas fa-id-card color-chip-sm"></i>
                         <span>RUT: {{ user.estudiante.rut|default:"-" }}</span>
                     </div>
                     <div class="flex items-center gap-sm">
-                        <i class="fas fa-envelope" style="width: 1.25rem;"></i>
+                        <i class="fas fa-envelope color-chip-sm"></i>
                         <span>{{ user.email }}</span>
                     </div>
                     <div class="flex items-center gap-sm">
-                        <i class="fas fa-phone" style="width: 1.25rem;"></i>
+                        <i class="fas fa-phone color-chip-sm"></i>
                         <span>{{ user.estudiante.telefono|default:"-" }}</span>
                     </div>
                     <div class="flex items-center gap-sm">
-                        <i class="fas fa-calendar" style="width: 1.25rem;"></i>
+                        <i class="fas fa-calendar color-chip-sm"></i>
                         <span>{{ user.estudiante.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</span>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- EstadÃ­sticas RÃ¡pidas -->
+        <!-- Estadísticas Rápidas -->
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title">ðŸ“Š Mis EstadÃ­sticas</h4>
+                <h4 class="card-title">📊 Mis Estadísticas</h4>
             </div>
             <div class="card-body">
-                <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+                <div class="d-flex flex-col gap-md">
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-secondary">Promedio General</span>
                         <span class="font-bold text-lg text-success">{{ promedio_general|default:"0.0"|floatformat:1 }}</span>
@@ -107,12 +107,12 @@
     
     <!-- Columna Derecha - Formularios -->
     <div class="lg:col-span-2">
-        <!-- Tabs de InformaciÃ³n -->
+        <!-- Tabs de Información -->
         <div class="card mb-lg">
             <div class="card-header border-b-0">
                 <div class="tabs">
                     <button class="tab active" data-tab="informacion">
-                        <i class="fas fa-user"></i> InformaciÃ³n Personal
+                        <i class="fas fa-user"></i> Información Personal
                     </button>
                     <button class="tab" data-tab="seguridad">
                         <i class="fas fa-lock"></i> Seguridad
@@ -124,7 +124,7 @@
             </div>
             
             <div class="tab-content">
-                <!-- Tab InformaciÃ³n Personal -->
+                <!-- Tab Información Personal -->
                 <div id="informacion" class="tab-pane active">
                     <form method="POST" action="{% url 'accounts:actualizar_perfil_estudiante' %}" data-validate>
                         {% csrf_token %}
@@ -159,22 +159,22 @@
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                             <div class="form-group">
-                                <label class="form-label form-label-required" for="email">Correo ElectrÃ³nico</label>
+                                <label class="form-label form-label-required" for="email">Correo Electrónico</label>
                                 <input type="email" id="email" name="email" class="form-control" 
                                        value="{{ user.email }}" required>
                             </div>
                             
                             <div class="form-group">
-                                <label class="form-label" for="telefono">TelÃ©fono</label>
+                                <label class="form-label" for="telefono">Teléfono</label>
                                 <input type="tel" id="telefono" name="telefono" class="form-control" 
                                        value="{{ user.estudiante.telefono }}" placeholder="+56 9 1234 5678">
                             </div>
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label" for="direccion">DirecciÃ³n</label>
+                            <label class="form-label" for="direccion">Dirección</label>
                             <input type="text" id="direccion" name="direccion" class="form-control" 
-                                   value="{{ user.estudiante.direccion }}" placeholder="Calle, nÃºmero, comuna">
+                                   value="{{ user.estudiante.direccion }}" placeholder="Calle, número, comuna">
                         </div>
                         
                         <div class="flex justify-end gap-sm mt-lg">
@@ -199,25 +199,25 @@
                             </div>
                             <div class="alert-content">
                                 <div class="alert-message">
-                                    Tu contraseÃ±a debe tener al menos 8 caracteres, incluyendo letras y nÃºmeros.
+                                    Tu contraseña debe tener al menos 8 caracteres, incluyendo letras y números.
                                 </div>
                             </div>
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label form-label-required" for="password_actual">ContraseÃ±a Actual</label>
+                            <label class="form-label form-label-required" for="password_actual">Contraseña Actual</label>
                             <input type="password" id="password_actual" name="password_actual" class="form-control" required>
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label form-label-required" for="password_nueva">Nueva ContraseÃ±a</label>
+                            <label class="form-label form-label-required" for="password_nueva">Nueva Contraseña</label>
                             <input type="password" id="password_nueva" name="password_nueva" class="form-control" 
                                    minlength="8" required>
-                            <span class="form-help">MÃ­nimo 8 caracteres</span>
+                            <span class="form-help">Mínimo 8 caracteres</span>
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label form-label-required" for="password_confirmar">Confirmar Nueva ContraseÃ±a</label>
+                            <label class="form-label form-label-required" for="password_confirmar">Confirmar Nueva Contraseña</label>
                             <input type="password" id="password_confirmar" name="password_confirmar" class="form-control" 
                                    minlength="8" required>
                         </div>
@@ -227,7 +227,7 @@
                                 <i class="fas fa-times"></i> Cancelar
                             </button>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-key"></i> Cambiar ContraseÃ±a
+                                <i class="fas fa-key"></i> Cambiar Contraseña
                             </button>
                         </div>
                     </form>
@@ -242,20 +242,20 @@
                                     <div class="avatar avatar-lg">
                                         {{ user.estudiante.apoderado.user.first_name.0 }}{{ user.estudiante.apoderado.user.last_name.0 }}
                                     </div>
-                                    <div style="flex: 1;">
+                                    <div class="flex-1">
                                         <h4 class="text-lg font-semibold mb-sm">{{ user.estudiante.apoderado.user.get_full_name }}</h4>
                                         
                                         <div style="display: flex; flex-direction: column; gap: var(--spacing-xs); margin-bottom: var(--spacing-md);">
                                             <div class="flex items-center gap-sm text-sm">
-                                                <i class="fas fa-envelope text-secondary" style="width: 1.25rem;"></i>
+                                                <i class="fas fa-envelope text-secondary color-chip-sm"></i>
                                                 <span>{{ user.estudiante.apoderado.user.email }}</span>
                                             </div>
                                             <div class="flex items-center gap-sm text-sm">
-                                                <i class="fas fa-phone text-secondary" style="width: 1.25rem;"></i>
+                                                <i class="fas fa-phone text-secondary color-chip-sm"></i>
                                                 <span>{{ user.estudiante.apoderado.telefono|default:"-" }}</span>
                                             </div>
                                             <div class="flex items-center gap-sm text-sm">
-                                                <i class="fas fa-id-card text-secondary" style="width: 1.25rem;"></i>
+                                                <i class="fas fa-id-card text-secondary color-chip-sm"></i>
                                                 <span>RUT: {{ user.estudiante.apoderado.rut|default:"-" }}</span>
                                             </div>
                                         </div>
@@ -272,30 +272,30 @@
                         <div class="text-center py-3xl">
                             <i class="fas fa-user-friends text-6xl text-secondary mb-md"></i>
                             <h4 class="text-lg font-semibold mb-sm">No hay apoderado asignado</h4>
-                            <p class="text-secondary">Contacta a la administraciÃ³n para mÃ¡s informaciÃ³n.</p>
+                            <p class="text-secondary">Contacta a la administración para más información.</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
         </div>
         
-        <!-- InformaciÃ³n Adicional -->
+        <!-- Información Adicional -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div class="card">
                 <div class="card-body text-center">
-                    <div class="text-4xl mb-md">ðŸŽ¯</div>
-                    <h4 class="font-semibold mb-xs">MatrÃ­cula</h4>
+                    <div class="text-4xl mb-md">🎯</div>
+                    <h4 class="font-semibold mb-xs">Matrícula</h4>
                     <p class="text-2xl font-bold text-primary">{{ user.estudiante.numero_matricula|default:"-" }}</p>
-                    <p class="text-xs text-secondary mt-xs">NÃºmero de matrÃ­cula</p>
+                    <p class="text-xs text-secondary mt-xs">Número de matrícula</p>
                 </div>
             </div>
             
             <div class="card">
                 <div class="card-body text-center">
-                    <div class="text-4xl mb-md">ðŸ“š</div>
-                    <h4 class="font-semibold mb-xs">AÃ±o Ingreso</h4>
+                    <div class="text-4xl mb-md">📚</div>
+                    <h4 class="font-semibold mb-xs">Año Ingreso</h4>
                     <p class="text-2xl font-bold text-secondary">{{ user.estudiante.ano_ingreso|default:"-" }}</p>
-                    <p class="text-xs text-secondary mt-xs">AÃ±o de ingreso al colegio</p>
+                    <p class="text-xs text-secondary mt-xs">Año de ingreso al colegio</p>
                 </div>
             </div>
         </div>
@@ -313,29 +313,29 @@
             formData.append('foto', input.files[0]);
             formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
             
-            // AquÃ­ irÃ­a la lÃ³gica AJAX para subir la foto
+            // Aquí iría la lógica AJAX para subir la foto
             ToastManager.info('Subiendo foto...', 2000);
             
-            // Simular Ã©xito
+            // Simular éxito
             setTimeout(() => {
-                ToastManager.success('Â¡Foto actualizada exitosamente!');
+                ToastManager.success('¡Foto actualizada exitosamente!');
             }, 2000);
         }
     }
     
-    // Validar que las contraseÃ±as coincidan
+    // Validar que las contraseñas coincidan
     document.getElementById('password_confirmar')?.addEventListener('input', function() {
         const nueva = document.getElementById('password_nueva').value;
         const confirmar = this.value;
         
         if (nueva && confirmar && nueva !== confirmar) {
-            this.setCustomValidity('Las contraseÃ±as no coinciden');
+            this.setCustomValidity('Las contraseñas no coinciden');
         } else {
             this.setCustomValidity('');
         }
     });
     
-    // AnimaciÃ³n de entrada
+    // Animación de entrada
     document.addEventListener('DOMContentLoaded', function() {
         const cards = document.querySelectorAll('.card');
         cards.forEach((card, index) => {

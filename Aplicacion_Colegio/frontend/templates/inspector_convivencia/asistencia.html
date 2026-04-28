@@ -4,7 +4,7 @@
 <!-- ASISTENCIA - INSPECTOR CONVIVENCIA -->
 
 <div class="inspector-dashboard">
-    <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="section-header d-flex justify-between align-center">
         <h2><span class="section-icon">✅</span> Control de Asistencia - {{ fecha_consulta|date:"d/m/Y" }}</h2>
         <button class="btn btn-primary" onclick="abrirModalAtraso()">+ Registrar Atraso</button>
     </div>
@@ -37,23 +37,23 @@
 </div>
 
 <!-- Modal para Registrar Atraso -->
-<div id="modal-atraso" class="modal"
-    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
-    <div class="modal-content"
-        style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
-        <div class="modal-header"
-            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
-            <h3 style="margin:0;">⏰ Registrar Atraso (Tardanza)</h3>
+<div id="modal-atraso" class="modal modal-overlay"
+   >
+    <div class="modal-content modal-content"
+       >
+        <div class="modal-header d-flex justify-between align-center mb-4"
+           >
+            <h3 class="m-0">⏰ Registrar Atraso (Tardanza)</h3>
             <span class="close" onclick="cerrarModalAtraso()" style="cursor:pointer; font-size:1.5rem;">×</span>
         </div>
         <div class="modal-body">
-            <div id="msg-atraso" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1rem;"></div>
+            <div id="msg-atraso" class="feedback-box"></div>
             <form id="form-atraso" onsubmit="registrarAtrasoBtn(event)">
                 {% csrf_token %}
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Estudiante *</label>
-                    <select id="atr-estudiante" required class="form-control"
-                        style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                <div class="mb-3">
+                    <label class="label-block">Estudiante *</label>
+                    <select id="atr-estudiante" required class="form-control form-input"
+                       >
                         <option value="">Seleccione estudiante...</option>
                         {% for est in estudiantes %}
                         <option value="{{ est.id }}">{{ est.apellido_paterno }} {{ est.apellido_materno|default:"" }},
@@ -61,32 +61,32 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Clase *</label>
-                    <select id="atr-clase" required class="form-control"
-                        style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                <div class="mb-3">
+                    <label class="label-block">Clase *</label>
+                    <select id="atr-clase" required class="form-control form-input"
+                       >
                         <option value="">Seleccione clase...</option>
                         {% for clase in clases %}
                         <option value="{{ clase.id }}">{{ clase.curso.nombre }} - {{ clase.asignatura.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Fecha *</label>
+                <div class="mb-3">
+                    <label class="label-block">Fecha *</label>
                     <input type="date" id="atr-fecha" required value="{{ fecha_consulta|date:'Y-m-d' }}"
-                        style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                        class="form-input">
                 </div>
-                <div style="margin-bottom:1.5rem;">
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Observaciones (Opcional)</label>
+                <div class="mb-4">
+                    <label class="label-block">Observaciones (Opcional)</label>
                     <textarea id="atr-observaciones" rows="2"
-                        style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;resize:vertical;"
+                        class="form-textarea"
                         placeholder="Llegó 15 min tarde..."></textarea>
                 </div>
-                <div style="display:flex;gap:1rem;justify-content:flex-end;">
+                <div class="d-flex gap-sm">
                     <button type="button" onclick="cerrarModalAtraso()"
-                        style="padding:0.6rem 1.5rem;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;">Cancelar</button>
+                        class="btn-outline">Cancelar</button>
                     <button type="submit" id="btn-submit-atraso"
-                        style="padding:0.6rem 1.5rem;border:none;border-radius:6px;background:#f39c12;color:#fff;cursor:pointer;font-weight:600;">Guardar
+                        class="btn-warning-solid">Guardar
                         Atraso</button>
                 </div>
             </form>

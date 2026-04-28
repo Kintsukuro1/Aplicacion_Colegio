@@ -73,6 +73,60 @@
 .badge-info    { background: #4299e1; }
 .badge-secondary { background: #a0aec0; }
 
+.reset-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.reset-modal-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.reset-modal-title {
+    margin-top: 0;
+}
+
+.reset-modal-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.reset-password-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.reset-modal-help {
+    color: #666;
+}
+
+.reset-modal-error {
+    color: #dc3545;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.reset-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
 @media (max-width: 768px) {
     .soporte-dashboard { padding: 10px; }
 }

@@ -4,7 +4,7 @@
 <!-- ANOTACIONES - INSPECTOR CONVIVENCIA -->
 
 <div class="inspector-dashboard">
-    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="section-header d-flex justify-between align-center">
         <h2><span class="section-icon">📝</span> Anotaciones de Convivencia</h2>
         <button class="btn btn-primary" id="btn-nueva-anotacion" onclick="abrirModalAnotacion()">
             + Nueva Anotación
@@ -43,30 +43,30 @@
 </div>
 
 <!-- Modal Nueva Anotación -->
-<div id="modal-anotacion" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
-    <div style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
-        <h3 style="margin-bottom:1.5rem;">📝 Nueva Anotación de Convivencia</h3>
-        <div id="msg-anotacion" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1rem;"></div>
+<div id="modal-anotacion" class="modal-overlay">
+    <div class="modal-content">
+        <h3 class="mb-4">📝 Nueva Anotación de Convivencia</h3>
+        <div id="msg-anotacion" class="feedback-box"></div>
         <form id="form-anotacion" onsubmit="enviarAnotacion(event)">
             {% csrf_token %}
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Estudiante *</label>
-                <select id="anot-estudiante" name="estudiante_id" required style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+            <div class="mb-3">
+                <label class="label-block">Estudiante *</label>
+                <select id="anot-estudiante" name="estudiante_id" required class="form-input">
                     <option value="">Cargando...</option>
                 </select>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div class="grid-2col">
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Tipo *</label>
-                    <select id="anot-tipo" name="tipo" required style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Tipo *</label>
+                    <select id="anot-tipo" name="tipo" required class="form-input">
                         <option value="POSITIVA">Positiva</option>
                         <option value="NEGATIVA">Negativa</option>
                         <option value="NEUTRA" selected>Neutra</option>
                     </select>
                 </div>
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Categoría *</label>
-                    <select id="anot-categoria" name="categoria" style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+                    <label class="label-block">Categoría *</label>
+                    <select id="anot-categoria" name="categoria" class="form-input">
                         <option value="COMPORTAMIENTO">Comportamiento</option>
                         <option value="PUNTUALIDAD">Puntualidad</option>
                         <option value="UNIFORME">Uniforme</option>
@@ -75,23 +75,23 @@
                     </select>
                 </div>
             </div>
-            <div style="margin-bottom:1rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Gravedad</label>
-                <select id="anot-gravedad" name="gravedad" style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;">
+            <div class="mb-3">
+                <label class="label-block">Gravedad</label>
+                <select id="anot-gravedad" name="gravedad" class="form-input">
                     <option value="1" selected>Leve</option>
                     <option value="2">Moderada</option>
                     <option value="3">Grave</option>
                 </select>
             </div>
-            <div style="margin-bottom:1.5rem;">
-                <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Descripción *</label>
+            <div class="mb-4">
+                <label class="label-block">Descripción *</label>
                 <textarea id="anot-descripcion" name="descripcion" required rows="4"
-                    style="width:100%;padding:0.6rem;border:1px solid #ddd;border-radius:6px;resize:vertical;"
+                    class="form-textarea"
                     placeholder="Descripción detallada de la anotación..."></textarea>
             </div>
-            <div style="display:flex;gap:1rem;justify-content:flex-end;">
-                <button type="button" onclick="cerrarModalAnotacion()" style="padding:0.6rem 1.5rem;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;">Cancelar</button>
-                <button type="submit" id="btn-submit-anotacion" style="padding:0.6rem 1.5rem;border:none;border-radius:6px;background:#e74c3c;color:#fff;cursor:pointer;font-weight:600;">Registrar</button>
+            <div class="d-flex gap-sm">
+                <button type="button" onclick="cerrarModalAnotacion()" class="btn-outline">Cancelar</button>
+                <button type="submit" id="btn-submit-anotacion" class="btn-red-solid">Registrar</button>
             </div>
         </form>
     </div>

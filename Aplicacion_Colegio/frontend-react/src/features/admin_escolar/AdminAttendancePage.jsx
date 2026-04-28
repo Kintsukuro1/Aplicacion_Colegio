@@ -551,10 +551,10 @@ export default function AdminAttendancePage({ me }) {
           </div>
 
           {canEdit ? (
-            <div className="card" style={{ marginTop: '0.8rem' }}>
-              <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem' }}>
+            <div className="card section-card">
+              <div className="bulk-actions-bar">
                 <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-                <div className="actions" style={{ gap: '0.6rem' }}>
+                <div className="bulk-actions-row">
                   <select value={bulkState} onChange={(e) => setBulkState(e.target.value)} disabled={processingBulk}>
                     {ATTENDANCE_STATES.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -569,7 +569,7 @@ export default function AdminAttendancePage({ me }) {
               </div>
 
               {bulkResult ? (
-                <p style={{ marginTop: '0.6rem' }}>
+                <p className="bulk-result-text">
                   Actualizacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
                   {bulkResult.failed > 0
                     ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})`
@@ -579,7 +579,7 @@ export default function AdminAttendancePage({ me }) {
               ) : null}
 
               {bulkResult && bulkResult.failed > 0 ? (
-                <div className="actions" style={{ marginTop: '0.5rem' }}>
+                <div className="bulk-retry-actions">
                   <button type="button" className="secondary" onClick={retryFailedBulkUpdate} disabled={processingBulk}>
                     {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
                   </button>

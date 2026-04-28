@@ -15,7 +15,7 @@
 <div style="display: flex; flex-direction: column; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--spacing-md);">
         <div>
-            <h1 class="text-4xl font-bold" style="margin-bottom: var(--spacing-sm);">
+            <h1 class="text-4xl font-bold mb-sm">
                 <i class="fas fa-chart-bar"></i> Mis Notas
             </h1>
             <p class="text-lg text-secondary">Consulta tus calificaciones por asignatura</p>
@@ -64,7 +64,7 @@
     </h2>
     
     {% if notas_por_asignatura %}
-        <div style="display: flex; flex-direction: column; gap: var(--spacing-lg);">
+        <div class="d-flex flex-col gap-lg">
             {% for item in notas_por_asignatura %}
             <div class="card subject-card {% if item.promedio < 4.0 %}border-error{% endif %}">
                 <div class="card-header subject-header {% if item.promedio >= 4.0 %}header-approved{% else %}header-failed{% endif %}">
@@ -75,7 +75,7 @@
                                 <i class="fas fa-chalkboard-teacher"></i> {{ item.profesor }}
                             </p>
                         </div>
-                        <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                        <div class="d-flex align-center gap-md">
                             <div class="grade-circle {% if item.promedio >= 4.0 %}grade-approved{% else %}grade-failed{% endif %}">
                                 <div class="text-xs text-secondary" style="margin-bottom: 2px;">Promedio</div>
                                 <div class="text-2xl font-bold">{{ item.promedio|floatformat:1 }}</div>
@@ -139,11 +139,11 @@
                 </div>
                 
                 <div class="card-footer">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="d-flex justify-between align-center">
                         <span class="text-sm text-secondary">
                             <i class="fas fa-clipboard-list"></i> Total evaluaciones: {{ item.total_evaluaciones }}
                         </span>
-                        <div class="progress" style="width: 200px;">
+                        <div class="progress w-200">
                             <div class="progress-bar {% if item.promedio >= 4.0 %}progress-bar-success{% else %}progress-bar-error{% endif %}" 
                                  style="width: {{ item.promedio|default:0 }}0%;min-width: 10%;">
                                 {{ item.promedio|floatformat:1 }}

@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <link rel="stylesheet" href="{% static 'css/profesor/perfil.css' %}">
 
 <div class="perfil-container">
@@ -12,7 +12,7 @@
     {% if messages %}
         {% for message in messages %}
             <div class="mensaje-box {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% endif %}">
-                <span style="font-size: 20px;">{% if message.tags == 'success' %}OK{% else %}X{% endif %}</span>
+                <span class="icon-md">{% if message.tags == 'success' %}OK{% else %}X{% endif %}</span>
                 <span>{{ message }}</span>
             </div>
         {% endfor %}
@@ -83,7 +83,7 @@
 
         <!-- Columna derecha: Edicion de perfil y contrasena -->
         <div>
-            <!-- Formulario de ediciÃ³n -->
+            <!-- Formulario de edición -->
             <div class="card">
                 <h2>Editar Informacion de Contacto</h2>
                 <form method="POST" action="{% url 'accounts:actualizar_perfil_profesor' %}">
@@ -115,8 +115,8 @@
                 </form>
             </div>
 
-            <!-- Formulario de cambio de contraseÃ±a -->
-            <div class="card" style="margin-top: 25px;">
+            <!-- Formulario de cambio de contraseña -->
+            <div class="card mt-5">
                 <h2>Cambiar Contrasena</h2>
                 <form method="POST" action="{% url 'accounts:cambiar_password_profesor' %}">
                     {% csrf_token %}

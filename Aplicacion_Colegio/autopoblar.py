@@ -1481,6 +1481,12 @@ def poblar_evaluaciones_calificaciones():
     )
     
     tipos_evaluacion = ['Prueba', 'Control', 'Trabajo Práctico', 'Disertación', 'Proyecto']
+    tipos_modelo = ['sumativa', 'formativa', 'diagnostica', 'acumulativa']
+
+    def inferir_periodo(fecha_evaluacion):
+        if fecha_evaluacion.month <= 6:
+            return 'semestre1'
+        return 'semestre2'
     
     for clase in clases:
         # Crear 3-4 evaluaciones por asignatura
@@ -1492,6 +1498,7 @@ def poblar_evaluaciones_calificaciones():
             
             tipo = random.choice(tipos_evaluacion)
             ponderacion = random.choice([10, 15, 20, 25, 30])
+            tipo_modelo = random.choice(tipos_modelo)
             
             evaluacion = Evaluacion.objects.create(
                 colegio=colegio,
@@ -1499,6 +1506,9 @@ def poblar_evaluaciones_calificaciones():
                 nombre=f"{tipo} {i} - {clase.asignatura.nombre}",
                 fecha_evaluacion=fecha_eval,
                 ponderacion=ponderacion,
+                periodo=inferir_periodo(fecha_eval),
+                tipo_evaluacion=tipo_modelo,
+                es_recuperacion=random.random() < 0.1,
                 activa=True
             )
             

@@ -100,7 +100,7 @@
 </div>
 
 <!-- Lista de Tareas -->
-<div id="tareas-container" style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+<div id="tareas-container" class="d-flex flex-col gap-md">
     
     {% if tareas %}
         {% for tarea in tareas %}
@@ -216,7 +216,7 @@
     {% else %}
         <div class="card">
             <div class="card-body py-3xl text-center">
-                <div style="width: 6rem; height: 6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; background-color: var(--bg-secondary); margin: 0 auto var(--spacing-lg);">
+                <div class="icon-circle-lg">
                     <i class="fas fa-clipboard-check text-secondary"></i>
                 </div>
                 <h3 class="text-xl font-semibold mb-sm">No hay tareas disponibles</h3>
@@ -227,7 +227,7 @@
 </div>
 
 <!-- Modal para entregar tarea -->
-<div id="modal-entregar" class="modal-backdrop" style="display: none;">
+<div id="modal-entregar" class="modal-backdrop d-none">
     <div class="modal modal-lg">
         <div class="modal-header">
             <h3 class="modal-title">Entregar Tarea</h3>
