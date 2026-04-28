@@ -150,6 +150,11 @@ from backend.apps.api.payment_views import (
     payment_webhook,
     plans_list,
 )
+from backend.apps.api.onboarding_views import (
+    onboarding_check_slug,
+    onboarding_generate_demo,
+    onboarding_register,
+)
 
 app_name = 'api'
 
@@ -188,6 +193,9 @@ urlpatterns = [
     path('payments/create-checkout/', create_checkout, name='create_checkout'),
     path('payments/webhook/', payment_webhook, name='payment_webhook'),
     path('payments/history/', payment_history, name='payment_history'),
+    path('onboarding/register/', onboarding_register, name='onboarding_register'),
+    path('onboarding/check-slug/', onboarding_check_slug, name='onboarding_check_slug'),
+    path('onboarding/generate-demo/', onboarding_generate_demo, name='onboarding_generate_demo'),
     path('ops/metrics/', operational_metrics, name='operational_metrics'),
     path('me/', me, name='me_root'),
     path('auth/token/', ColegioTokenObtainPairView.as_view(), name='token_obtain_pair'),

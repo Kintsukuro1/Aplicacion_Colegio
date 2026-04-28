@@ -78,6 +78,11 @@ export default function LoginPage() {
         <button type="submit" disabled={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
         </button>
+
+        <div className="register-link">
+          ¿Eres un colegio nuevo?{' '}
+          <a href="/register">Registra tu institución</a>
+        </div>
       </form>
     </div>
   );

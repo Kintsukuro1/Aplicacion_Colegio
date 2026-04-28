@@ -7,6 +7,7 @@ import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 import LoginPage from './features/auth/LoginPage';
+import RegisterPage from './features/auth/RegisterPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import TeacherClassesPage from './features/profesor/TeacherClassesPage';
 import TeacherAttendancePage from './features/profesor/TeacherAttendancePage';
@@ -411,6 +412,7 @@ export default function App() {
     <ToastProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route
           path="/*"
           element={
