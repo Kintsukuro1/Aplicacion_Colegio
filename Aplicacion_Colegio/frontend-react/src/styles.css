@@ -435,6 +435,101 @@ main {
 
 .sidebar-close-btn {
   display: none;
+  background: none;
+  border: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--sidebar-text);
+  font-size: 1.4rem;
+}
+
+/* Overlay used for mobile drawer */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+  z-index: 90;
+}
+.sidebar-overlay.sidebar-overlay-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar open state (mobile) */
+.sidebar-grouped {
+  transition: transform var(--transition-base), visibility var(--transition-base);
+}
+.sidebar-grouped.sidebar-open {
+  transform: translateX(0);
+}
+
+/* Mobile-first responsive adjustments */
+@media (max-width: 767px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar-grouped {
+    position: fixed;
+    z-index: 95;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    transform: translateX(-110%);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.4);
+    border-right: 1px solid rgba(0,0,0,0.06);
+  }
+  main {
+    padding: 1rem;
+  }
+  .sidebar-close-btn {
+    display: inline-block;
+  }
+  .sidebar-logout {
+    margin-bottom: 1.5rem;
+  }
+  /* Mobile bottom nav visible only on small screens */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    z-index: 80;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+    justify-content: space-around;
+    align-items: center;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet: sidebar mini (icons only) */
+  .app-shell {
+    grid-template-columns: 72px 1fr;
+  }
+  .sidebar-grouped {
+    width: 72px;
+  }
+  .sidebar-group-label,
+  .sidebar-user-info,
+  .sidebar-group-toggle .sidebar-group-label {
+    display: none;
+  }
+  main {
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-bottom-nav { display: none; }
 }
 
 /* ════════════════════════════════════════════
