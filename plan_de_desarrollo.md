@@ -111,6 +111,21 @@ Verificación:
 Estado:
 - Completado y validado.
 
+## Avance 8 — Test de onboarding público
+
+Qué se hizo:
+- Se añadió una prueba de integración para el registro público en `/api/v1/onboarding/register/`.
+- La prueba valida también `check-slug`, creación de `Colegio`, `User` admin, `ConfiguracionAcademica`, `CicloAcademico` y `Subscription` trial.
+
+Resultado:
+- El contrato público de onboarding quedó cubierto por una prueba real contra la API.
+
+Verificación:
+- `python -m pytest tests/integration/test_onboarding_registration.py -q` — OK
+
+Estado:
+- Completado y validado.
+
 ## Siguiente paso — Onboarding automático
 
 Objetivo:
