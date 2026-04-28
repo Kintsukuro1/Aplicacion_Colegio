@@ -242,8 +242,48 @@ Tareas (prioridad):
 4. **Webhooks de MercadoPago**: Procesamiento asincrónico de eventos de pago.
 5. **Tests de multi-tenancy**: Validar aislamiento de datos y acceso correcto por subdominio.
 
+## Avance 14 — Fase 2: Multi-tenancy enforcement y subscription management API
+
+Qué se hizo:
+- Se reforzó `SubdomainMiddleware` para enforcing multi-tenancy: usuarios autenticados solo pueden acceder su propio colegio por subdominio.
+- Se agregaron 3 nuevos endpoints API:
+  - `POST /api/v1/subscriptions/upgrade/` — cambiar a un plan superior
+  - `POST /api/v1/subscriptions/cancel/` — cancelar suscripción
+  - `POST /api/v1/subscriptions/renew/` — renovar por X días
+- Se creó el componente React `SubscriptionDashboard` que muestra:
+  - Plan actual y estado
+  - Histórico de pagos
+  - Grid de planes disponibles con opción de upgrade
+  - Botones de acción (renovar, cancelar)
+- Se añadió CSS para subscription dashboard: cards, grids responsive, estilos para acciones.
+- Se validó que build sigue sin warnings y tests pasan.
+
+Resultado:
+- El sistema ahora enforce multi-tenancy a nivel de middleware.
+- Admin de colegios puede gestionar su suscripción (upgrade, cancel, renew) sin salir de la app.
+- Dashboard de pagos listo para monetización.
+
+Verificación:
+- `python manage.py check` — OK
+- `npm run build` — OK (✓ 86 modules, ~42.9KB CSS, ~197.5KB JS main)
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
+
+Estado:
+- Completado y validado (build + backend tests).
+
+## Siguiente fase — Fase 2B: Webhooks de MercadoPago y tests de multi-tenancy
+
+Tareas pendientes:
+1. Implementar procesamiento asincrónico de webhooks (Celery + Redis).
+2. Tests de multi-tenancy: validar que user de colegio A no puede acceder colegio B.
+3. Dashboard mejorado con alertas de renovación próxima.
+4. Migración de datos legacy (si aplica para golangsms).
+
+
+
 ## Registro de commits
 
+- `497e053` - Fase 2: Multi-tenancy enforcement and subscription management API
 - `435902d` - Fase 1: Mobile-first responsive design and mobile bottom navigation
 - `906eb3d` - Implement tenant base and mobile UI improvements
 - `b3261cd` - Surface executive dashboard alerts
@@ -253,13 +293,16 @@ Tareas (prioridad):
 ## Validaciones realizadas
 
 - `python manage.py check` — OK
-- `npm run build` — OK (✓ 86 modules, 12 chunks, ~40KB CSS, ~197KB JS main)
+- `npm run build` — OK (✓ 86 modules, 12 chunks, ~42.9KB CSS, ~197.5KB JS main)
 - `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
 - `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
 
 ## Observaciones
 
-- El trabajo se está haciendo en pasos pequeños y verificables.
-- Cada avance se valida antes de pasar al siguiente.
 - Fase 1 (Mobile-first) completada: responsive en 3 breakpoints, drawer sidebar móvil, bottom nav, overlay y transitions.
-- Fase 2 (Multi-tenancy + monetización) es el próximo objetivo: subdominio obligatorio, suscripciones mejoradas, webhooks de pagos.
+- Fase 2 (Multi-tenancy + monetización) iniciada:
+  - Subdominio enforcement en middleware
+  - Endpoints de subscription management (upgrade, cancel, renew)
+  - Dashboard de suscripción con historial de pagos
+  - CSS responsive para mobile
+- Siguientes objetivos: webhooks MercadoPago, tests multi-tenancy, alertas de renovación.
