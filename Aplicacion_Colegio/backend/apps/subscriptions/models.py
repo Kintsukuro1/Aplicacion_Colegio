@@ -244,6 +244,55 @@ class Subscription(models.Model):
         return False
 
 
+class Payment(models.Model):
+    """Registro de pagos procesados por suscripción."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pendiente'),
+        (STATUS_APPROVED, 'Aprobado'),
+        (STATUS_REJECTED, 'Rechazado'),
+        (STATUS_CANCELLED, 'Cancelado'),
+    ]
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')
+    external_id = models.CharField(max_length=100, unique=True)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    moneda = models.CharField(max_length=3, default='CLP')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    gateway = models.CharField(max_length=40, default='mercadopago')
+    metadata_json = models.JSONField(default=dict, blank=True)
+    fecha_pago = models.DateTimeField(null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'payment'
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['subscription', 'status']),
+            models.Index(fields=['gateway', 'external_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.subscription.colegio.nombre} - {self.external_id} ({self.get_status_display()})"
+
+    def mark_approved(self, *, paid_at=None):
+        self.status = self.STATUS_APPROVED
+        self.fecha_pago = paid_at or timezone.now()
+        self.save()
+
+    def mark_rejected(self):
+        self.status = self.STATUS_REJECTED
+        self.save()
+
+
 class UsageLog(models.Model):
     """
     Modelo de Seguimiento de Uso

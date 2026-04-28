@@ -32,6 +32,8 @@ import SoporteTecnicoPage from './features/soporte_tecnico/SoporteTecnicoPage';
 import BibliotecarioDigitalPage from './features/bibliotecario_digital/BibliotecarioDigitalPage';
 import CoordinadorAcademicoPage from './features/coordinador_academico/CoordinadorAcademicoPage';
 import ApoderadoPage from './features/apoderado/ApoderadoPage';
+import PricingPage from './features/subscriptions/PricingPage';
+import PaymentHistoryPage from './features/subscriptions/PaymentHistoryPage';
 import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';
@@ -211,6 +213,20 @@ const APP_ROUTES = [
     label: 'Apoderado Panel',
     component: ApoderadoPage,
     anyOf: ['DASHBOARD_VIEW_SELF', 'STUDENT_VIEW', 'FINANCE_VIEW'],
+  },
+  {
+    path: 'planes',
+    to: '/planes',
+    label: 'Planes',
+    component: PricingPage,
+    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
+  },
+  {
+    path: 'pagos/historial',
+    to: '/pagos/historial',
+    label: 'Historial de Pagos',
+    component: PaymentHistoryPage,
+    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
   },
 ];
 

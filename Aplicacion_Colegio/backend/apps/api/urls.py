@@ -144,6 +144,12 @@ from backend.apps.api.importacion_exportacion_views import (
     api_importacion_dashboard,
     api_importar_datos,
 )
+from backend.apps.api.payment_views import (
+    create_checkout,
+    payment_history,
+    payment_webhook,
+    plans_list,
+)
 
 app_name = 'api'
 
@@ -178,6 +184,10 @@ urlpatterns = [
     path('health/', api_health, name='health'),
     path('tenant/info/', tenant_info, name='tenant_info'),
     path('tenant/config/', tenant_config, name='tenant_config'),
+    path('plans/', plans_list, name='plans_list'),
+    path('payments/create-checkout/', create_checkout, name='create_checkout'),
+    path('payments/webhook/', payment_webhook, name='payment_webhook'),
+    path('payments/history/', payment_history, name='payment_history'),
     path('ops/metrics/', operational_metrics, name='operational_metrics'),
     path('me/', me, name='me_root'),
     path('auth/token/', ColegioTokenObtainPairView.as_view(), name='token_obtain_pair'),

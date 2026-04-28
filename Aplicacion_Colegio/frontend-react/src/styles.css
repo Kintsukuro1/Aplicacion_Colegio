@@ -2060,6 +2060,117 @@ tbody tr:last-child td {
   margin-top: 0.5rem;
 }
 
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pricing-card-featured {
+  border-color: rgba(14, 165, 233, 0.35);
+  box-shadow: 0 20px 45px rgba(14, 165, 233, 0.08);
+}
+
+.pricing-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pricing-card-head h3 {
+  margin: 0;
+}
+
+.pricing-card-head p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.pricing-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.pricing-card-price strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.pricing-card-price span {
+  color: var(--muted);
+}
+
+.pricing-feature-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--text);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pricing-cta {
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+.subscription-status-card {
+  margin-top: 1rem;
+}
+
+.subscription-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.subscription-status-grid strong {
+  display: block;
+  font-size: 1.15rem;
+}
+
+.subscription-status-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.usage-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-light);
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+
+.usage-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), #22c55e);
+}
+
+.subscription-status-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
 /* Stats tiles (import/export dashboard) */
 .stats-grid {
   display: grid;
