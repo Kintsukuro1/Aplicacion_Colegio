@@ -150,6 +150,9 @@ from backend.apps.api.payment_views import (
     payment_history,
     payment_webhook,
     plans_list,
+    upgrade_subscription,
+    cancel_subscription,
+    renew_subscription,
 )
 from backend.apps.api.onboarding_views import (
     onboarding_check_slug,
@@ -194,6 +197,9 @@ urlpatterns = [
     path('payments/create-checkout/', create_checkout, name='create_checkout'),
     path('payments/webhook/', payment_webhook, name='payment_webhook'),
     path('payments/history/', payment_history, name='payment_history'),
+    path('subscriptions/upgrade/', upgrade_subscription, name='upgrade_subscription'),
+    path('subscriptions/cancel/', cancel_subscription, name='cancel_subscription'),
+    path('subscriptions/renew/', renew_subscription, name='renew_subscription'),
     path('onboarding/register/', onboarding_register, name='onboarding_register'),
     path('onboarding/check-slug/', onboarding_check_slug, name='onboarding_check_slug'),
     path('onboarding/generate-demo/', onboarding_generate_demo, name='onboarding_generate_demo'),

@@ -1,6 +1,8 @@
 """Middleware para resolver tenant por subdominio."""
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
 
 from backend.apps.institucion.models import Colegio
 
@@ -9,7 +11,10 @@ class SubdomainMiddleware:
     """
     Resuelve el subdominio del host y lo mapea a un colegio.
 
+    Fase 2: Enforce que usuarios autenticados solo accedan su propio colegio por subdominio.
+    
     Ejemplo: colegio1.redpanda.cl -> slug=colegio1
+    Solo users con rbd_colegio=1 pueden acceder a colegio1.redpanda.cl
     """
 
     def __init__(self, get_response):
@@ -57,5 +62,17 @@ class SubdomainMiddleware:
                 request.is_subdomain = True
                 request.tenant_school_id = colegio.rbd
                 request.tenant_school = colegio
+                
+                # Fase 2: Enforce multi-tenancy para usuarios autenticados
+                if request.user and request.user.is_authenticated:
+                    user_rbd = getattr(request.user, 'rbd_colegio', None)
+                    if user_rbd and user_rbd != colegio.rbd:
+                        # Usuario intenta acceder a un colegio que no es el suyo
+                        if request.path.startswith('/api/'):
+                            return JsonResponse(
+                                {'detail': 'No tienes acceso a este colegio.'},
+                                status=403
+                            )
+                        raise PermissionDenied('No tienes acceso a este colegio.')
 
         return self.get_response(request)

@@ -111,6 +111,119 @@ def payment_history(request):
     return Response({'payments': history}, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upgrade_subscription(request):
+    """Upgrade a un plan superior.
+    
+    POST /api/v1/subscriptions/upgrade/
+    {
+        "plan_codigo": "premium",
+        "colegio_rbd": 123  # opcional, usa rbd_colegio del usuario si no se proporciona
+    }
+    """
+    plan_codigo = str(request.data.get('plan_codigo') or '').strip()
+    colegio_rbd = request.data.get('colegio_rbd') or getattr(request.user, 'rbd_colegio', None)
+    
+    if not plan_codigo:
+        return Response({'detail': 'plan_codigo es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+    if colegio_rbd is None:
+        return Response({'detail': 'No se pudo resolver el colegio.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        colegio = Colegio.objects.get(rbd=colegio_rbd)
+        plan = Plan.objects.get(codigo=plan_codigo, activo=True)
+        subscription = colegio.subscription
+        subscription.upgrade_to(plan)
+    except Colegio.DoesNotExist:
+        return Response({'detail': 'Colegio no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    except Plan.DoesNotExist:
+        return Response({'detail': 'Plan no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
+
+    return Response(
+        {
+            'detail': f'Suscripción actualizada a {plan.nombre}.',
+            'plan_nombre': plan.nombre,
+            'plan_codigo': plan.codigo,
+            'fecha_inicio': subscription.fecha_inicio.isoformat(),
+            'fecha_fin': subscription.fecha_fin.isoformat() if subscription.fecha_fin else None,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_subscription(request):
+    """Cancelar la suscripción actual.
+    
+    POST /api/v1/subscriptions/cancel/
+    """
+    colegio_rbd = request.data.get('colegio_rbd') or getattr(request.user, 'rbd_colegio', None)
+    if colegio_rbd is None:
+        return Response({'detail': 'No se pudo resolver el colegio.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        colegio = Colegio.objects.get(rbd=colegio_rbd)
+        subscription = colegio.subscription
+        if subscription.cancelar():
+            return Response(
+                {
+                    'detail': 'Suscripción cancelada.',
+                    'plan_nombre': subscription.plan.nombre,
+                    'status': subscription.get_status_display(),
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {'detail': 'No se puede cancelar un plan ilimitado.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+    except Colegio.DoesNotExist:
+        return Response({'detail': 'Colegio no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def renew_subscription(request):
+    """Renovar la suscripción actual por X días.
+    
+    POST /api/v1/subscriptions/renew/
+    {
+        "dias": 30
+    }
+    """
+    colegio_rbd = request.data.get('colegio_rbd') or getattr(request.user, 'rbd_colegio', None)
+    dias = request.data.get('dias', 30)
+    
+    if colegio_rbd is None:
+        return Response({'detail': 'No se pudo resolver el colegio.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        colegio = Colegio.objects.get(rbd=colegio_rbd)
+        subscription = colegio.subscription
+        subscription.renovar(dias=dias)
+        
+        return Response(
+            {
+                'detail': f'Suscripción renovada por {dias} días.',
+                'plan_nombre': subscription.plan.nombre,
+                'fecha_fin': subscription.fecha_fin.isoformat() if subscription.fecha_fin else None,
+                'status': subscription.get_status_display(),
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Colegio.DoesNotExist:
+        return Response({'detail': 'Colegio no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
+
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
