@@ -270,6 +270,39 @@ function buildExecutiveAlerts(execData) {
   return alerts;
 }
 
+function buildExecutiveKpiCards(execData) {
+  const kpis = execData?.kpis || {};
+  if (!Object.keys(kpis).length) return [];
+
+  const cards = [];
+
+  if (kpis.total_students !== undefined) {
+    cards.push({ title: 'Estudiantes', value: kpis.total_students, icon: '👥', variant: 'default' });
+  }
+  if (kpis.total_teachers !== undefined) {
+    cards.push({ title: 'Profesores', value: kpis.total_teachers, icon: '👨‍🏫', variant: 'default' });
+  }
+  if (kpis.attendance_rate_today !== undefined) {
+    cards.push({
+      title: 'Asistencia Hoy',
+      value: `${kpis.attendance_rate_today}%`,
+      subtitle: `${kpis.attendance_today_present ?? 0} de ${kpis.attendance_today_total ?? 0} presentes`,
+      icon: '✅',
+      variant: kpis.attendance_rate_today >= 85 ? 'success' : kpis.attendance_rate_today < 70 ? 'danger' : 'warning',
+    });
+  }
+  if (kpis.grades_below_threshold !== undefined) {
+    cards.push({
+      title: 'Notas Bajo 4.0',
+      value: kpis.grades_below_threshold,
+      icon: '⚠️',
+      variant: kpis.grades_below_threshold > 0 ? 'warning' : 'success',
+    });
+  }
+
+  return cards;
+}
+
 function QuickActions({ scope }) {
   const actions = [];
 
@@ -375,8 +408,10 @@ function AlertsList({ data, scope }) {
 
 function ExecutiveSnapshot({ execData }) {
   const alerts = buildExecutiveAlerts(execData);
+  const kpiCards = buildExecutiveKpiCards(execData);
+  const recentActivity = Array.isArray(execData?.recent_activity) ? execData.recent_activity : [];
 
-  if (!execData && alerts.length === 0) return null;
+  if (!execData && alerts.length === 0 && kpiCards.length === 0 && recentActivity.length === 0) return null;
 
   return (
     <article className="card section-card">
@@ -387,6 +422,14 @@ function ExecutiveSnapshot({ execData }) {
         </div>
         {execData?.scope ? <span className="badge badge-active">{execData.scope}</span> : null}
       </div>
+
+      {kpiCards.length > 0 ? (
+        <div className="exec-dashboard-grid exec-dashboard-grid--compact">
+          {kpiCards.map((card) => (
+            <StatCard key={card.title} {...card} />
+          ))}
+        </div>
+      ) : null}
 
       {alerts.length > 0 ? (
         <div className="exec-alerts-list exec-alerts-list--compact">
@@ -400,6 +443,30 @@ function ExecutiveSnapshot({ execData }) {
       ) : (
         <p className="section-muted">No hay alertas ejecutivas activas.</p>
       )}
+
+      {recentActivity.length > 0 ? (
+        <article className="card section-card">
+          <h3>Actividad Reciente</h3>
+          <div className="exec-activity-list">
+            {recentActivity.map((item, index) => (
+              <div key={`${item.type}-${item.timestamp}-${index}`} className="exec-activity-item">
+                <span className="exec-activity-dot" />
+                <div className="exec-activity-content">
+                  <strong>
+                    {item.icon ? `${item.icon} ` : ''}
+                    {item.title}
+                  </strong>
+                  <div>{[item.subject, item.course].filter(Boolean).join(' · ')}</div>
+                  <div className="exec-activity-time">
+                    {item.detail}
+                    {item.timestamp ? ` · ${item.timestamp.substring(0, 16).replace('T', ' ')}` : ''}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
     </article>
   );
 }

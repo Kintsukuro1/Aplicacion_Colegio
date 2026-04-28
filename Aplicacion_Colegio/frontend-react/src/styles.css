@@ -1084,6 +1084,10 @@ tbody tr:last-child td {
   gap: 1rem;
 }
 
+.exec-dashboard-grid--compact {
+  margin-top: 0.25rem;
+}
+
 .exec-chart-row {
   display: grid;
   grid-template-columns: 1.4fr 1fr;

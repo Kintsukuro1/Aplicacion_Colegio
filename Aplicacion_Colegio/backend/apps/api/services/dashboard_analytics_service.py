@@ -15,7 +15,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from backend.apps.accounts.models import User
-from backend.apps.academico.models import Asistencia, Calificacion, Evaluacion
+from backend.apps.academico.models import Asistencia, Calificacion, Evaluacion, RegistroClase
 from backend.apps.cursos.models import Clase, ClaseEstudiante, Curso
 from backend.apps.subscriptions.utils import (
     get_subscription_status_message,
@@ -54,11 +54,15 @@ class DashboardAnalyticsService:
         }
 
         if scope in ('school', 'analytics', 'auto', 'global'):
+            payload['kpis'] = cls._build_kpis(school_id=school_id, today=today)
             payload['charts'] = cls._build_charts(school_id=school_id, today=today)
             payload['alerts'] = cls._build_alerts(school_id=school_id, today=today)
+            payload['recent_activity'] = cls._build_recent_activity(school_id=school_id)
         else:
+            payload['kpis'] = {}
             payload['charts'] = {}
             payload['alerts'] = []
+            payload['recent_activity'] = []
 
         # Subscription info
         payload.update(cls._build_subscription_info(school_id=school_id))
@@ -91,6 +95,138 @@ class DashboardAnalyticsService:
         )
 
         return charts
+
+    @classmethod
+    def _build_kpis(cls, *, school_id, today):
+        """Construye KPIs ejecutivos simples y estables."""
+        total_students = (
+            ClaseEstudiante.objects.filter(clase__colegio_id=school_id, activo=True)
+            .values('estudiante_id')
+            .distinct()
+            .count()
+        )
+        total_teachers = User.objects.filter(rbd_colegio=school_id, role__nombre__iexact='Profesor').count()
+
+        attendance_today = Asistencia.objects.filter(colegio_id=school_id, fecha=today)
+        attendance_total = attendance_today.count()
+        attendance_present = attendance_today.filter(estado='P').count()
+        attendance_rate_today = round((attendance_present / attendance_total) * 100, 1) if attendance_total else 0
+
+        nota_aprobacion = 4.0
+        try:
+            from backend.apps.institucion.models import Colegio
+            from backend.common.utils.grade_scale import get_escala
+
+            colegio = Colegio.objects.get(rbd=school_id)
+            escala = get_escala(colegio)
+            nota_aprobacion = float(escala['nota_aprobacion'])
+        except Exception:
+            pass
+
+        grades_below_threshold = Calificacion.objects.filter(
+            colegio_id=school_id,
+            nota__lt=nota_aprobacion,
+        ).values('estudiante_id').distinct().count()
+
+        upcoming_evaluations = Evaluacion.objects.filter(
+            colegio_id=school_id,
+            activa=True,
+            fecha_evaluacion__gte=today,
+            fecha_evaluacion__lte=today + timedelta(days=7),
+        ).count()
+
+        active_classes = Clase.objects.filter(colegio_id=school_id, activo=True).count()
+
+        return {
+            'total_students': total_students,
+            'total_teachers': total_teachers,
+            'attendance_today_total': attendance_total,
+            'attendance_today_present': attendance_present,
+            'attendance_rate_today': attendance_rate_today,
+            'grades_below_threshold': grades_below_threshold,
+            'upcoming_evaluations': upcoming_evaluations,
+            'active_classes': active_classes,
+        }
+
+    @classmethod
+    def _build_recent_activity(cls, *, school_id, limit=8):
+        """Une las acciones recientes más visibles del colegio en una sola lista."""
+        activities = []
+
+        evaluations = (
+            Evaluacion.objects.filter(colegio_id=school_id)
+            .select_related('clase__curso', 'clase__asignatura')
+            .order_by('-fecha_creacion')[:4]
+        )
+        for evaluacion in evaluations:
+            activities.append(
+                {
+                    'type': 'evaluacion',
+                    'icon': '📝',
+                    'title': 'Evaluación creada',
+                    'subject': evaluacion.clase.asignatura.nombre if evaluacion.clase and evaluacion.clase.asignatura else '',
+                    'course': evaluacion.clase.curso.nombre if evaluacion.clase and evaluacion.clase.curso else '',
+                    'detail': evaluacion.nombre,
+                    'timestamp': evaluacion.fecha_creacion.isoformat() if evaluacion.fecha_creacion else None,
+                }
+            )
+
+        class_logs = (
+            RegistroClase.objects.filter(colegio_id=school_id)
+            .select_related('clase__curso', 'clase__asignatura', 'profesor')
+            .order_by('-fecha_creacion')[:4]
+        )
+        for registro in class_logs:
+            activities.append(
+                {
+                    'type': 'clase',
+                    'icon': '🏫',
+                    'title': 'Registro de clase',
+                    'subject': registro.clase.asignatura.nombre if registro.clase and registro.clase.asignatura else '',
+                    'course': registro.clase.curso.nombre if registro.clase and registro.clase.curso else '',
+                    'detail': f'Bloque {registro.numero_clase} por {registro.profesor.get_full_name() or registro.profesor.email}',
+                    'timestamp': registro.fecha_creacion.isoformat() if registro.fecha_creacion else None,
+                }
+            )
+
+        grades = (
+            Calificacion.objects.filter(colegio_id=school_id)
+            .select_related('evaluacion__clase__curso', 'evaluacion__clase__asignatura', 'estudiante', 'registrado_por')
+            .order_by('-fecha_creacion')[:4]
+        )
+        for calificacion in grades:
+            activities.append(
+                {
+                    'type': 'calificacion',
+                    'icon': '⭐',
+                    'title': 'Calificación registrada',
+                    'subject': calificacion.evaluacion.clase.asignatura.nombre if calificacion.evaluacion and calificacion.evaluacion.clase and calificacion.evaluacion.clase.asignatura else '',
+                    'course': calificacion.evaluacion.clase.curso.nombre if calificacion.evaluacion and calificacion.evaluacion.clase and calificacion.evaluacion.clase.curso else '',
+                    'detail': f"{calificacion.estudiante.get_full_name()}: {calificacion.nota}",
+                    'timestamp': calificacion.fecha_creacion.isoformat() if calificacion.fecha_creacion else None,
+                }
+            )
+
+        attendance = (
+            Asistencia.objects.filter(colegio_id=school_id)
+            .select_related('clase__curso', 'clase__asignatura', 'estudiante')
+            .order_by('-fecha_creacion')[:4]
+        )
+        for asistencia in attendance:
+            activities.append(
+                {
+                    'type': 'asistencia',
+                    'icon': '✅',
+                    'title': 'Asistencia tomada',
+                    'subject': asistencia.clase.asignatura.nombre if asistencia.clase and asistencia.clase.asignatura else '',
+                    'course': asistencia.clase.curso.nombre if asistencia.clase and asistencia.clase.curso else '',
+                    'detail': f"{asistencia.estudiante.get_full_name()} · {asistencia.get_estado_display()}",
+                    'timestamp': asistencia.fecha_creacion.isoformat() if asistencia.fecha_creacion else None,
+                }
+            )
+
+        activities.sort(key=lambda item: item.get('timestamp') or '', reverse=True)
+        return activities[:limit]
 
     @classmethod
     def _attendance_trend(cls, *, school_id, today, days=30):

@@ -68,9 +68,28 @@ describe('DashboardPage', () => {
       .mockResolvedValueOnce({
         scope: 'analytics',
         generated_at: '2026-03-07',
+        kpis: {
+          total_students: 342,
+          total_teachers: 28,
+          attendance_rate_today: 94.2,
+          attendance_today_present: 323,
+          attendance_today_total: 342,
+          grades_below_threshold: 12,
+        },
         alerts: [{ type: 'warning', icon: '⚠️', message: '12 estudiantes con notas bajo 4.0.' }],
         subscription_alert: { type: 'info', message: 'Plan vigente hasta fin de mes.' },
         usage_warnings: [{ type: 'danger', message: 'Se alcanzó el 90% del límite de almacenamiento.' }],
+        recent_activity: [
+          {
+            type: 'evaluacion',
+            icon: '📝',
+            title: 'Evaluación creada',
+            subject: 'Matemática',
+            course: '2° Medio A',
+            detail: 'Prueba parcial',
+            timestamp: '2026-03-07T09:15:00',
+          },
+        ],
         charts: {},
       });
 
@@ -82,6 +101,11 @@ describe('DashboardPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Panel Ejecutivo')).toBeInTheDocument();
+      expect(screen.getByText('Estudiantes')).toBeInTheDocument();
+      expect(screen.getByText('342')).toBeInTheDocument();
+      expect(screen.getByText('Actividad Reciente')).toBeInTheDocument();
+      expect(screen.getByText('Matemática · 2° Medio A')).toBeInTheDocument();
+      expect(screen.getByText((content, element) => element?.classList.contains('exec-activity-time') && content.includes('Prueba parcial'))).toBeInTheDocument();
       expect(screen.getByText('Plan vigente hasta fin de mes.')).toBeInTheDocument();
       expect(screen.getByText('Se alcanzó el 90% del límite de almacenamiento.')).toBeInTheDocument();
       expect(screen.getByText('12 estudiantes con notas bajo 4.0.')).toBeInTheDocument();
