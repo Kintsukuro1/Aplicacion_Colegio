@@ -204,8 +204,47 @@ Verificación:
 Estado:
 - Completado y validado (backend tests).
 
+## Avance 13 — Fase 1: Mobile-first responsive design
+
+Qué se hizo:
+- Se implementaron media queries en `frontend-react/src/styles.css` para responsive design en 3 breakpoints:
+  - Mobile (<768px): Drawer sidebar con overlay, hamburguesa toggle, bottom nav fija de 5 items.
+  - Tablet (768-1024px): Mini-sidebar con solo iconos (72px width).
+  - Desktop (>1024px): Sidebar completa 280px + main content.
+- Se actualizó `App.jsx` `ShellLayout` con estado `sidebarOpen` y toggle handlers.
+- Se agregó overlay backdrop que cierra sidebar al tocar.
+- Se implementó body scroll lock cuando drawer está abierto.
+- Se agregó manejo de Escape key para cerrar drawer.
+- Se confirmó que `index.html` tiene meta viewport con viewport-fit=cover para PWA.
+
+Resultado:
+- El sistema es ahora completamente responsive y usable en teléfonos, tablets y desktops.
+- La UX móvil está optimizada con navegación por drawer y bottom nav.
+
+Verificación:
+- `npm run build` — OK (sin warnings de chunk size)
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
+
+Estado:
+- Completado y validado (build + backend tests).
+
+## Siguiente fase — Fase 2: Multi-tenancy con subdominio y monetización
+
+Objetivo:
+- Permitir que colegios funcionen en subdominios independientes (ej: colegio1.sistema.cl).
+- Implementar suscripciones y pagos reales con MercadoPago.
+- Crear dashboard de pagos para admin de escuela.
+
+Tareas (prioridad):
+1. **Subdominio como entrada**: Actualizar `SubdomainMiddleware` para forzar `Colegio` by subdomain en requests autenticadas.
+2. **API de suscripción mejorada**: Endpoint para cambios de plan, cancelación y renovación.
+3. **Dashboard de pagos**: Vista ejecutiva con histórico de pagos, próximas renovaciones y alertas.
+4. **Webhooks de MercadoPago**: Procesamiento asincrónico de eventos de pago.
+5. **Tests de multi-tenancy**: Validar aislamiento de datos y acceso correcto por subdominio.
+
 ## Registro de commits
 
+- `435902d` - Fase 1: Mobile-first responsive design and mobile bottom navigation
 - `906eb3d` - Implement tenant base and mobile UI improvements
 - `b3261cd` - Surface executive dashboard alerts
 - `39256fd` - Add executive dashboard activity feed
@@ -214,11 +253,13 @@ Estado:
 ## Validaciones realizadas
 
 - `python manage.py check` — OK
-- `npm run build` — OK
-- `npm run test:run -- src/features/dashboard/DashboardPage.test.jsx` — OK
+- `npm run build` — OK (✓ 86 modules, 12 chunks, ~40KB CSS, ~197KB JS main)
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
+- `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
 
 ## Observaciones
 
 - El trabajo se está haciendo en pasos pequeños y verificables.
 - Cada avance se valida antes de pasar al siguiente.
-- La siguiente expansión natural del producto es onboarding automático.
+- Fase 1 (Mobile-first) completada: responsive en 3 breakpoints, drawer sidebar móvil, bottom nav, overlay y transitions.
+- Fase 2 (Multi-tenancy + monetización) es el próximo objetivo: subdominio obligatorio, suscripciones mejoradas, webhooks de pagos.
