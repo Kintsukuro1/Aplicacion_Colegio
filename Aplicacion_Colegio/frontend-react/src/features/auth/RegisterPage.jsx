@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import OnboardingWizard from '../../components/OnboardingWizard';
 import { apiClient } from '../../lib/apiClient';
+import { setTokens } from '../../lib/authStore';
 
 const STEPS = ['Admin', 'Colegio', 'Configuración', 'Confirmar'];
 
@@ -61,13 +62,31 @@ export default function RegisterPage() {
     setError('');
     try {
       const response = await apiClient.post('/api/v1/onboarding/register/', form);
-      navigate('/login', {
-        replace: true,
-        state: {
-          onboarding: response,
-          createdEmail: response.admin_email,
-        },
-      });
+      try {
+        const tokenPayload = await apiClient.post('/api/v1/auth/token/', {
+          email: response.admin_email || form.admin_email,
+          password: form.admin_password,
+        });
+        setTokens({ access: tokenPayload.access, refresh: tokenPayload.refresh });
+        navigate('/dashboard', {
+          replace: true,
+          state: {
+            onboardingComplete: true,
+            schoolName: form.school_name,
+            schoolSlug: response.colegio_slug,
+            demoDataEnabled: Boolean(form.generate_demo_data),
+          },
+        });
+        return;
+      } catch {
+        navigate('/login', {
+          replace: true,
+          state: {
+            onboarding: response,
+            createdEmail: response.admin_email,
+          },
+        });
+      }
     } catch (err) {
       setError(err.payload?.detail || 'No se pudo completar el registro.');
     } finally {

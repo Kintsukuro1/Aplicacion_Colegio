@@ -247,9 +247,11 @@ def get_executive_metrics(colegio_rbd):
 
 ## Fase 4: 💳 SISTEMA DE PAGOS
 
-**Justificación**: Sin pagos no hay ingresos. MercadoPago es la opción estándar para Chile.
+**Justificación**: Sin pagos no hay ingresos. En Chile conviene partir con formatos locales: transferencia bancaria, Webpay/Transbank y, como opción secundaria, wallets como MercadoPago.
 
-### Backend — Integración MercadoPago
+**Estado actual**: Ya existe `PaymentService` con checkout local, historial de pagos, webhook genérico, abstracción de proveedor para soportar transferencia bancaria chilena/Webpay, registro de aviso de transferencia, conciliación manual desde una vista administrativa, exportación CSV y filtros por estado/proveedor/fecha en avisos pendientes. La UI de suscripción también muestra alerta de vencimiento, selector de medio de pago y acción rápida de renovación.
+
+### Backend — Integración de proveedores chilenos
 
 #### [NEW] Payment service — `backend/apps/subscriptions/services/payment_service.py`
 
@@ -257,12 +259,12 @@ def get_executive_metrics(colegio_rbd):
 class PaymentService:
     """Integración con MercadoPago Checkout Pro"""
     
-    def create_preference(self, plan, colegio):
-        """Crea una preferencia de pago en MercadoPago"""
-        # Retorna URL de checkout
+    def create_checkout(self, plan, colegio, provider):
+        """Crea un checkout según el proveedor chileno seleccionado"""
+        # Retorna URL, instrucciones o referencia bancaria
     
     def process_webhook(self, data):
-        """Procesa notificación IPN de MercadoPago"""
+        """Procesa notificación de pago del proveedor seleccionado"""
         # Actualiza Subscription.status, fecha_ultimo_pago, etc.
     
     def get_payment_status(self, payment_id):
@@ -275,11 +277,11 @@ class PaymentService:
 class Payment(models.Model):
     """Registro de pagos procesados"""
     subscription = models.ForeignKey(Subscription, ...)
-    external_id = models.CharField(max_length=100)  # ID de MercadoPago
+    external_id = models.CharField(max_length=100)  # ID externo del proveedor
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     moneda = models.CharField(max_length=3, default='CLP')
     status = models.CharField(...)  # pending, approved, rejected
-    gateway = models.CharField(default='mercadopago')
+    gateway = models.CharField(default='bank_transfer')
     metadata_json = models.JSONField(default=dict)
     fecha_pago = models.DateTimeField(null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -294,7 +296,7 @@ class Payment(models.Model):
 
 #### [MODIFY] [requirements.txt](file:///c:/Proyectos/Aplicacion_Colegio/Aplicacion_Colegio/requirements.txt)
 
-- Agregar `mercadopago>=2.2.0`
+- Agregar SDKs según proveedor elegido (por ejemplo Webpay/Transbank; MercadoPago solo si se habilita)
 
 ### Frontend — UI de planes y pagos
 
@@ -302,7 +304,7 @@ class Payment(models.Model):
 
 - Tabla de precios estilo SaaS moderno (3-4 columnas)
 - Destacar plan recomendado
-- Botón "Contratar" → redirige a MercadoPago checkout
+- Botón "Contratar" → redirige a checkout del proveedor local o muestra instrucciones bancarias
 - Badge "Plan Actual" si ya está suscrito
 
 #### [NEW] PaymentHistoryPage — `frontend-react/src/features/subscriptions/PaymentHistoryPage.jsx`

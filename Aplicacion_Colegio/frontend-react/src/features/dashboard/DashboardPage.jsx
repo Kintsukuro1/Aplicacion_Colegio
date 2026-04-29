@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useLocation, useSearchParams, Link } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
 import DemoPanel from '../demo/DemoPanel';
@@ -522,6 +522,7 @@ function UpcomingEvaluations({ evaluaciones }) {
 /* ── Main Component ─────────────────────────────────── */
 
 export default function DashboardPage() {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialScope = searchParams.get('scope');
   const [scope, setScope] = useState(SCOPES.includes(initialScope) ? initialScope : 'auto');
@@ -586,6 +587,13 @@ export default function DashboardPage() {
   const statCards = buildStatCards(data, resolvedScope);
   const chartData = buildChartData(execData || data, resolvedScope);
   const selfSection = data?.sections?.self;
+  const onboardingState = location.state?.onboardingComplete
+    ? {
+        schoolName: location.state.schoolName || 'Tu colegio',
+        schoolSlug: location.state.schoolSlug || '',
+        demoDataEnabled: Boolean(location.state.demoDataEnabled),
+      }
+    : null;
 
   return (
     <section>
@@ -613,6 +621,24 @@ export default function DashboardPage() {
           </select>
         </label>
       </header>
+
+      {onboardingState ? (
+        <article className="card section-card onboarding-success-banner" aria-live="polite">
+          <div className="section-card-head">
+            <div>
+              <h3>Colegio creado con éxito</h3>
+              <p>
+                {onboardingState.schoolName}
+                {onboardingState.schoolSlug ? ` · ${onboardingState.schoolSlug}` : ''}
+              </p>
+            </div>
+            <span className="badge badge-active">Listo para usar</span>
+          </div>
+          <p>
+            Ya tienes acceso al dashboard. {onboardingState.demoDataEnabled ? 'Se cargaron datos demo para ayudarte a explorar el sistema.' : 'Puedes comenzar a configurar tus datos reales.'}
+          </p>
+        </article>
+      ) : null}
 
       {loading ? (
         <div className="loading-dot">

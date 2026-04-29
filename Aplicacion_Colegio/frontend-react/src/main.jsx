@@ -6,6 +6,14 @@ import App from './App';
 import { TenantProvider } from './lib/tenantContext';
 import './styles.css';
 
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Silent fallback: PWA should never block the app shell.
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <TenantProvider>

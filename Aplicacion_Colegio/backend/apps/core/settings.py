@@ -89,6 +89,9 @@ CORS_ENABLED = config('CORS_ENABLED', default='True' if DEBUG else 'False', cast
 if CORS_ENABLED:
     INSTALLED_APPS.append('corsheaders')
 
+PAYMENT_WEBHOOK_TOKEN = config('PAYMENT_WEBHOOK_TOKEN', default='')
+PAYMENT_WEBHOOK_SECRET = config('PAYMENT_WEBHOOK_SECRET', default='')
+
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard'

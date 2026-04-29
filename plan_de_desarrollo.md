@@ -306,3 +306,38 @@ Tareas pendientes:
   - Dashboard de suscripción con historial de pagos
   - CSS responsive para mobile
 - Siguientes objetivos: webhooks MercadoPago, tests multi-tenancy, alertas de renovación.
+
+## Avance 15 — Endurecimiento de pagos, PWA y refinamiento móvil
+
+Qué se hizo:
+- Se reforzó la capa de pagos con un contrato más flexible para proveedores locales: transferencia bancaria, Webpay/Transbank y soporte secundario para MercadoPago.
+- Se agregaron endpoints de pagos para proveedores, avisos de transferencia, conciliación manual y exportación CSV de transferencias.
+- Se implementó verificación opcional de webhook por token compartido y por firma HMAC SHA-256.
+- Se extendieron las pantallas de suscripción para mostrar instrucciones de pago, registrar avisos y revisar historial con filtros.
+- Se añadió una alerta de vencimiento de suscripción en el dashboard de suscripciones.
+- Se consolidó el onboarding con auto-login tras el registro y banner de confirmación en dashboard.
+- Se sumó una base PWA mínima con `manifest.webmanifest`, icono SVG y service worker para cachear la app shell.
+- Se refinó el layout móvil con mejores wrappers de tablas, scroll horizontal y encabezados sticky en tablas largas.
+- Se validó el aislamiento multi-tenant por subdominio con pruebas de integración.
+
+Resultado:
+- El producto quedó más cercano a una experiencia SaaS vendible: pagos operables, onboarding más directo, navegación móvil más sólida y una base PWA funcional.
+
+Verificación:
+- `python -m pytest Aplicacion_Colegio/tests/integration/test_multi_tenancy.py -q` — OK
+- `python -m pytest Aplicacion_Colegio/tests/integration/test_payment_webhook.py -q` — OK
+- `npm run build` en `frontend-react` — OK
+
+Estado:
+- Completado y validado.
+
+## Siguiente paso — Profundizar PWA y dashboard
+
+Objetivo:
+- Convertir la base móvil y PWA en una experiencia más completa y mejorar el dashboard ejecutivo.
+
+Tareas inmediatas:
+1. Agregar una estrategia de actualización más explícita para el service worker.
+2. Mejorar la navegación rápida del dashboard en mobile.
+3. Pulir gráficos/insights del dashboard ejecutivo con foco en valor comercial.
+4. Seguir cerrando automatizaciones de onboarding para demo comercial.

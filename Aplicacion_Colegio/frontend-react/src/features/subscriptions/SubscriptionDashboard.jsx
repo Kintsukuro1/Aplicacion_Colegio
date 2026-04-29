@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/apiClient';
 
+function getDaysUntil(dateValue) {
+  if (!dateValue) return null;
+  const target = new Date(dateValue);
+  if (Number.isNaN(target.getTime())) return null;
+  const diffMs = target.getTime() - new Date().setHours(0, 0, 0, 0);
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
 export default function SubscriptionDashboard() {
   const [subscription, setSubscription] = useState(null);
   const [payments, setPayments] = useState([]);
@@ -86,6 +94,10 @@ export default function SubscriptionDashboard() {
     }
   };
 
+  const daysUntilExpiry = getDaysUntil(subscription?.fecha_fin);
+  const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+  const isRenewalDue = daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 7;
+
   if (loading) {
     return <div className="loading-dot"><span /><span /><span /></div>;
   }
@@ -129,6 +141,21 @@ export default function SubscriptionDashboard() {
               </button>
             </div>
           </div>
+          {(isExpired || isRenewalDue) && (
+            <div className={`subscription-alert ${isExpired ? 'subscription-alert-danger' : 'subscription-alert-warning'}`}>
+              <div>
+                <strong>{isExpired ? 'Suscripción vencida' : 'Suscripción por vencer'}</strong>
+                <p>
+                  {isExpired
+                    ? 'Tu colegio ya quedó fuera de vigencia. Renueva ahora para reactivar el acceso.'
+                    : `Quedan ${daysUntilExpiry} días para renovar y evitar interrupciones.`}
+                </p>
+              </div>
+              <button className="secondary" onClick={handleRenew}>
+                Renovar ahora
+              </button>
+            </div>
+          )}
         </section>
       )}
 

@@ -35,6 +35,7 @@ import CoordinadorAcademicoPage from './features/coordinador_academico/Coordinad
 import ApoderadoPage from './features/apoderado/ApoderadoPage';
 import PricingPage from './features/subscriptions/PricingPage';
 import PaymentHistoryPage from './features/subscriptions/PaymentHistoryPage';
+import TransferNoticesPage from './features/subscriptions/TransferNoticesPage';
 import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';
@@ -227,6 +228,13 @@ const APP_ROUTES = [
     to: '/pagos/historial',
     label: 'Historial de Pagos',
     component: PaymentHistoryPage,
+    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
+  },
+  {
+    path: 'pagos/transferencias',
+    to: '/pagos/transferencias',
+    label: 'Transferencias',
+    component: TransferNoticesPage,
     anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
   },
 ];

@@ -58,6 +58,7 @@ cp .env.example .env
 # - SECRET_KEY (generar una nueva)
 # - DEBUG=True
 # - DB_ENGINE=sqlite (para desarrollo)
+# - PAYMENT_WEBHOOK_TOKEN o PAYMENT_WEBHOOK_SECRET (validación de webhooks)
 ```
 
 ### Notificaciones de Produccion
@@ -78,6 +79,17 @@ NOTIFICATIONS_EMAIL_ENABLED=True
 FCM_CREDENTIALS_FILE=/ruta/segura/firebase-service-account.json
 # FCM_CREDENTIALS_JSON={...json completo...}
 ```
+
+### Webhooks de Pagos
+
+Si vas a recibir eventos desde un proveedor de pagos, define una de estas variables en `.env`:
+
+```env
+PAYMENT_WEBHOOK_TOKEN=token-compartido-opcional
+PAYMENT_WEBHOOK_SECRET=secreto-hmac-opcional
+```
+
+Recomendación: usa `PAYMENT_WEBHOOK_SECRET` cuando el proveedor soporte firma HMAC y deja `PAYMENT_WEBHOOK_TOKEN` como respaldo temporal.
 
 ### 5. Generar SECRET_KEY
 ```bash
