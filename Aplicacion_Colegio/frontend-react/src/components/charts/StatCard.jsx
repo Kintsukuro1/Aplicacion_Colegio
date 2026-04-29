@@ -11,6 +11,7 @@
  * @param {string} [props.icon] - Emoji o ícono
  * @param {string} [props.color] - Color accent
  * @param {'default'|'success'|'warning'|'danger'} [props.variant] - Variante de color
+ * @param {number[]} [props.sparkline] - Serie breve para tendencia visual
  */
 export default function StatCard({
   title,
@@ -20,6 +21,7 @@ export default function StatCard({
   trendValue,
   icon,
   color,
+  sparkline,
   variant = 'default',
 }) {
   const variantColors = {
@@ -53,16 +55,40 @@ export default function StatCard({
         <strong className="stat-card-value" style={color ? { color } : undefined}>
           {value ?? '—'}
         </strong>
-        {(trendIcon || trendValue) ? (
-          <span className={`stat-card-trend ${trendClass}`}>
-            {trendIcon} {trendValue}
-          </span>
-        ) : null}
+        <div className="stat-card-body-meta">
+          {(trendIcon || trendValue) ? (
+            <span className={`stat-card-trend ${trendClass}`}>
+              {trendIcon} {trendValue}
+            </span>
+          ) : null}
+          {Array.isArray(sparkline) && sparkline.length > 1 ? (
+            <div className="stat-card-sparkline" aria-hidden="true">
+              <Sparkline data={sparkline} color={accentColor} />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {subtitle ? (
         <p className="stat-card-subtitle">{subtitle}</p>
       ) : null}
     </article>
+  );
+}
+
+function Sparkline({ data = [], color = '#6366f1', width = 120, height = 34 }) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((value, index) => {
+    const x = data.length === 1 ? width / 2 : (index / (data.length - 1)) * width;
+    const y = height - ((value - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

@@ -32,9 +32,10 @@ function formatLabel(rawKey) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function buildStatCards(data, scope) {
+function buildStatCards(data, scope, chartData = null) {
   if (!data?.sections) return [];
   const cards = [];
+  const attendanceSparkline = chartData?.attendance?.data || [];
 
   if (scope === 'school' || scope === 'auto') {
     const s = data.sections.school || {};
@@ -57,6 +58,7 @@ function buildStatCards(data, scope) {
         subtitle: 'Registros del día',
         icon: '📋',
         variant: 'default',
+        sparkline: attendanceSparkline,
       });
     }
     if (s.evaluations_upcoming !== undefined) {
@@ -81,6 +83,7 @@ function buildStatCards(data, scope) {
         subtitle: `${a.attendance_today_present ?? 0} de ${a.attendance_today_total} presentes`,
         icon: '✅',
         variant: rate >= 85 ? 'success' : rate < 70 ? 'danger' : 'warning',
+        sparkline: attendanceSparkline,
       });
     }
     if (a.evaluations_next_7_days !== undefined) {
@@ -374,6 +377,7 @@ function DashboardHero({ data, scope, onScopeChange }) {
     ? data.available_scopes
     : SCOPES;
   const contractVersion = data?.contract_version || 'v1';
+  const sectionsCount = data?.sections ? Object.keys(data.sections).length : 0;
 
   return (
     <article className="card section-card dashboard-hero">
@@ -385,6 +389,7 @@ function DashboardHero({ data, scope, onScopeChange }) {
         <div className="dashboard-hero-meta">
           <span className="dashboard-hero-chip">Contrato {contractVersion}</span>
           <span className="dashboard-hero-chip">Vistas {availableScopes.length}</span>
+          <span className="dashboard-hero-chip">Secciones {sectionsCount}</span>
           <span className="dashboard-hero-chip">Modo {SCOPE_LABELS[scope] || scope}</span>
         </div>
       </div>
@@ -745,8 +750,8 @@ export default function DashboardPage() {
   }, [scope]);
 
   const resolvedScope = data?.scope || scope;
-  const statCards = buildStatCards(data, resolvedScope);
   const chartData = buildChartData(execData || data, resolvedScope);
+  const statCards = buildStatCards(data, resolvedScope, chartData);
   const selfSection = data?.sections?.self;
   const highlights = buildDashboardHighlights(data, execData, resolvedScope);
   const onboardingState = location.state?.onboardingComplete
