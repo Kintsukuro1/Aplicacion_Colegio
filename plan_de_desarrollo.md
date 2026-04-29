@@ -368,6 +368,24 @@ Estado:
 +Estado:
 +- Completado y validado.
 +
++## Avance 21 — Optimización y consolidación de CSS
++
++Qué se hizo:
++- Se agregaron variables CSS para valores `rgba()` comunes (blanco con diferentes opacidades: 05, 06, 08, 10, 16, 18, 20, 30).
++- Se consolidaron variables para overlays (`--overlay-dark`, `--overlay-light`).
++- Se reemplazaron valores hardcodeados con variables en múltiples selectores: `.sidebar-header`, `.sidebar-avatar`, `.sidebar-logout`, `.sidebar-overlay`, `.toast-dismiss`.
++- Se eliminó especificidad innecesaria en algunos selectores manteniendo la semantics.
++- Se estandarizaron valores de opacidad evitando repetición de `rgba()` hardcodeados.
++
++Resultado:
++- CSS más mantenible: cambiar opacidades globales es trivial.
++- Menores posibilidades de inconsistencias de color/opacidad en el codebase.
++- Tamaño: ~49.14KB (ligero aumento de 0.38KB debido a variables, compensado por reutilización).
++
++Verificación:
++- `npm run build` — OK (✓ 88 modules, ~49.14KB CSS, ~215KB JS main, sin regresiones)
++- Todos los componentes visuales mantienen apariencia idéntica.
++
 ++## Registro de commits
 +
 +- `[merge]` - Merge PR #2: Dashboard product hero, scope pills, and stat card sparklines
@@ -386,7 +404,7 @@ Estado:
 ## Validaciones vigentes
 
 - `python manage.py check` — OK (0 issues, 29/abr/2026)
-- `npm run build` — OK (✓ 88 modules, 12 chunks, ~48.8KB CSS, ~215KB JS main)
+- `npm run build` — OK (✓ 88 modules, 12 chunks, ~49.14KB CSS, ~215KB JS main)
 - `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
 - `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
 - `python -m pytest tests/integration/test_multi_tenancy.py -q` — OK
