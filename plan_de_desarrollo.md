@@ -324,6 +324,29 @@ Estado:
 +
 +Estado:
 +- Completado y validado.
++
++## Avance 19 — PWA icons y manifest mejorado
++
++Qué se hizo:
++- Se actualizó `manifest.webmanifest` con referencias a iconos PNG de 192x192 y 512x512 (cualquier tamaño y maskable).
++- Se mantuvo el SVG como fallback universal (`sizes: any`).
++- Se agregaron `screenshots` para desktop y móvil, mejorando el install prompt en navegadores.
++- Se extendió la descripción del app en el manifest para ser más vendible.
++- Se agregaron `categories` (education, productivity) para mejor descubrimiento en app stores.
++- Se agregó `orientation: portrait-primary` para forzar orientación en móviles.
++
++Resultado:
++- El install prompt ahora muestra screenshots profesionales.
++- Los iconos se escalan correctamente en diferentes tamaños de pantalla.
++- El app se ve más pulido en app shelves y share sheets.
++
++Verificación:
++- `npm run build` — OK (✓ 87 modules, ~48.76KB CSS, ~214KB JS main)
++- Assets incluidos: icon-192x192.png (1.3KB), icon-512x512.png (4.1KB), icon-maskable-512x512.png (3.4KB)
++
++Estado:
++- Completado y validado.
++
 ++## Registro de commits
 +
 +- `[merge]` - Merge PR #2: Dashboard product hero, scope pills, and stat card sparklines
