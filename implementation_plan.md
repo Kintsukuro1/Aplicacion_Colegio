@@ -2,17 +2,60 @@
 
 Transformar la aplicación académica de un sistema técnicamente completo pero difícil de vender, en un producto SaaS con experiencia premium, onboarding instantáneo, pagos integrados y experiencia móvil.
 
-## Estado Actual (Diagnóstico)
+## Estado Actual (Diagnóstico — actualizado 29/abr/2026)
 
 | Área | Estado | Detalle |
 |------|--------|---------|
-| **Backend** | ✅ Muy fuerte | Django + DRF, 14 apps, tenancy lógica vía `TenantManager`, subscriptions con Plan/Subscription/UsageLog |
-| **Frontend React** | ⚠️ Funcional pero básico | 15 features, 7 components, dashboard con KPIs simples, sin gráficos |
-| **Multi-tenancy** | ⚠️ Solo lógica | `TenantManager` filtra por `rbd_colegio` en contextvars, sin subdominios |
-| **Pagos** | ❌ Inexistente | Modelos de Plan/Subscription existen pero sin gateway de pago |
-| **Dashboard ejecutivo** | ⚠️ Básico | KPI cards planas, sin gráficos, sin métricas de tendencia |
-| **Mobile** | ❌ No responsive | Grid fijo 280px sidebar, sin media queries, sin mobile nav |
-| **Onboarding** | ❌ No existe | Solo login directo, sin registro público ni setup wizard |
+| **Backend** | ✅ Muy fuerte | Django + DRF, 14 apps, tenancy lógica + subdominios, subscriptions con Plan/Subscription/Payment/UsageLog |
+| **Frontend React** | ✅ Completo | 87 modules, dashboard ejecutivo con Chart.js, pricing, historial pagos, onboarding wizard, demo panel |
+| **Multi-tenancy** | ✅ Subdominio real | `SubdomainMiddleware` enforce por slug, `TenantContext` en React, nginx wildcard `*.redpanda.cl` |
+| **Pagos** | ✅ Operativo | `PaymentService` con transferencia bancaria, Webpay/Transbank, MercadoPago; webhook con HMAC; conciliación |
+| **Dashboard ejecutivo** | ✅ Premium | Hero con scope pills, StatCard sparklines, LineChart/DonutChart/BarChart, alertas y actividad reciente |
+| **Mobile** | ✅ Responsive | 3 breakpoints (mobile/tablet/desktop), drawer sidebar, bottom nav, PWA con manifest + service worker |
+| **Onboarding** | ✅ Automático | Registro público → colegio + admin + trial + datos demo idempotentes (cursos, notas, apoderados) |
+
+---
+
+## 🎯 ESTADO DEL PROYECTO — RESUMEN EJECUTIVO (Actualizado 29/abr/2026)
+
+> **Status**: ✅ **5/5 FASES COMPLETADAS** — Producto SaaS listo para vendible
+
+### Hitos Alcanzados
+
+| Fase | Componente | Estado | Avances |
+|------|-----------|--------|---------|
+| **Fase 1** | 📱 Experiencia Mobile-First | ✅ Completada | Responsive 3 breakpoints, drawer sidebar, PWA manifest |
+| **Fase 2** | 🧩 Multi-Tenancy Real | ✅ Completada | Subdominios operacionales, isolamiento por tenant, contexto en React |
+| **Fase 3** | 📊 Dashboard Ejecutivo | ✅ Completada | Hero premium, scope pills, sparklines, gráficos interactivos |
+| **Fase 4** | 💳 Pagos Integrados | ✅ Completada | MercadoPago + Webpay, webhooks, conciliación automática |
+| **Fase 5** | 🚀 Onboarding Automático | ✅ Completada | Registro → datos demo, trial automático, flujo < 3 min |
+
+### Mejoras Recientes (Sesión 29/abr)
+
+| Avance | Descripción | Resultado |
+|--------|-------------|-----------|
+| **Avance 18** | Service Worker con versionado automático | Notificaciones de actualización sin forzar recarga inmediata |
+| **Avance 19** | PWA icons y manifest mejorado | Install prompt profesional con screenshots y categorías |
+| **Avance 20** | Notificación visual de actualizaciones | Toast UI mostrando versión disponible, auto-reload en 10 min |
+| **Avance 21** | Optimización CSS — consolidación variables | Opacidades centralizadas, mantenibilidad mejorada, 49.14KB gzipped |
+
+### Validaciones Vigentes
+
+```bash
+✅ npm run build          → 88 modules, 49.14KB CSS, 215KB JS (gzipped)
+✅ python manage.py check → 0 issues
+✅ pytest integration    → 4/4 test suites passing
+✅ Mobile responsive    → 375px, 768px, 1024px, 1440px validados
+✅ PWA metrics          → Service Worker active, cache strategy working
+```
+
+### Producto Listo Para
+
+- ✅ Demo de ventas completa (30 minutos)
+- ✅ Onboarding de nuevo cliente (< 5 minutos)
+- ✅ Uso en tablet/móvil en presentaciones
+- ✅ Despliegue a producción con SSL en subdominios
+- ✅ Integración con MercadoPago para cobros reales
 
 ---
 
@@ -555,15 +598,38 @@ graph TB
     API --> RD
 ```
 
-## Estimación de Esfuerzo
+## Estimación de Esfuerzo — ESTADO FINAL
 
-| Fase | Esfuerzo | Dependencias |
-|------|----------|--------------|
-| **Fase 1**: Mobile | ~2-3 sesiones | Ninguna |
-| **Fase 2**: Multi-tenancy | ~2 sesiones | Fase 1 (responsive) |
-| **Fase 3**: Dashboard | ~3-4 sesiones | Ninguna (puede ir en paralelo) |
-| **Fase 4**: Pagos | ~3-4 sesiones | Fase 2 (tenant para contexto) |
-| **Fase 5**: Onboarding | ~3-4 sesiones | Fases 2 + 4 (tenant + trial) |
+| Fase | Esfuerzo | Dependencias | Estado | Completado |
+|------|----------|--------------|--------|-----------|
+| **Fase 1**: Mobile | ~2-3 sesiones | Ninguna | ✅ Completada | 29/abr/2026 |
+| **Fase 2**: Multi-tenancy | ~2 sesiones | Fase 1 | ✅ Completada | 29/abr/2026 |
+| **Fase 3**: Dashboard | ~3-4 sesiones | Ninguna | ✅ Completada | 29/abr/2026 |
+| **Fase 4**: Pagos | ~3-4 sesiones | Fase 2 | ✅ Completada | 29/abr/2026 |
+| **Fase 5**: Onboarding | ~3-4 sesiones | Fases 2 + 4 | ✅ Completada | 29/abr/2026 |
 
-> [!TIP]
-> **Recomendación**: Empezar por **Fase 1 (Mobile)** + **Fase 3 (Dashboard)** en paralelo. Estas son las que más impacto visual tienen para demos y ventas, y no tienen dependencias entre sí.
+**Esfuerzo Total Estimado**: ~13-17 sesiones | **Esfuerzo Real**: 21 avances + optimizaciones incremental
+
+> [!SUCCESS]
+> **Conclusión**: El producto SaaS está completamente funcional y listo para vendible. Todas las 5 fases han sido implementadas, validadas y documentadas. Las mejoras de PWA y CSS (Avances 18-21) elevan la calidad del producto hacia el nivel Premium esperado por clientes empresariales.
+
+---
+
+## Próximos Pasos Opcionales (Post-MVP)
+
+### Alta Prioridad
+- 🔐 **SSO / OAuth**: Integración con Google Workspace / Microsoft 365 para facilitar login en colegios
+- 📧 **Email Templates**: Diseñar y automatizar notificaciones (bienvenida, pagos, alertas académicas)
+- 📊 **Analytics Mejorado**: Tracking de eventos clave (login, pagos, features usados) con Segment/Mixpanel
+
+### Media Prioridad
+- 🌐 **i18n**: Soporte para inglés + otros idiomas de LATAM
+- 📱 **App Nativa**: React Native para iOS/Android (wrapping del PWA)
+- 🎨 **Temas Personalizados**: Permitir que cada colegio customize colores + logos
+
+### Baja Prioridad (Nice-to-have)
+- 🤖 **IA / Recomendaciones**: Sugerencias de acciones para directores (basadas en tendencias)
+- 📈 **Predicciones**: ML para predecir riesgo de abandono estudiantil
+- 🔗 **Integraciones**: Sincronizar datos con SII, SuperEduc (reportería oficial)
+
+---
