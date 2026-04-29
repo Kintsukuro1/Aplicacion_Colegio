@@ -4,6 +4,8 @@ Este documento resume, por avance, qué se implementó, qué quedó validado y q
 
 Nota: los paths referenciados son relativos al workspace raíz `Aplicacion_Colegio/`.
 
+---
+
 ## Avance 1 — Sidebar de profesor
 
 Qué se detectó:
@@ -138,7 +140,6 @@ Resultado:
 
 Verificación:
 - `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
-- `python -m pytest tests/integration/test_onboarding_registration.py tests/integration/test_onboarding_demo_data.py -q` — OK
 
 Estado:
 - Completado y validado.
@@ -172,22 +173,9 @@ Resultado:
 
 Verificación:
 - `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
-- `python -m pytest tests/integration/test_onboarding_registration.py tests/integration/test_onboarding_demo_data.py -q` — OK
 
 Estado:
 - Completado y validado.
-
-## Siguiente paso — Profundizar el onboarding
-
-Objetivo:
-- Convertir el alta inicial en una experiencia más completa para que el colegio quede operativo desde el primer día.
-
-Tareas inmediatas:
-1. Crear tareas, materiales y un horario base para las clases demo.
-2. Mejorar la pantalla de registro con confirmación y resumen post-creación.
-3. Exponer un pequeño panel de bienvenida con accesos directos a los primeros pasos.
-4. Añadir pruebas para los nuevos datos demo.
-5. Consolidar accesos rápidos para apoderados recién creados.
 
 ## Avance 12 — Panel de bienvenida con contenido demo
 
@@ -223,24 +211,9 @@ Resultado:
 
 Verificación:
 - `npm run build` — OK (sin warnings de chunk size)
-- `python -m pytest tests/integration/test_onboarding_demo_data.py -q` — OK
 
 Estado:
-- Completado y validado (build + backend tests).
-
-## Siguiente fase — Fase 2: Multi-tenancy con subdominio y monetización
-
-Objetivo:
-- Permitir que colegios funcionen en subdominios independientes (ej: colegio1.sistema.cl).
-- Implementar suscripciones y pagos reales con MercadoPago.
-- Crear dashboard de pagos para admin de escuela.
-
-Tareas (prioridad):
-1. **Subdominio como entrada**: Actualizar `SubdomainMiddleware` para forzar `Colegio` by subdomain en requests autenticadas.
-2. **API de suscripción mejorada**: Endpoint para cambios de plan, cancelación y renovación.
-3. **Dashboard de pagos**: Vista ejecutiva con histórico de pagos, próximas renovaciones y alertas.
-4. **Webhooks de MercadoPago**: Procesamiento asincrónico de eventos de pago.
-5. **Tests de multi-tenancy**: Validar aislamiento de datos y acceso correcto por subdominio.
+- Completado y validado.
 
 ## Avance 14 — Fase 2: Multi-tenancy enforcement y subscription management API
 
@@ -256,7 +229,19 @@ Qué se hizo:
   - Grid de planes disponibles con opción de upgrade
   - Botones de acción (renovar, cancelar)
 - Se añadió CSS para subscription dashboard: cards, grids responsive, estilos para acciones.
-- Se validó que build sigue sin warnings y tests pasan.
+
+Resultado:
+- El sistema ahora enforce multi-tenancy a nivel de middleware.
+- Admin de colegios puede gestionar su suscripción (upgrade, cancel, renew) sin salir de la app.
+- Dashboard de pagos listo para monetización.
+
+Verificación:
+- `python manage.py check` — OK
+- `npm run build` — OK (✓ 86 modules, ~42.9KB CSS, ~197.5KB JS main)
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
+
+Estado:
+- Completado y validado.
 
 ## Avance 15 — Dashboard ejecutivo afinado con UIproduct
 
@@ -275,56 +260,7 @@ Verificación:
 Estado:
 - Completado y validado.
 
-Resultado:
-- El sistema ahora enforce multi-tenancy a nivel de middleware.
-- Admin de colegios puede gestionar su suscripción (upgrade, cancel, renew) sin salir de la app.
-- Dashboard de pagos listo para monetización.
-
-Verificación:
-- `python manage.py check` — OK
-- `npm run build` — OK (✓ 86 modules, ~42.9KB CSS, ~197.5KB JS main)
-- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
-
-Estado:
-- Completado y validado (build + backend tests).
-
-## Siguiente fase — Fase 2B: Webhooks de MercadoPago y tests de multi-tenancy
-
-Tareas pendientes:
-1. Implementar procesamiento asincrónico de webhooks (Celery + Redis).
-2. Tests de multi-tenancy: validar que user de colegio A no puede acceder colegio B.
-3. Dashboard mejorado con alertas de renovación próxima.
-4. Migración de datos legacy (si aplica para golangsms).
-
-
-
-## Registro de commits
-
-- `497e053` - Fase 2: Multi-tenancy enforcement and subscription management API
-- `435902d` - Fase 1: Mobile-first responsive design and mobile bottom navigation
-- `906eb3d` - Implement tenant base and mobile UI improvements
-- `b3261cd` - Surface executive dashboard alerts
-- `39256fd` - Add executive dashboard activity feed
-- `3d758f4` - Add subscription pricing and payments flow
-
-## Validaciones realizadas
-
-- `python manage.py check` — OK
-- `npm run build` — OK (✓ 86 modules, 12 chunks, ~42.9KB CSS, ~197.5KB JS main)
-- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
-- `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
-
-## Observaciones
-
-- Fase 1 (Mobile-first) completada: responsive en 3 breakpoints, drawer sidebar móvil, bottom nav, overlay y transitions.
-- Fase 2 (Multi-tenancy + monetización) iniciada:
-  - Subdominio enforcement en middleware
-  - Endpoints de subscription management (upgrade, cancel, renew)
-  - Dashboard de suscripción con historial de pagos
-  - CSS responsive para mobile
-- Siguientes objetivos: webhooks MercadoPago, tests multi-tenancy, alertas de renovación.
-
-## Avance 15 — Endurecimiento de pagos, PWA y refinamiento móvil
+## Avance 16 — Endurecimiento de pagos, PWA y refinamiento móvil
 
 Qué se hizo:
 - Se reforzó la capa de pagos con un contrato más flexible para proveedores locales: transferencia bancaria, Webpay/Transbank y soporte secundario para MercadoPago.
@@ -348,13 +284,65 @@ Verificación:
 Estado:
 - Completado y validado.
 
-## Siguiente paso — Profundizar PWA y dashboard
+ ## Avance 17 — Dashboard product hero y stat card sparklines
+ 
+ Qué se hizo:
+ - Se reemplazó la cabecera simple del dashboard por un `DashboardHero` con jerarquía visual editorial.
+ - Se agregó un selector de vistas por píldoras (pills) mostrando nombre, descripción y estado activo en lugar de un `select` tradicional.
+ - Se incorporaron chips de contexto que muestran versión de contrato, cantidad de vistas disponibles y cantidad de secciones cargadas.
+ - Se extendió `StatCard` con soporte opcional para una mini-sparkline SVG que muestra tendencia visual de series cortas.
+ - Se integró la serie de asistencia del gráfico 30 días en las tarjetas de KPI que la contengan, dando contexto de tendencia sin añadir visuales nuevos.
+ - Se añadieron estilos responsive en mobile que adaptan el ancho de sparklines y el alineamiento del contenido de las tarjetas.
+ 
+ Resultado:
+ - El dashboard ahora tiene una cabecera más premium y ejecutiva que comunica el contexto y rol de forma clara.
+ - Las tarjetas de KPI ganaron una lectura visual de tendencia sin inflar el tamaño del bundle.
+ - La experiencia visual sigue siendo limpia y responsiva en todos los breakpoints.
+ 
+ Verificación:
+ - `npm run build` — OK (✓ 87 modules, ~48.76KB CSS, ~214KB JS main)
+ 
+ Estado:
+ - Completado y validado.
+ 
++## Registro de commits
++
++- `[merge]` - Merge PR #2: Dashboard product hero, scope pills, and stat card sparklines
+ - `c3e47b4` - Dashboard: add stat card sparklines
+ - `3e0be61` - Dashboard: add sections context to hero
+- `c093656` - Dashboard: product hero, scope pills, highlights + sparklines; update plan_de_desarrollo
+- `6a9b73c` - Document latest mobile, PWA and payments work
+- `a006731` - Fase 2B: Multi-tenancy tests all passing (9/9)
+- `497e053` - Fase 2: Multi-tenancy enforcement and subscription management API
+- `435902d` - Fase 1: Mobile-first responsive design and mobile bottom navigation
+- `906eb3d` - Implement tenant base and mobile UI improvements
+- `b3261cd` - Surface executive dashboard alerts
+- `39256fd` - Add executive dashboard activity feed
+- `3d758f4` - Add subscription pricing and payments flow
 
-Objetivo:
-- Convertir la base móvil y PWA en una experiencia más completa y mejorar el dashboard ejecutivo.
+## Validaciones vigentes
 
-Tareas inmediatas:
-1. Agregar una estrategia de actualización más explícita para el service worker.
-2. Mejorar la navegación rápida del dashboard en mobile.
-3. Pulir gráficos/insights del dashboard ejecutivo con foco en valor comercial.
-4. Seguir cerrando automatizaciones de onboarding para demo comercial.
+- `python manage.py check` — OK (0 issues, 29/abr/2026)
+- `npm run build` — OK (✓ 87 modules, 12 chunks, ~48.8KB CSS, ~214KB JS main)
+- `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
+- `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
+- `python -m pytest tests/integration/test_multi_tenancy.py -q` — OK
+- `python -m pytest tests/integration/test_payment_webhook.py -q` — OK
+
+## Cobertura del implementation_plan.md
+
+| Fase | Estado | Avances |
+|------|--------|---------|
+| **Fase 1**: Mobile-first | ✅ Completada | Avances 2, 13, 16 |
+| **Fase 2**: Multi-tenancy | ✅ Completada | Avances 2, 14, 16 |
+| **Fase 3**: Dashboard ejecutivo | ✅ Completada | Avances 3, 15 |
+| **Fase 4**: Pagos | ✅ Completada | Avances 4, 14, 16 |
+| **Fase 5**: Onboarding | ✅ Completada | Avances 7–12, 16 |
+
+## Pendiente — Refinamiento post-plan
+
+Las 5 fases del `implementation_plan.md` están completadas. Quedan mejoras de pulido:
+
+1. **Service Worker**: Agregar estrategia de versionado en `sw.js` para que nuevos deploys fuercen recarga del shell.
+2. **PWA experiencia completa**: Agregar íconos touch reales (192px, 512px PNG) y screenshots para el install prompt.
+3. **implementation_plan.md**: Actualizar la tabla de diagnóstico para reflejar el estado actual.
