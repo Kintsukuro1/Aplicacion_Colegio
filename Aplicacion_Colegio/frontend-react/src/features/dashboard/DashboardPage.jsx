@@ -32,9 +32,10 @@ function formatLabel(rawKey) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function buildStatCards(data, scope) {
+function buildStatCards(data, scope, chartData = null) {
   if (!data?.sections) return [];
   const cards = [];
+  const attendanceSparkline = chartData?.attendance?.data || [];
 
   if (scope === 'school' || scope === 'auto') {
     const s = data.sections.school || {};
@@ -57,6 +58,7 @@ function buildStatCards(data, scope) {
         subtitle: 'Registros del día',
         icon: '📋',
         variant: 'default',
+        sparkline: attendanceSparkline,
       });
     }
     if (s.evaluations_upcoming !== undefined) {
@@ -81,6 +83,7 @@ function buildStatCards(data, scope) {
         subtitle: `${a.attendance_today_present ?? 0} de ${a.attendance_today_total} presentes`,
         icon: '✅',
         variant: rate >= 85 ? 'success' : rate < 70 ? 'danger' : 'warning',
+        sparkline: attendanceSparkline,
       });
     }
     if (a.evaluations_next_7_days !== undefined) {
@@ -747,8 +750,8 @@ export default function DashboardPage() {
   }, [scope]);
 
   const resolvedScope = data?.scope || scope;
-  const statCards = buildStatCards(data, resolvedScope);
   const chartData = buildChartData(execData || data, resolvedScope);
+  const statCards = buildStatCards(data, resolvedScope, chartData);
   const selfSection = data?.sections?.self;
   const highlights = buildDashboardHighlights(data, execData, resolvedScope);
   const onboardingState = location.state?.onboardingComplete
