@@ -1211,9 +1211,185 @@ tbody tr:last-child td {
   color: var(--ink);
 }
 
+.dashboard-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 1rem;
+  align-items: stretch;
+  background:
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 250, 0.92));
+  border-color: rgba(15, 118, 110, 0.14);
+}
+
+.dashboard-hero-copy {
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.dashboard-hero-eyebrow {
+  width: fit-content;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--brand-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dashboard-hero h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.15rem);
+  letter-spacing: -0.04em;
+}
+
+.dashboard-hero p {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.dashboard-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.dashboard-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+.dashboard-scope-switcher {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.dashboard-scope-pill {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  gap: 0.2rem;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.dashboard-scope-pill span {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dashboard-scope-pill small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.dashboard-scope-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.2);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-scope-pill.active {
+  border-color: rgba(15, 118, 110, 0.26);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.96), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.08);
+}
+
+.dashboard-highlight-spark {
+  margin-top: 0.35rem;
+  display: block;
+}
+
+.dashboard-highlight-spark svg {
+  display: block;
+  width: 100%;
+  height: 36px;
+}
+
 /* ════════════════════════════════════════════
    Executive Dashboard — Alerts List
    ════════════════════════════════════════════ */
+
+.dashboard-highlights-card {
+  border-color: rgba(15, 118, 110, 0.16);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.65), rgba(255, 255, 255, 0.98));
+}
+
+.dashboard-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dashboard-highlight-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  display: grid;
+  gap: 0.25rem;
+  min-height: 96px;
+}
+
+.dashboard-highlight-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.dashboard-highlight-value {
+  font-size: 1.45rem;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.dashboard-highlight-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dashboard-highlight-success {
+  border-color: rgba(16, 185, 129, 0.22);
+  background: rgba(236, 253, 245, 0.95);
+}
+
+.dashboard-highlight-warning {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(255, 251, 235, 0.95);
+}
+
+.dashboard-highlight-danger {
+  border-color: rgba(244, 63, 94, 0.22);
+  background: rgba(254, 242, 242, 0.96);
+}
+
+.dashboard-highlight-default {
+  border-color: rgba(15, 118, 110, 0.16);
+}
 
 .exec-alerts-list {
   display: flex;
@@ -1306,6 +1482,18 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 768px) {
+  .dashboard-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-highlights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-highlight-item {
+    min-height: auto;
+  }
+
   .exec-chart-row {
     grid-template-columns: 1fr;
   }

@@ -17,6 +17,13 @@ const SCOPE_LABELS = {
   analytics: 'Analítica',
 };
 
+const SCOPE_HINTS = {
+  auto: 'Combina operación escolar y lectura ejecutiva en una sola vista.',
+  self: 'Resume lo que necesitas resolver hoy, sin ruido.',
+  school: 'Prioriza gestión operativa, matrículas, cursos y seguimiento.',
+  analytics: 'Muestra tendencias, alertas y señales de decisión.',
+};
+
 /* ── Helpers ────────────────────────────────────────── */
 
 function formatLabel(rawKey) {
@@ -304,6 +311,105 @@ function buildExecutiveKpiCards(execData) {
   return cards;
 }
 
+function buildDashboardHighlights(data, execData, scope) {
+  const analytics = data?.sections?.analytics || {};
+  const selfSection = data?.sections?.self || {};
+  const alertsCount = [
+    execData?.subscription_alert?.message ? 1 : 0,
+    Array.isArray(execData?.usage_warnings) ? execData.usage_warnings.filter((warning) => warning?.message).length : 0,
+    Array.isArray(execData?.alerts) ? execData.alerts.filter((alert) => alert?.message).length : 0,
+  ].reduce((total, value) => total + value, 0);
+
+  const highlights = [];
+
+  const attendanceRate = execData?.kpis?.attendance_rate_today ?? analytics.attendance_rate_today;
+  if (attendanceRate !== undefined && attendanceRate !== null) {
+    highlights.push({
+      label: 'Asistencia hoy',
+      value: `${attendanceRate}%`,
+      note: attendanceRate >= 85 ? 'Buen nivel operativo' : attendanceRate < 70 ? 'Revisar ausencias' : 'Zona de seguimiento',
+      variant: attendanceRate >= 85 ? 'success' : attendanceRate < 70 ? 'danger' : 'warning',
+    });
+  }
+
+  highlights.push({
+    label: 'Alertas activas',
+    value: String(alertsCount),
+    note: alertsCount > 0 ? 'Hay acciones pendientes' : 'Sin alertas críticas',
+    variant: alertsCount > 0 ? 'warning' : 'success',
+  });
+
+  const activityCount = Array.isArray(execData?.recent_activity) ? execData.recent_activity.length : 0;
+  highlights.push({
+    label: 'Actividad reciente',
+    value: String(activityCount),
+    note: activityCount > 0 ? 'Movimientos en las últimas horas' : 'Sin actividad reciente',
+    variant: activityCount > 0 ? 'default' : 'success',
+  });
+
+  if (scope === 'self') {
+    if (selfSection?.tareas_pendientes !== undefined) {
+      highlights.unshift({
+        label: 'Tareas pendientes',
+        value: String(selfSection.tareas_pendientes),
+        note: selfSection.tareas_pendientes > 0 ? 'Revisar antes de cerrar el día' : 'Sin tareas por revisar',
+        variant: selfSection.tareas_pendientes > 0 ? 'warning' : 'success',
+      });
+    }
+    if (selfSection?.asistencia_pendiente_hoy !== undefined) {
+      highlights.splice(1, 0, {
+        label: 'Asistencias por tomar',
+        value: String(selfSection.asistencia_pendiente_hoy),
+        note: selfSection.asistencia_pendiente_hoy > 0 ? 'Completar hoy' : 'Todo al día',
+        variant: selfSection.asistencia_pendiente_hoy > 0 ? 'danger' : 'success',
+      });
+    }
+  }
+
+  return highlights.slice(0, 3);
+}
+
+function DashboardHero({ data, scope, onScopeChange }) {
+  const availableScopes = Array.isArray(data?.available_scopes) && data.available_scopes.length > 0
+    ? data.available_scopes
+    : SCOPES;
+  const contractVersion = data?.contract_version || 'v1';
+
+  return (
+    <article className="card section-card dashboard-hero">
+      <div className="dashboard-hero-copy">
+        <span className="dashboard-hero-eyebrow">Centro de control</span>
+        <h2>Dashboard</h2>
+        <p>{SCOPE_HINTS[scope] || 'Vista consolidada para operar el colegio con rapidez.'}</p>
+
+        <div className="dashboard-hero-meta">
+          <span className="dashboard-hero-chip">Contrato {contractVersion}</span>
+          <span className="dashboard-hero-chip">Vistas {availableScopes.length}</span>
+          <span className="dashboard-hero-chip">Modo {SCOPE_LABELS[scope] || scope}</span>
+        </div>
+      </div>
+
+      <div className="dashboard-scope-switcher" role="tablist" aria-label="Cambiar vista del dashboard">
+        {SCOPES.map((item) => {
+          const active = item === scope;
+          return (
+            <button
+              key={item}
+              type="button"
+              className={`dashboard-scope-pill${active ? ' active' : ''}`}
+              onClick={() => onScopeChange(item)}
+              aria-pressed={active}
+            >
+              <span>{SCOPE_LABELS[item] || item}</span>
+              <small>{SCOPE_HINTS[item]}</small>
+            </button>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
 function QuickActions({ scope }) {
   const actions = [];
 
@@ -337,6 +443,61 @@ function QuickActions({ scope }) {
         ))}
       </div>
     </article>
+  );
+}
+
+function DashboardHighlights({ items }) {
+  if (!items?.length) return null;
+
+  return (
+    <article className="card section-card dashboard-highlights-card">
+      <div className="section-card-head">
+        <div>
+          <h3>Resumen Ejecutivo</h3>
+          <p>Señales rápidas para decidir sin abrir cada módulo.</p>
+        </div>
+      </div>
+      <div className="dashboard-highlights-grid">
+        {items.map((item) => (
+          <div key={item.label} className={`dashboard-highlight-item dashboard-highlight-${item.variant || 'default'}`}>
+            <div>
+              <span className="dashboard-highlight-label">{item.label}</span>
+              <strong className="dashboard-highlight-value">{item.value}</strong>
+            </div>
+
+            {item.series && Array.isArray(item.series) ? (
+              <div className="dashboard-highlight-spark">
+                <Sparkline data={item.series} color={item.color || '#10b981'} />
+              </div>
+            ) : null}
+
+            <span className="dashboard-highlight-note">{item.note}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function Sparkline({ data = [], color = '#6366f1', width = 120, height = 36 }) {
+  if (!data.length) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const last = data[data.length - 1];
+  const lastY = height - ((last - min) / range) * height;
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={width} cy={lastY} r="3" fill={color} />
+    </svg>
   );
 }
 
@@ -587,6 +748,7 @@ export default function DashboardPage() {
   const statCards = buildStatCards(data, resolvedScope);
   const chartData = buildChartData(execData || data, resolvedScope);
   const selfSection = data?.sections?.self;
+  const highlights = buildDashboardHighlights(data, execData, resolvedScope);
   const onboardingState = location.state?.onboardingComplete
     ? {
         schoolName: location.state.schoolName || 'Tu colegio',
@@ -597,30 +759,7 @@ export default function DashboardPage() {
 
   return (
     <section>
-      <header className="page-header">
-        <div>
-          <h2>Dashboard</h2>
-          <p>
-            {data ? (
-              <>
-                Vista: <strong>{data.scope}</strong> · Contrato: <strong>{data.contract_version}</strong>
-              </>
-            ) : (
-              'Cargando métricas...'
-            )}
-          </p>
-        </div>
-        <label>
-          Vista
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            {SCOPES.map((item) => (
-              <option key={item} value={item}>
-                {SCOPE_LABELS[item] || item}
-              </option>
-            ))}
-          </select>
-        </label>
-      </header>
+      <DashboardHero data={data} scope={resolvedScope} onScopeChange={setScope} />
 
       {onboardingState ? (
         <article className="card section-card onboarding-success-banner" aria-live="polite">
@@ -651,6 +790,9 @@ export default function DashboardPage() {
         <>
           {/* Alerts Banner */}
           <AlertsList data={data} scope={resolvedScope} />
+
+          {/* Executive summary strip */}
+          <DashboardHighlights items={highlights} />
 
           {/* Executive snapshot */}
           <ExecutiveSnapshot execData={execData} />

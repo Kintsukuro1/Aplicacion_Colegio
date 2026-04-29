@@ -258,6 +258,23 @@ Qué se hizo:
 - Se añadió CSS para subscription dashboard: cards, grids responsive, estilos para acciones.
 - Se validó que build sigue sin warnings y tests pasan.
 
+## Avance 15 — Dashboard ejecutivo afinado con UIproduct
+
+Qué se hizo:
+- Se reemplazó la cabecera simple del dashboard por un hero de producto con jerarquía visual más clara.
+- Se agregó un selector de vistas por píldoras para cambiar entre `auto`, `self`, `school` y `analytics` sin depender del `select` tradicional.
+- Se incorporaron chips de contexto con contrato, cantidad de vistas disponibles y modo activo.
+- Se reforzó el estilo de la cabecera con gradiente, contraste suave y comportamiento responsive.
+
+Resultado:
+- El dashboard ahora arranca con una lectura más editorial y ejecutiva, alineada con el flujo de diseño de `UIproduct.md`.
+
+Verificación:
+- `npm run build` — OK
+
+Estado:
+- Completado y validado.
+
 Resultado:
 - El sistema ahora enforce multi-tenancy a nivel de middleware.
 - Admin de colegios puede gestionar su suscripción (upgrade, cancel, renew) sin salir de la app.
