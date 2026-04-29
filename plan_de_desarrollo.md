@@ -347,6 +347,27 @@ Estado:
 +Estado:
 +- Completado y validado.
 +
++## Avance 20 — Notificación visual de actualizaciones del app
++
++Qué se hizo:
++- Se creó un nuevo componente `UpdateListener.jsx` que escucha mensajes de actualización del Service Worker.
++- Se integró el UpdateListener en `AuthorizedApp` para tener acceso a `useToast()`.
++- Cuando hay una nueva versión disponible, se muestra un toast informativo en lugar de solo logs en consola.
++- El mensaje es no-intrusivo: muestra la versión, se puede descartar manualmente, y se recarga automáticamente después de 10 minutos.
++- Se simplificó `main.jsx` para que solo maneje la registración del SW, moviendo la lógica de notificaciones a UpdateListener.
++
++Resultado:
++- Los usuarios ahora ven un toast visual cuando hay actualización en lugar de revisar consola.
++- La UI es más profesional y menos técnica para usuarios finales.
++- Mantiene la experiencia no-intrusiva: no fuerza recarga inmediata.
++
++Verificación:
++- `npm run build` — OK (✓ 88 modules, ~48.76KB CSS, ~215KB JS main)
++- Toast se dispara en evento `SW_UPDATE_AVAILABLE` desde el Service Worker.
++
++Estado:
++- Completado y validado.
++
 ++## Registro de commits
 +
 +- `[merge]` - Merge PR #2: Dashboard product hero, scope pills, and stat card sparklines
@@ -365,7 +386,7 @@ Estado:
 ## Validaciones vigentes
 
 - `python manage.py check` — OK (0 issues, 29/abr/2026)
-- `npm run build` — OK (✓ 87 modules, 12 chunks, ~48.8KB CSS, ~214KB JS main)
+- `npm run build` — OK (✓ 88 modules, 12 chunks, ~48.8KB CSS, ~215KB JS main)
 - `python -m pytest tests/integration/test_onboarding_demo_data.py -v` — PASSED
 - `python -m pytest tests/integration/test_onboarding_registration.py -v` — PASSED
 - `python -m pytest tests/integration/test_multi_tenancy.py -q` — OK

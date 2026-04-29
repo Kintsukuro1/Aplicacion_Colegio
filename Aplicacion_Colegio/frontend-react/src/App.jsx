@@ -6,6 +6,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
+import { UpdateListener } from './components/UpdateListener';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import DashboardPage from './features/dashboard/DashboardPage';
@@ -400,18 +401,21 @@ function AuthorizedApp() {
   }
 
   return (
-    <ShellLayout me={me} visibleRoutes={visibleRoutes}>
-      <Routes>
-        {APP_ROUTES.map((route) => (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={<GuardedPage me={me} route={route} />}
-          />
-        ))}
-        <Route path="*" element={<Navigate to={visibleRoutes[0]?.to || '/dashboard'} replace />} />
-      </Routes>
-    </ShellLayout>
+    <>
+      <UpdateListener />
+      <ShellLayout me={me} visibleRoutes={visibleRoutes}>
+        <Routes>
+          {APP_ROUTES.map((route) => (
+            <Route
+              key={route.path}
+              path={route.path}
+              element={<GuardedPage me={me} route={route} />}
+            />
+          ))}
+          <Route path="*" element={<Navigate to={visibleRoutes[0]?.to || '/dashboard'} replace />} />
+        </Routes>
+      </ShellLayout>
+    </>
   );
 }
 
