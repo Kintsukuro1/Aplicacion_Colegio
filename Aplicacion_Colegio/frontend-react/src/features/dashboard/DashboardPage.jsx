@@ -374,6 +374,7 @@ function DashboardHero({ data, scope, onScopeChange }) {
     ? data.available_scopes
     : SCOPES;
   const contractVersion = data?.contract_version || 'v1';
+  const sectionsCount = data?.sections ? Object.keys(data.sections).length : 0;
 
   return (
     <article className="card section-card dashboard-hero">
@@ -385,6 +386,7 @@ function DashboardHero({ data, scope, onScopeChange }) {
         <div className="dashboard-hero-meta">
           <span className="dashboard-hero-chip">Contrato {contractVersion}</span>
           <span className="dashboard-hero-chip">Vistas {availableScopes.length}</span>
+          <span className="dashboard-hero-chip">Secciones {sectionsCount}</span>
           <span className="dashboard-hero-chip">Modo {SCOPE_LABELS[scope] || scope}</span>
         </div>
       </div>
