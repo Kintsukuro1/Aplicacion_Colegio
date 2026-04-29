@@ -304,8 +304,27 @@ Estado:
  
  Estado:
  - Completado y validado.
- 
-+## Registro de commits
+ +## Avance 18 — Service Worker inteligente con notificación de actualización
++
++Qué se hizo:
++- Se mejoró `sw.js` con generación automática de versión basada en fecha de build.
++- Se implementó un mecanismo de notificación: cuando el SW se actualiza, envía un mensaje `SW_UPDATE_AVAILABLE` a todos los clientes.
++- Se extendió `main.jsx` para escuchar estas notificaciones y logearlas en consola.
++- Se agregó lógica de auto-reload después de 10 minutos si hay una actualización disponible (no es forzado inmediatamente).
++- Se mejoró el manejo de errores de registro del SW con logs más informativos.
++
++Resultado:
++- En nuevos deploys, los usuarios verán automáticamente la nueva versión sin intervención manual.
++- El cache se invalida automáticamente cuando cambia la versión.
++- La experiencia es no-intrusiva: se puede hacer reload manual o esperar a que se haga automático.
++
++Verificación:
++- `npm run build` — OK (✓ 87 modules, ~48.76KB CSS, ~214KB JS main)
++- Logs en consola al detectar actualización: `[PWA] New version available: 2026-04-29`
++
++Estado:
++- Completado y validado.
+++## Registro de commits
 +
 +- `[merge]` - Merge PR #2: Dashboard product hero, scope pills, and stat card sparklines
  - `c3e47b4` - Dashboard: add stat card sparklines
