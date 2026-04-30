@@ -662,25 +662,27 @@ function TeacherSchedule({ clases }) {
 }
 
 function UpcomingEvaluations({ evaluaciones }) {
-  if (!evaluaciones?.length) return null;
-
   return (
     <article className="card section-card">
       <h3>📝 Próximas Evaluaciones</h3>
-      <div className="exec-activity-list">
-        {evaluaciones.map((ev, i) => (
-          <div key={i} className="exec-activity-item">
-            <span className="exec-activity-dot" style={{ background: '#f59e0b' }} />
-            <div className="exec-activity-content">
-              <strong>{ev.nombre}</strong>
-              {ev.asignatura ? ` — ${ev.asignatura}` : ''}
-              <div className="exec-activity-time">
-                📅 {ev.fecha} · {ev.tipo || 'Evaluación'}
+      {evaluaciones?.length ? (
+        <div className="exec-activity-list">
+          {evaluaciones.map((ev, i) => (
+            <div key={i} className="exec-activity-item">
+              <span className="exec-activity-dot" style={{ background: '#f59e0b' }} />
+              <div className="exec-activity-content">
+                <strong>{ev.nombre}</strong>
+                {ev.asignatura ? ` — ${ev.asignatura}` : ''}
+                <div className="exec-activity-time">
+                  📅 {ev.fecha} · {ev.tipo || 'Evaluación'}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p className="section-muted">No tienes evaluaciones próximas registradas.</p>
+      )}
     </article>
   );
 }

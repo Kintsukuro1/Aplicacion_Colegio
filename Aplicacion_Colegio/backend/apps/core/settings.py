@@ -35,7 +35,7 @@ try:
 except ValueError:
     DEBUG = False
 DEBUG_TOOLBAR_ENABLED = config('DEBUG_TOOLBAR_ENABLED', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver').split(',')
 
 
 # Application definition
@@ -620,8 +620,10 @@ LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
 
-# Configuraciones HTTPS para producción
-if not DEBUG:
+# Configuraciones HTTPS para producción.
+# Se activan solo cuando el entorno lo solicita explícitamente para no romper
+# el login por API en desarrollo local sobre HTTP.
+if config('SECURE_SSL_REDIRECT', default=False, cast=bool):
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

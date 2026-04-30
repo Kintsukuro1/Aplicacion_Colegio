@@ -61,11 +61,15 @@ describe('StudentSelfPage', () => {
 
     render(<StudentSelfPage />);
 
-    expect(screen.getByText('Cargando tu panel...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Estudiante: Mi Panel')).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: 'Mi Perfil' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mis Clases' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mis Notas' })).toBeInTheDocument();
 
     expect(screen.getByText('Valentina Rojas')).toBeInTheDocument();
     expect(screen.getAllByText('7° Básico A').length).toBeGreaterThan(0);

@@ -275,6 +275,10 @@ export default function TeacherClassesPage() {
               </div>
             ) : null}
 
+            {!loadingTrends && !trendsError && !trends?.tendencia_general ? (
+              <p className="section-muted">No hay tendencias disponibles para el periodo seleccionado.</p>
+            ) : null}
+
             {!loadingTrends && !trendsError && Array.isArray(trends?.asistencia_mensual) && trends.asistencia_mensual.length ? (
               <div className="monthly-list section-card">
                 <h4>Asistencia mensual</h4>
@@ -286,6 +290,10 @@ export default function TeacherClassesPage() {
                   ))}
                 </ul>
               </div>
+            ) : null}
+
+            {!loadingTrends && !trendsError && Array.isArray(trends?.asistencia_mensual) && trends.asistencia_mensual.length === 0 ? (
+              <p className="section-muted">No hay registro mensual para graficar.</p>
             ) : null}
           </article>
 
@@ -333,6 +341,10 @@ export default function TeacherClassesPage() {
                   ))}
                 </div>
               </>
+            ) : null}
+
+            {!loadingSchedule && !scheduleError && !schedule ? (
+              <p className="section-muted">No fue posible construir el horario semanal.</p>
             ) : null}
           </article>
         </div>

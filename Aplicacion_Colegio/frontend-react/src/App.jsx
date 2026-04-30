@@ -151,6 +151,7 @@ const APP_ROUTES = [
     to: '/profesor/clases',
     label: 'Profesor Clases',
     component: TeacherClassesPage,
+    allowedRoles: ['profesor'],
     anyOf: ['CLASS_VIEW'],
   },
   {
@@ -158,6 +159,7 @@ const APP_ROUTES = [
     to: '/profesor/asistencias',
     label: 'Profesor Asistencias',
     component: TeacherAttendancePage,
+    allowedRoles: ['profesor'],
     anyOf: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'],
   },
   {
@@ -165,6 +167,7 @@ const APP_ROUTES = [
     to: '/profesor/evaluaciones',
     label: 'Profesor Evaluaciones',
     component: TeacherEvaluationsPage,
+    allowedRoles: ['profesor'],
     anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
   },
   {
@@ -172,6 +175,7 @@ const APP_ROUTES = [
     to: '/profesor/calificaciones',
     label: 'Profesor Calificaciones',
     component: TeacherGradesPage,
+    allowedRoles: ['profesor'],
     anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
   },
   {
@@ -179,6 +183,7 @@ const APP_ROUTES = [
     to: '/estudiante/panel',
     label: 'Estudiante Panel',
     component: StudentSelfPage,
+    allowedRoles: ['estudiante'],
     anyOf: ['PORTAL_ESTUDIANTE'],
   },
   {
@@ -186,6 +191,7 @@ const APP_ROUTES = [
     to: '/asesor-financiero/panel',
     label: 'Asesor Financiero',
     component: AsesorFinancieroPage,
+    allowedRoles: ['asesor_financiero'],
     anyOf: ['FINANCE_VIEW', 'FINANCE_MANAGE_PAYMENTS'],
   },
   {
@@ -193,6 +199,7 @@ const APP_ROUTES = [
     to: '/inspector-convivencia/panel',
     label: 'Inspector Convivencia',
     component: InspectorConvivenciaPage,
+    allowedRoles: ['inspector_convivencia'],
     anyOf: ['DISCIPLINE_VIEW', 'DISCIPLINE_CREATE', 'JUSTIFICATION_APPROVE'],
   },
   {
@@ -200,6 +207,7 @@ const APP_ROUTES = [
     to: '/psicologo-orientador/panel',
     label: 'Psicologo Orientador',
     component: PsicologoOrientadorPage,
+    allowedRoles: ['psicologo_orientador'],
     anyOf: ['COUNSELING_VIEW', 'COUNSELING_CREATE', 'REFERRAL_CREATE', 'REFERRAL_EDIT'],
   },
   {
@@ -207,6 +215,7 @@ const APP_ROUTES = [
     to: '/soporte-tecnico/panel',
     label: 'Soporte Tecnico',
     component: SoporteTecnicoPage,
+    allowedRoles: ['soporte_tecnico_escolar'],
     anyOf: ['SUPPORT_VIEW_TICKETS', 'SUPPORT_CREATE_TICKET', 'SUPPORT_RESOLVE_TICKET', 'SUPPORT_RESET_PASSWORD'],
   },
   {
@@ -214,6 +223,7 @@ const APP_ROUTES = [
     to: '/bibliotecario-digital/panel',
     label: 'Bibliotecario Digital',
     component: BibliotecarioDigitalPage,
+    allowedRoles: ['bibliotecario_digital'],
     anyOf: ['LIBRARY_VIEW', 'LIBRARY_CREATE', 'LIBRARY_MANAGE_LOANS'],
   },
   {
@@ -221,6 +231,7 @@ const APP_ROUTES = [
     to: '/coordinador-academico/panel',
     label: 'Coordinador Academico',
     component: CoordinadorAcademicoPage,
+    allowedRoles: ['coordinador_academico'],
     anyOf: ['PLANNING_VIEW', 'PLANNING_APPROVE'],
   },
   {
@@ -228,6 +239,7 @@ const APP_ROUTES = [
     to: '/apoderado/panel',
     label: 'Apoderado Panel',
     component: ApoderadoPage,
+    allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
   },
   {

@@ -15,6 +15,29 @@ function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
+function InspectorConvivenciaLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div style={{ height: '18px', width: '220px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+      <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)' }} />
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '96px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '24px', width: index === 0 ? '74px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        <div className="card section-card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        <div className="card section-card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function InspectorConvivenciaPage({ me }) {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -33,6 +56,27 @@ export default function InspectorConvivenciaPage({ me }) {
   const canReview = useMemo(
     () => hasCapability(me, 'JUSTIFICATION_APPROVE') || hasCapability(me, 'SYSTEM_ADMIN'),
     [me]
+  );
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Estudiantes cargados',
+        value: students.length,
+        subtitle: students.length > 0 ? 'Disponibles para anotaciones' : 'Sin estudiantes cargados',
+      },
+      {
+        title: 'Clases disponibles',
+        value: classes.length,
+        subtitle: classes.length > 0 ? 'Usables para registrar atrasos' : 'Sin clases para seleccionar',
+      },
+      {
+        title: 'Justificativos pendientes',
+        value: justifications.length,
+        subtitle: justifications.length > 0 ? 'Requieren revisión' : 'Sin pendientes por revisar',
+      },
+    ],
+    [classes.length, justifications.length, students.length]
   );
 
   useEffect(() => {
@@ -191,9 +235,21 @@ export default function InspectorConvivenciaPage({ me }) {
         </div>
       </header>
 
-      {loading ? <p>Cargando estudiantes...</p> : null}
+      {loading ? <InspectorConvivenciaLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {message ? <div className="card">{message}</div> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summaryCards.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{item.value}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid-2">
         <form className="card form-grid" onSubmit={onSubmit}>
@@ -307,7 +363,7 @@ export default function InspectorConvivenciaPage({ me }) {
         </form>
       </div>
 
-      <article className="card">
+      <article className="card section-card">
         <h3>Justificativos pendientes ({justifications.length})</h3>
         {justifications.length === 0 ? <p>Sin justificativos pendientes.</p> : null}
         {justifications.length > 0 ? (

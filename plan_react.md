@@ -5,7 +5,7 @@
 ## ✅ Avance Real (implementación en curso)
 - [x] Login con validación frontend, manejo de errores y redirección al origen.
 - [x] Panel de estudiante migrado desde JSON crudo a una vista de producto con tarjetas, tablas y estados vacíos.
-- [x] Dashboard con skeleton de carga estructurado y regresión de render.
+- [x] Dashboard con skeleton de carga y empty state del bloque estudiante, con regresión de render.
 - [x] Mis Clases del profesor con resumen, horario y tendencias en layout más legible.
 - [x] Evaluaciones del profesor con resumen, loading state y prueba de regresión.
 - [x] Asistencias del profesor con resumen, loading state y prueba de regresión.
@@ -16,8 +16,18 @@
 - [x] Administración de estudiantes con resumen, loading state y prueba de regresión.
 - [x] Bibliotecario digital con resumen operativo y prueba de regresión.
 - [x] Seguridad de usuario con sesiones activas y historial de contraseñas refinados.
+- [x] Historial de contraseñas con estado vacío de auditoría y prueba de regresión.
 - [x] Panel de apoderado con resumen, loading state y prueba de regresión.
+- [x] Panel de apoderado con form oculto durante carga y prueba de regresión.
 - [x] Administración de clases con resumen, loading state y prueba de regresión.
+- [x] Coordinador académico con resumen, loading state y prueba de regresión.
+- [x] Panel de estudiante con skeleton de carga y prueba de regresión.
+- [x] Inspector de convivencia con skeleton de carga y prueba de regresión.
+- [x] Psicólogo orientador con skeleton de carga y prueba de regresión.
+- [x] Bibliotecario digital con acciones ocultas durante carga y prueba de regresión.
+- [x] Mis Clases del profesor con empty states y loading state de regresión.
+- [x] Evaluaciones del profesor con empty state y loading state de regresión.
+- [x] Asistencias del profesor con empty state y loading state de regresión.
 - [ ] Siguiente foco: seguir con otra pantalla todavía básica del bloque estudiante, administración o soporte.
 - [ ] Pendiente de fase 2/3: formalizar más pantallas con resumen, empty states y tests de regresión.
 

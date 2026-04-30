@@ -91,5 +91,9 @@ describe('PasswordHistoryPage', () => {
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/seguridad/auditoria-datos-sensibles/?dias=15&modelo=PerfilEstudiante');
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('No hay accesos sensibles en el periodo consultado.')).toBeInTheDocument();
+    });
   });
 });

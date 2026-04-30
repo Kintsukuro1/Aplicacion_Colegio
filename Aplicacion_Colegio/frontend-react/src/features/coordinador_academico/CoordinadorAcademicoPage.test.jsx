@@ -4,21 +4,37 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CoordinadorAcademicoPage from './CoordinadorAcademicoPage';
 
+const getMock = vi.fn();
 const postMock = vi.fn();
 
 vi.mock('../../lib/apiClient', () => ({
   apiClient: {
+    get: (...args) => getMock(...args),
     post: (...args) => postMock(...args),
   },
 }));
 
 describe('CoordinadorAcademicoPage', () => {
   beforeEach(() => {
+    getMock.mockReset();
     postMock.mockReset();
+    getMock.mockResolvedValue({ planificaciones: [] });
   });
 
-  it('disables update button without PLANNING_APPROVE', () => {
+  it('shows loading state while plans are loading', () => {
+    getMock.mockReturnValueOnce(new Promise(() => {}));
+
     render(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('disables update button without PLANNING_APPROVE', async () => {
+    render(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
 
     const button = screen.getByRole('button', { name: 'Actualizar' });
     expect(button).toBeDisabled();
@@ -29,6 +45,10 @@ describe('CoordinadorAcademicoPage', () => {
     postMock.mockResolvedValueOnce({ message: 'Planificacion aprobada correctamente' });
 
     render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
 
     await user.type(screen.getByLabelText('Planificacion ID'), '9');
     await user.type(screen.getByLabelText('Observaciones'), 'Revision curricular ok');
@@ -48,6 +68,10 @@ describe('CoordinadorAcademicoPage', () => {
 
     render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
 
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
     await user.type(screen.getByLabelText('Planificacion ID'), '9');
     await user.click(screen.getByRole('button', { name: 'Actualizar' }));
 
@@ -61,6 +85,10 @@ describe('CoordinadorAcademicoPage', () => {
     postMock.mockReturnValueOnce(new Promise(() => {}));
 
     render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
 
     await user.type(screen.getByLabelText('Planificacion ID'), '9');
     await user.click(screen.getByRole('button', { name: 'Actualizar' }));

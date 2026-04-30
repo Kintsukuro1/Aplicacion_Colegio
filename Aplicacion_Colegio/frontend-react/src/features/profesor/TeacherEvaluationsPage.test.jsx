@@ -97,4 +97,17 @@ describe('TeacherEvaluationsPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/evaluaciones/?clase_id=2');
     });
   });
+
+  it('shows a loading state before evaluations are fetched', () => {
+    getMock.mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <TeacherEvaluationsPage
+        me={{ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] }}
+      />
+    );
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Listado de Evaluaciones')).not.toBeInTheDocument();
+  });
 });

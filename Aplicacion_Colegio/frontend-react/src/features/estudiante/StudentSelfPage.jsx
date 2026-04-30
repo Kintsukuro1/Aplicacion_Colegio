@@ -36,6 +36,30 @@ function buildAverage(items) {
   return total / numericValues.length;
 }
 
+function StudentSelfLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div style={{ height: '18px', width: '170px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+      <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginBottom: '1.25rem' }} />
+
+      <div className="summary-grid" aria-hidden="true">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: 96, background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '24px', width: index === 0 ? '96px' : '72px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="card section-card" style={{ minHeight: '180px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export default function StudentSelfPage() {
   const [profile, setProfile] = useState(null);
   const [classes, setClasses] = useState([]);
@@ -47,6 +71,21 @@ export default function StudentSelfPage() {
   const [historyError, setHistoryError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const quickLinks = [
+    { id: 'student-profile', label: 'Mi Perfil' },
+    { id: 'student-classes', label: 'Mis Clases' },
+    { id: 'student-grades', label: 'Mis Notas' },
+    { id: 'student-attendance', label: 'Mi Asistencia' },
+    { id: 'student-history', label: 'Historial Académico' },
+  ];
+
+  function scrollToSection(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   const profileCards = useMemo(() => {
     const subjectCount = classes.length;
@@ -160,16 +199,23 @@ export default function StudentSelfPage() {
         </div>
       </header>
 
-      {loading ? (
-        <div className="card section-card">
-          <p>Cargando tu panel...</p>
-          <div className="summary-grid" aria-hidden="true">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="summary-tile" style={{ minHeight: 96 }} />
-            ))}
-          </div>
+      <article className="card section-card" aria-label="Navegación rápida del panel de estudiante">
+        <h3>Accesos rápidos</h3>
+        <div className="actions-wrap">
+          {quickLinks.map((link) => (
+            <button
+              key={link.id}
+              type="button"
+              className="pricing-cta"
+              onClick={() => scrollToSection(link.id)}
+            >
+              {link.label}
+            </button>
+          ))}
         </div>
-      ) : null}
+      </article>
+
+      {loading ? <StudentSelfLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
       {!loading && !error ? (
@@ -185,7 +231,7 @@ export default function StudentSelfPage() {
           </div>
 
           <div className="grid-2">
-            <article className="card section-card">
+            <article id="student-profile" className="card section-card">
               <h3>Mi Perfil</h3>
               <dl className="detail-list">
                 <div>
@@ -207,7 +253,7 @@ export default function StudentSelfPage() {
               </dl>
             </article>
 
-            <article className="card section-card">
+            <article id="student-classes" className="card section-card">
               <h3>Mis Clases</h3>
               {classes.length ? (
                 <ul className="compact-list">
@@ -223,7 +269,7 @@ export default function StudentSelfPage() {
               )}
             </article>
 
-            <article className="card section-card">
+            <article id="student-grades" className="card section-card">
               <h3>Mis Notas</h3>
               {grades.length ? (
                 <div className="table-wrap">
@@ -251,7 +297,7 @@ export default function StudentSelfPage() {
               )}
             </article>
 
-            <article className="card section-card">
+            <article id="student-attendance" className="card section-card">
               <h3>Mi Asistencia</h3>
               {attendance.length ? (
                 <ul className="compact-list">
@@ -268,7 +314,7 @@ export default function StudentSelfPage() {
             </article>
           </div>
 
-          <article className="card section-card grid-full">
+          <article id="student-history" className="card section-card grid-full">
             <h3>Historial Académico</h3>
 
             <div className="actions">

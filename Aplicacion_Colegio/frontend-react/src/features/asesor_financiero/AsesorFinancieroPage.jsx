@@ -183,7 +183,7 @@ export default function AsesorFinancieroPage() {
           </div>
 
           <div className="grid-2" style={{ marginTop: '1.25rem' }}>
-          <article className="card">
+          <article className="card section-card">
             <h3>Resumen Financiero</h3>
             <p>Total emitido: {formatCurrency(resumen.total_emitido)}</p>
             <p>Total pagado: {formatCurrency(resumen.total_pagado)}</p>
@@ -191,14 +191,14 @@ export default function AsesorFinancieroPage() {
             <p>Tasa de cobranza: {resumen.tasa_cobranza ?? 0}%</p>
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Morosidad</h3>
             <p>Familias morosas: {morosidad.familias_morosas ?? 0}</p>
             <p>Monto vencido: {formatCurrency(morosidad.monto_vencido)}</p>
             <p>Total de casos listados: {morosos.length}</p>
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Becas</h3>
             <p>Vigentes: {becas.vigentes ?? 0}</p>
             {Array.isArray(becas.por_tipo) && becas.por_tipo.length ? (
@@ -214,7 +214,7 @@ export default function AsesorFinancieroPage() {
             )}
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Cuotas por Estado</h3>
             {cuotasPorEstado.length ? (
               <ul>
@@ -229,7 +229,7 @@ export default function AsesorFinancieroPage() {
             )}
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Pagos recientes</h3>
             {pagosRecientes.length === 0 ? <p>Sin pagos para mostrar.</p> : null}
             {pagosRecientes.length > 0 ? (
@@ -243,7 +243,7 @@ export default function AsesorFinancieroPage() {
             ) : null}
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Top Morosos</h3>
             {morosos.length === 0 ? <p>Sin morosos al corte.</p> : null}
             {morosos.length > 0 ? (

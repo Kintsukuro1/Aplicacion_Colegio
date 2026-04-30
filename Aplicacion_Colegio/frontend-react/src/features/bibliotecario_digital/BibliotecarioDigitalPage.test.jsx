@@ -43,11 +43,22 @@ describe('BibliotecarioDigitalPage', () => {
     expect(screen.getByText('Usuarios')).toBeInTheDocument();
   });
 
+  it('shows loading state before the catalog is ready', () => {
+    getMock.mockImplementation(() => new Promise(() => {}));
+
+    render(<BibliotecarioDigitalPage me={{ capabilities: ['LIBRARY_VIEW'] }} />);
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Crear recurso' })).not.toBeInTheDocument();
+  });
+
   it('submits create resource with LIBRARY_CREATE', async () => {
     const user = userEvent.setup();
     postMock.mockResolvedValueOnce({ message: 'Recurso creado.' });
 
     render(<BibliotecarioDigitalPage me={{ capabilities: ['LIBRARY_CREATE'] }} />);
+
+    await screen.findByText(/Recursos \(1\)/);
 
     await user.type(screen.getByLabelText('Titulo'), 'Guia de Historia');
     await user.click(screen.getByRole('button', { name: 'Crear recurso' }));
@@ -78,6 +89,8 @@ describe('BibliotecarioDigitalPage', () => {
 
     render(<BibliotecarioDigitalPage me={{ capabilities: ['LIBRARY_CREATE'] }} />);
 
+    await screen.findByText(/Recursos \(1\)/);
+
     await user.type(screen.getByLabelText('Titulo'), 'Guia de Historia');
     await user.click(screen.getByRole('button', { name: 'Crear recurso' }));
 
@@ -91,6 +104,8 @@ describe('BibliotecarioDigitalPage', () => {
     postMock.mockReturnValueOnce(new Promise(() => {}));
 
     render(<BibliotecarioDigitalPage me={{ capabilities: ['LIBRARY_CREATE'] }} />);
+
+    await screen.findByText(/Recursos \(1\)/);
 
     await user.type(screen.getByLabelText('Titulo'), 'Guia de Historia');
     await user.click(screen.getByRole('button', { name: 'Crear recurso' }));

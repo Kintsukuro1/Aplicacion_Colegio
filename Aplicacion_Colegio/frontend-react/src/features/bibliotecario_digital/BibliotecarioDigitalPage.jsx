@@ -289,8 +289,9 @@ export default function BibliotecarioDigitalPage({ me }) {
         </div>
       ) : null}
 
-      <div className="grid-2">
-        <article className="card">
+      {!loading && !error ? (
+        <div className="grid-2">
+        <article className="card section-card">
           <h3>Recursos ({resources.length})</h3>
           {resources.length === 0 ? <p>Sin recursos.</p> : null}
           {resources.length > 0 ? (
@@ -304,7 +305,7 @@ export default function BibliotecarioDigitalPage({ me }) {
           ) : null}
         </article>
 
-        <article className="card">
+        <article className="card section-card">
           <h3>Usuarios para prestamo ({users.length})</h3>
           {users.length === 0 ? <p>Sin usuarios visibles o sin permisos.</p> : null}
           {users.length > 0 ? (
@@ -315,9 +316,11 @@ export default function BibliotecarioDigitalPage({ me }) {
             </ul>
           ) : null}
         </article>
-      </div>
+        </div>
+      ) : null}
 
-      <form className="card form-grid" onSubmit={onSubmit}>
+      {!loading && !error ? (
+        <form className="card section-card form-grid" onSubmit={onSubmit}>
         <h3>Nuevo recurso</h3>
 
         <label>
@@ -381,10 +384,12 @@ export default function BibliotecarioDigitalPage({ me }) {
             {saving ? 'Guardando...' : 'Crear recurso'}
           </button>
         </div>
-      </form>
+        </form>
+      ) : null}
 
-      <div className="grid-2">
-        <form className="card form-grid" onSubmit={onTogglePublish}>
+      {!loading && !error ? (
+        <div className="grid-2">
+        <form className="card section-card form-grid" onSubmit={onTogglePublish}>
           <h3>Publicar o despublicar recurso</h3>
           <label>
             Recurso
@@ -409,7 +414,7 @@ export default function BibliotecarioDigitalPage({ me }) {
           </div>
         </form>
 
-        <form className="card form-grid" onSubmit={onCreateLoan}>
+        <form className="card section-card form-grid" onSubmit={onCreateLoan}>
           <h3>Crear prestamo</h3>
           <label>
             Recurso
@@ -463,9 +468,11 @@ export default function BibliotecarioDigitalPage({ me }) {
             </button>
           </div>
         </form>
-      </div>
+        </div>
+      ) : null}
 
-      <form className="card form-grid" onSubmit={onReturnLoan}>
+      {!loading && !error ? (
+        <form className="card section-card form-grid" onSubmit={onReturnLoan}>
         <h3>Registrar devolucion</h3>
         <label>
           Prestamo ID
@@ -483,8 +490,10 @@ export default function BibliotecarioDigitalPage({ me }) {
             {returnSaving ? 'Guardando...' : 'Registrar devolucion'}
           </button>
         </div>
-      </form>
+        </form>
+      ) : null}
 
+      {!loading && !error ? (
       <article className="card section-card">
         <div className="section-card-head">
           <div>
@@ -516,6 +525,7 @@ export default function BibliotecarioDigitalPage({ me }) {
           </ul>
         ) : null}
       </article>
+      ) : null}
     </section>
   );
 }

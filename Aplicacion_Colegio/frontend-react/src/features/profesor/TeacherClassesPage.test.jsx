@@ -108,4 +108,13 @@ describe('TeacherClassesPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/tendencias/?periodo=anual');
     });
   });
+
+  it('shows a loading state while classes are being fetched', () => {
+    getMock.mockImplementation(() => new Promise(() => {}));
+
+    render(<TeacherClassesPage />);
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Clases Asignadas')).not.toBeInTheDocument();
+  });
 });

@@ -24,6 +24,8 @@ describe('PsicologoOrientadorPage', () => {
   it('loads students on mount', async () => {
     render(<PsicologoOrientadorPage me={{ capabilities: ['COUNSELING_CREATE'] }} />);
 
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/psicologo/estudiantes/');
     });

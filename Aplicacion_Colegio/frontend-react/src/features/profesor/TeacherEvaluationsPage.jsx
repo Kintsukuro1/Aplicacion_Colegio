@@ -386,6 +386,8 @@ export default function TeacherEvaluationsPage({ me }) {
               </tbody>
             </table>
           </div>
+
+          {rows.length === 0 ? <p className="section-muted">No hay evaluaciones para la clase seleccionada.</p> : null}
         </article>
       ) : null}
     </section>

@@ -119,4 +119,17 @@ describe('TeacherAttendancePage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/asistencias/?clase_id=2');
     });
   });
+
+  it('shows a loading state before attendance data is ready', () => {
+    getMock.mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <TeacherAttendancePage
+        me={{ capabilities: ['CLASS_TAKE_ATTENDANCE'] }}
+      />
+    );
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByText('Listado de Asistencias')).not.toBeInTheDocument();
+  });
 });

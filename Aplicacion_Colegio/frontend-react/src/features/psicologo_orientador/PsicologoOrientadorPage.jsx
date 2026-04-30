@@ -16,6 +16,30 @@ function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
+function PsicologoOrientadorLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div style={{ height: '18px', width: '220px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+      <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)' }} />
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '96px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '92px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '24px', width: index === 0 ? '76px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="card section-card" style={{ minHeight: '240px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export default function PsicologoOrientadorPage({ me }) {
   const [students, setStudents] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -49,6 +73,32 @@ export default function PsicologoOrientadorPage({ me }) {
   const canEditReferral = useMemo(
     () => hasCapability(me, 'REFERRAL_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'),
     [me]
+  );
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Estudiantes cargados',
+        value: students.length,
+        subtitle: students.length > 0 ? 'Disponibles para intervención' : 'Sin estudiantes cargados',
+      },
+      {
+        title: 'Entrevistas',
+        value: canCreate ? 'Activo' : 'Bloqueado',
+        subtitle: 'Registro de orientación',
+      },
+      {
+        title: 'Derivaciones',
+        value: canCreateReferral || canEditReferral ? 'Activo' : 'Bloqueado',
+        subtitle: canEditReferral ? 'Crear y actualizar derivaciones' : 'Solo lectura de derivaciones',
+      },
+      {
+        title: 'Estado panel',
+        value: loading ? 'Cargando' : 'Listo',
+        subtitle: loading ? 'Esperando estudiantes' : 'Panel operativo',
+      },
+    ],
+    [canCreate, canCreateReferral, canEditReferral, loading, students.length]
   );
 
   useEffect(() => {
@@ -195,9 +245,23 @@ export default function PsicologoOrientadorPage({ me }) {
         </div>
       </header>
 
-      {loading ? <p>Cargando estudiantes...</p> : null}
+      {loading ? <PsicologoOrientadorLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {message ? <div className="card">{message}</div> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summaryCards.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{item.value}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {!loading && !error && students.length === 0 ? <p className="section-muted">No hay estudiantes disponibles para orientar.</p> : null}
 
       <div className="grid-2">
         <form className="card form-grid" onSubmit={onSubmit}>

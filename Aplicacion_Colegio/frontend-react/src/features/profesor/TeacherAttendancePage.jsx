@@ -258,7 +258,8 @@ export default function TeacherAttendancePage({ me }) {
         </div>
       ) : null}
 
-      <form className="card form-grid" onSubmit={onSubmit}>
+      {!loading && !error ? (
+        <form className="card section-card form-grid" onSubmit={onSubmit}>
         <h3>{editingId ? `Editar #${editingId}` : 'Nueva Asistencia'}</h3>
 
         <label>
@@ -353,7 +354,8 @@ export default function TeacherAttendancePage({ me }) {
             </button>
           ) : null}
         </div>
-      </form>
+        </form>
+      ) : null}
 
       {!loading && !error ? (
         <article className="card section-card">
@@ -408,6 +410,8 @@ export default function TeacherAttendancePage({ me }) {
               </tbody>
             </table>
           </div>
+
+          {rows.length === 0 ? <p className="section-muted">No hay asistencias para el filtro actual.</p> : null}
         </article>
       ) : null}
     </section>

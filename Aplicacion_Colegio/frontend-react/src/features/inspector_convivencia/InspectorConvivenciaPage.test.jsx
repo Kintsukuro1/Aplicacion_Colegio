@@ -32,6 +32,8 @@ describe('InspectorConvivenciaPage', () => {
   it('loads students on mount', async () => {
     render(<InspectorConvivenciaPage me={{ capabilities: ['DISCIPLINE_CREATE'] }} />);
 
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/inspector/estudiantes/');
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/');

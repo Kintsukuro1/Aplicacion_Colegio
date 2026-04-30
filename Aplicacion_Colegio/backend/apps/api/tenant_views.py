@@ -17,14 +17,31 @@ def _build_tenant_payload(colegio):
     }
 
 
+def _resolve_tenant_from_request(request):
+    colegio = getattr(request, 'tenant_school', None)
+    if colegio is not None:
+        return colegio
+
+    slug = request.GET.get('slug')
+    if slug:
+        colegio = Colegio.objects.all_schools().filter(slug=slug).first()
+        if colegio is not None:
+            return colegio
+
+    school_id = request.GET.get('rbd') or request.GET.get('colegio_id')
+    if school_id:
+        try:
+            return Colegio.objects.all_schools().filter(rbd=int(school_id)).first()
+        except (TypeError, ValueError):
+            return None
+
+    return None
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def tenant_info(request):
-    colegio = getattr(request, 'tenant_school', None)
-    if colegio is None:
-        slug = request.GET.get('slug')
-        if slug:
-            colegio = Colegio.objects.all_schools().filter(slug=slug).first()
+    colegio = _resolve_tenant_from_request(request)
 
     if colegio is None:
         return Response({'detail': 'Tenant no encontrado.'}, status=404)

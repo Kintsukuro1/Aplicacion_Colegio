@@ -233,6 +233,10 @@ export default function PasswordHistoryPage({ me }) {
         {auditError ? <div className="error-box section-card">{auditError}</div> : null}
         {loadingAudit ? <p>Cargando auditoria...</p> : null}
 
+        {!loadingAudit && !auditError && auditRows.length === 0 ? (
+          <p className="section-muted">No hay accesos sensibles en el periodo consultado.</p>
+        ) : null}
+
         <div className="table-wrap section-card">
           <table>
             <thead>

@@ -75,6 +75,7 @@ describe('ApoderadoPage', () => {
     render(<ApoderadoPage />);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Firmar' })).not.toBeInTheDocument();
   });
 
   it('shows backend error when signing fails', async () => {

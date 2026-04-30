@@ -154,7 +154,7 @@ export default function ApoderadoPage() {
         </div>
       ) : null}
 
-      {!loading ? (
+      {!loading && !error ? (
         <div className="grid-2">
           <article className="card section-card">
             <h3>Justificativos ({justificativos.length})</h3>
@@ -178,7 +178,8 @@ export default function ApoderadoPage() {
         </div>
       ) : null}
 
-      <form className="card form-grid" onSubmit={onSign}>
+      {!loading && !error ? (
+        <form className="card section-card form-grid" onSubmit={onSign}>
         <h3>Firmar documento</h3>
 
         <label>
@@ -212,7 +213,8 @@ export default function ApoderadoPage() {
             {saving ? 'Firmando...' : 'Firmar'}
           </button>
         </div>
-      </form>
+        </form>
+      ) : null}
     </section>
   );
 }

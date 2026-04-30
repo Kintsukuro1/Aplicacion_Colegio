@@ -175,4 +175,30 @@ describe('DashboardPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');
     });
   });
+
+  it('shows the student evaluations section even when there are no upcoming items', async () => {
+    getMock.mockImplementation(async (path) => {
+      if (path === '/api/v1/demo/panel/') {
+        return demoPanelPayload;
+      }
+
+      return {
+        contract_version: '1.0.0',
+        scope: 'self',
+        generated_at: '2026-03-07',
+        available_scopes: ['self'],
+        sections: {
+          self: { tareas_pendientes: 0, proximas_evaluaciones: [] },
+          school: null,
+          analytics: null,
+        },
+      };
+    });
+
+    renderDashboard('/dashboard?scope=self');
+
+    await waitFor(() => {
+      expect(screen.getByText('No tienes evaluaciones próximas registradas.')).toBeInTheDocument();
+    });
+  });
 });
