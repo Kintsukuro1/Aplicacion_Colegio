@@ -180,6 +180,23 @@ else:
         },
     }
 
+# ============================================================================
+# Tareas Asíncronas (Celery)
+# ============================================================================
+CELERY_BROKER_URL = REDIS_URL or 'memory://'
+CELERY_RESULT_BACKEND = REDIS_URL or 'cache+memory://'
+
+# Si no hay Redis configurado (ej: desarrollo local), ejecuta tareas síncronamente
+if not REDIS_URL:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = 'America/Santiago'
+
+
 
 # Database
 # Usar PostgreSQL en producción, SQLite en desarrollo
@@ -442,10 +459,13 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSION': '1.0',
     'ALLOWED_VERSIONS': ['1.0'],
     'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
         'user': '120/min',
+        'onboarding': '5/hour',
         'auth_token_burst': config('API_AUTH_TOKEN_BURST_RATE', default='10/min'),
         'auth_token_sustained': config('API_AUTH_TOKEN_SUSTAINED_RATE', default='60/hour'),
     },

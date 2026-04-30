@@ -55,6 +55,39 @@ export default function AdminGradesPage({ me }) {
   const canCreate = useMemo(() => hasCapability(me, 'GRADE_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canEdit = useMemo(() => hasCapability(me, 'GRADE_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canDelete = useMemo(() => hasCapability(me, 'GRADE_DELETE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
+  function formatDisplay(value) {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  }
+
+  function AdminGradesLoadingState() {
+    return (
+      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+        <div className="section-card-head">
+          <div>
+            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+            <div style={{ height: '14px', width: '300px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+          </div>
+        </div>
+
+        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+              <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+            </div>
+          ))}
+        </div>
+
+        <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
+          <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
+          <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
+        </div>
+      </article>
+    );
+  }
   const formLocked = editingId ? !canEdit : !canCreate;
   const canSubmit = useMemo(() => {
     return Boolean(form.evaluacion && form.estudiante && form.nota !== '');
@@ -145,6 +178,31 @@ export default function AdminGradesPage({ me }) {
       active = false;
     };
   }, [canView, page]);
+
+  const summaryCards = useMemo(() => {
+    return [
+      {
+        title: 'Calificaciones visibles',
+        value: rows.length,
+        subtitle: rows.length > 0 ? 'Registros de la pagina actual' : 'Sin calificaciones cargadas',
+      },
+      {
+        title: 'Total paginado',
+        value: count,
+        subtitle: 'Resultados totales en el backend',
+      },
+      {
+        title: 'Siguiente pagina',
+        value: hasNext ? 'Si' : 'No',
+        subtitle: 'Indica si hay más registros',
+      },
+      {
+        title: 'Pagina previa',
+        value: hasPrevious ? 'Si' : 'No',
+        subtitle: 'Indica si existe retroceso',
+      },
+    ];
+  }, [count, hasNext, hasPrevious, rows.length]);
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -306,7 +364,7 @@ export default function AdminGradesPage({ me }) {
         </div>
       </header>
 
-      {loading ? <p>Cargando calificaciones...</p> : null}
+      {loading ? <AdminGradesLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
       {!canDelete ? <p>Modo restringido: falta capability `GRADE_DELETE` para eliminacion masiva.</p> : null}
@@ -367,8 +425,26 @@ export default function AdminGradesPage({ me }) {
       ) : null}
 
       {!loading && !error ? (
-        <>
-          <div className="table-wrap">
+        <div>
+          <div className="summary-grid">
+            {summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatDisplay(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+          </div>
+
+          <article className="card section-card">
+            <div className="section-card-head">
+              <div>
+                <h3>Listado de Calificaciones</h3>
+                <p>Calificaciones del profesor con sus datos de operación visibles para administración.</p>
+              </div>
+            </div>
+
+            <div className="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -459,6 +535,8 @@ export default function AdminGradesPage({ me }) {
             </div>
           ) : null}
 
+          </article>
+
           <PaginationControls
             page={page}
             count={count}
@@ -467,7 +545,7 @@ export default function AdminGradesPage({ me }) {
             onPageChange={updatePage}
             loading={loading}
           />
-        </>
+        </div>
       ) : null}
     </section>
   );

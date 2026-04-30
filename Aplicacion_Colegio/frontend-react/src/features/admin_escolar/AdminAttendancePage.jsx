@@ -72,6 +72,34 @@ export default function AdminAttendancePage({ me }) {
     return Boolean(form.clase && form.estudiante && form.fecha && form.estado);
   }, [form]);
 
+  function formatDisplay(value) {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  }
+
+  function AdminAttendanceLoadingState() {
+    return (
+      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+        <div className="section-card-head">
+          <div>
+            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
+            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
+          </div>
+        </div>
+
+        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
+              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
+              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
+            </div>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
   function updateFilters(nextClass, nextDate, nextPage = 1) {
     setSelectedClass(nextClass);
     setSelectedDate(nextDate);
@@ -484,10 +512,24 @@ export default function AdminAttendancePage({ me }) {
         </form>
       ) : null}
 
-      {loading ? <p>Cargando...</p> : null}
+      {loading ? <AdminAttendanceLoadingState /> : null}
 
       {!loading ? (
         <>
+          <div className="summary-grid">
+            {[
+              { title: 'Registros visibles', value: rows.length },
+              { title: 'Total paginado', value: count },
+              { title: 'Siguiente pagina', value: hasNext ? 'Si' : 'No' },
+              { title: 'Pagina previa', value: hasPrevious ? 'Si' : 'No' },
+            ].map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatDisplay(item.value)}</strong>
+              </article>
+            ))}
+          </div>
+
           <div className="table-wrap">
             <table>
               <thead>

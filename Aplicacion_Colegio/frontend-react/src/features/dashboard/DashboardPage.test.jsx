@@ -7,6 +7,13 @@ import DashboardPage from './DashboardPage';
 
 const getMock = vi.fn();
 
+const demoPanelPayload = {
+  counts: { tareas: 0, materiales: 0, bloques: 0 },
+  tareas: [],
+  materiales: [],
+  horario: {},
+};
+
 vi.mock('../../lib/apiClient', () => ({
   apiClient: {
     get: (...args) => getMock(...args),
@@ -26,6 +33,13 @@ function renderDashboard(initialUrl = '/dashboard') {
 describe('DashboardPage', () => {
   beforeEach(() => {
     getMock.mockReset();
+    getMock.mockImplementation((path) => {
+      if (path === '/api/v1/demo/panel/') {
+        return Promise.resolve(demoPanelPayload);
+      }
+
+      return Promise.resolve(null);
+    });
   });
 
   it('loads dashboard summary and renders key metrics', async () => {
@@ -51,7 +65,7 @@ describe('DashboardPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');
     });
 
-    expect(screen.getByText('1.0.0')).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('Contrato 1.0.0'))).toBeInTheDocument();
     expect(screen.getByText('Estudiantes')).toBeInTheDocument();
     expect(screen.getByText('120')).toBeInTheDocument();
   });
@@ -122,6 +136,15 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('renders a structured loading state while dashboard data is fetching', () => {
+    getMock.mockImplementation(() => new Promise(() => {}));
+
+    renderDashboard('/dashboard?scope=analytics');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando dashboard ejecutivo...');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('updates query and reloads when scope changes', async () => {
     const user = userEvent.setup();
     getMock
@@ -146,7 +169,7 @@ describe('DashboardPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=self');
     });
 
-    await user.selectOptions(screen.getByLabelText('Vista'), 'school');
+    await user.click(screen.getByRole('button', { name: /Colegio/ }));
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');

@@ -87,6 +87,34 @@ export default function AdminImportExportPage({ me }) {
     return hasCapability(me, 'SYSTEM_ADMIN') || hasCapability(me, 'SYSTEM_CONFIGURE');
   }, [me]);
 
+  function formatDisplay(value) {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  }
+
+  function AdminImportExportLoadingState() {
+    return (
+      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+        <div className="section-card-head">
+          <div>
+            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
+            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
+          </div>
+        </div>
+
+        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
+              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
+              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
+            </div>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
   useEffect(() => {
     let active = true;
 
@@ -268,20 +296,20 @@ export default function AdminImportExportPage({ me }) {
       <div className="grid-2">
         <article className="card">
           <h3>Dashboard de Datos</h3>
-          {dashboardLoading ? <p>Cargando resumen...</p> : null}
+          {dashboardLoading ? <AdminImportExportLoadingState /> : null}
           {!dashboardLoading ? (
             <div className="stats-grid">
               <div className="stat-tile">
                 <small>Estudiantes</small>
-                <strong>{dashboard?.total_estudiantes ?? 0}</strong>
+                <strong>{formatDisplay(dashboard?.total_estudiantes ?? 0)}</strong>
               </div>
               <div className="stat-tile">
                 <small>Profesores</small>
-                <strong>{dashboard?.total_profesores ?? 0}</strong>
+                <strong>{formatDisplay(dashboard?.total_profesores ?? 0)}</strong>
               </div>
               <div className="stat-tile">
                 <small>Apoderados</small>
-                <strong>{dashboard?.total_apoderados ?? 0}</strong>
+                <strong>{formatDisplay(dashboard?.total_apoderados ?? 0)}</strong>
               </div>
             </div>
           ) : null}

@@ -39,6 +39,8 @@ describe('BibliotecarioDigitalPage', () => {
     });
 
     expect(screen.getByText(/Recursos \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('Préstamos activos')).toBeInTheDocument();
+    expect(screen.getByText('Usuarios')).toBeInTheDocument();
   });
 
   it('submits create resource with LIBRARY_CREATE', async () => {

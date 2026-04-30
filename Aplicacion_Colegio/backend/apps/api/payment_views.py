@@ -14,6 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from backend.apps.api.tasks import process_payment_webhook_task
+
 from backend.apps.institucion.models import Colegio
 from backend.apps.subscriptions.models import Plan
 from backend.apps.subscriptions.services.payment_service import PaymentService
@@ -431,18 +433,15 @@ def payment_webhook(request):
             return Response({'detail': 'Firma de webhook invalida.'}, status=status.HTTP_403_FORBIDDEN)
 
     payload = request.data if isinstance(request.data, dict) else {}
-    try:
-        payment = PaymentService.process_webhook(payload)
-    except ValueError as exc:
-        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Process webhook asynchronously to prevent gateway timeouts
+    process_payment_webhook_task.delay(payload)
 
     event_type = PaymentService._normalize_webhook_event(payload)
 
     return Response(
         {
-            'detail': 'Webhook procesado.',
-            'payment_id': payment.id if payment else None,
-            'status': payment.status if payment else None,
+            'detail': 'Webhook encolado para procesamiento.',
             'event_type': event_type,
         },
         status=status.HTTP_200_OK,

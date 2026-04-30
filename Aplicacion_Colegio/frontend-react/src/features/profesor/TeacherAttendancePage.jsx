@@ -13,6 +13,47 @@ const EMPTY_FORM = {
   observaciones: '',
 };
 
+function formatNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return '0';
+  }
+
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) {
+    return String(value);
+  }
+
+  return numericValue.toFixed(0);
+}
+
+function TeacherAttendanceLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '110px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '210px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
+        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
+        <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function TeacherAttendancePage({ me }) {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
@@ -24,6 +65,19 @@ export default function TeacherAttendancePage({ me }) {
   const [error, setError] = useState('');
 
   const canTakeAttendance = hasCapability(me, 'CLASS_TAKE_ATTENDANCE');
+  const summary = useMemo(() => {
+    const total = rows.length;
+    const present = rows.filter((row) => row.estado === 'P').length;
+    const absent = rows.filter((row) => row.estado === 'A').length;
+    const tardy = rows.filter((row) => row.estado === 'T').length;
+
+    return [
+      { title: 'Registros', value: total, subtitle: 'Asistencias cargadas para el filtro actual' },
+      { title: 'Presentes', value: present, subtitle: 'Estados marcados como presente' },
+      { title: 'Ausentes', value: absent, subtitle: 'Estados marcados como ausente' },
+      { title: 'Tardanzas', value: tardy, subtitle: 'Estados marcados como tardanza' },
+    ];
+  }, [rows]);
 
   const canSubmit = useMemo(() => {
     return canTakeAttendance && Boolean(form.clase && form.estudiante && form.fecha && form.estado);
@@ -184,13 +238,25 @@ export default function TeacherAttendancePage({ me }) {
       <header className="page-header">
         <div>
           <h2>Profesor: Asistencias</h2>
-          <p>CRUD sobre `profesor/asistencias`.</p>
+          <p>Registro de asistencia con filtros por clase y fecha, más permisos por acción.</p>
         </div>
       </header>
 
-      {loading ? <p>Cargando...</p> : null}
+      {loading ? <TeacherAttendanceLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {!canTakeAttendance ? <p>Modo solo lectura: falta capability `CLASS_TAKE_ATTENDANCE`.</p> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summary.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{formatNumber(item.value)}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <form className="card form-grid" onSubmit={onSubmit}>
         <h3>{editingId ? `Editar #${editingId}` : 'Nueva Asistencia'}</h3>
@@ -257,11 +323,15 @@ export default function TeacherAttendancePage({ me }) {
 
         <label>
           Tipo
-          <input
+          <select
             value={form.tipo_asistencia}
             onChange={(e) => onChange('tipo_asistencia', e.target.value)}
             disabled={!canTakeAttendance}
-          />
+          >
+            <option value="Presencial">Presencial</option>
+            <option value="Remota">Remota</option>
+            <option value="Hibrida">Híbrida</option>
+          </select>
         </label>
 
         <label className="full">
@@ -285,50 +355,61 @@ export default function TeacherAttendancePage({ me }) {
         </div>
       </form>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Fecha</th>
-              <th>Estudiante</th>
-              <th>Estado</th>
-              <th>Tipo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id_asistencia}>
-                <td>{row.id_asistencia}</td>
-                <td>{row.fecha}</td>
-                <td>{row.estudiante_nombre}</td>
-                <td>{row.estado}</td>
-                <td>{row.tipo_asistencia}</td>
-                <td className="actions-cell">
-                  {canTakeAttendance ? (
-                    <>
-                      <button className="small" onClick={() => startEdit(row)}>
-                        Editar
-                      </button>
-                      <button className="small danger" onClick={() => onDelete(row.id_asistencia)}>
-                        Eliminar
-                      </button>
-                    </>
-                  ) : (
-                    <span>Solo lectura</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan="6">Sin registros</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      {!loading && !error ? (
+        <article className="card section-card">
+          <div className="section-card-head">
+            <div>
+              <h3>Listado de Asistencias</h3>
+              <p>Revisa los registros cargados para la clase y fecha seleccionadas.</p>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Estudiante</th>
+                  <th>Estado</th>
+                  <th>Tipo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id_asistencia}>
+                    <td>{row.id_asistencia}</td>
+                    <td>{row.fecha}</td>
+                    <td>{row.estudiante_nombre}</td>
+                    <td>{row.estado}</td>
+                    <td>{row.tipo_asistencia}</td>
+                    <td className="actions-cell">
+                      {canTakeAttendance ? (
+                        <>
+                          <button type="button" className="small" onClick={() => startEdit(row)}>
+                            Editar
+                          </button>
+                          <button type="button" className="small danger" onClick={() => onDelete(row.id_asistencia)}>
+                            Eliminar
+                          </button>
+                        </>
+                      ) : (
+                        <span>Solo lectura</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!loading && rows.length === 0 ? (
+                  <tr>
+                    <td colSpan="6">Sin registros</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      ) : null}
     </section>
   );
 }

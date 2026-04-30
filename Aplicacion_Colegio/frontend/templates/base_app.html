@@ -34,7 +34,7 @@
     <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
     
     <!-- Navbar -->
-    {% if not hide_top_navbar %}
+    {% if not hide_top_navbar and request.GET.layout != 'bare' %}
     <nav class="navbar navbar-primary" role="navigation">
         <div class="container-xl">
             <div class="navbar-layout">
@@ -302,7 +302,7 @@
     
     <!-- Layout con Sidebar (opcional) -->
     <div class="{% block layout_class %}container-xl{% endblock %}" {% block layout_style %}{% endblock %}>
-        {% if sidebar_template %}
+        {% if sidebar_template and request.GET.layout != 'bare' %}
         <div class="sidebar-layout">
             <!-- Sidebar -->
             {% block sidebar %}
@@ -329,7 +329,7 @@
                 <!-- Aside (Sidebar Derecho Opcional) -->
                 {% block aside %}{% endblock %}
                 
-                {% if sidebar_template %}
+                {% if sidebar_template and request.GET.layout != 'bare' %}
             </div>
         </div>
         {% else %}
@@ -338,6 +338,7 @@
     </div>
     
     <!-- Footer -->
+    {% if request.GET.layout != 'bare' %}
     <footer class="bg-secondary py-xl mt-3xl">
         <div class="container-xl">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
@@ -384,6 +385,7 @@
             </div>
         </div>
     </footer>
+    {% endif %}
     
     <!-- Modals -->
     {% block modals %}{% endblock %}

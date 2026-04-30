@@ -6,10 +6,13 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from backend.apps.api.services.onboarding_service import OnboardingService
+from backend.apps.api.throttling import OnboardingRateThrottle
+from rest_framework.decorators import throttle_classes
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([OnboardingRateThrottle])
 def onboarding_register(request):
     try:
         result = OnboardingService.create_school(request.data if isinstance(request.data, dict) else {})
@@ -35,6 +38,8 @@ def onboarding_check_slug(request):
     return Response({'slug': slug, 'available': available}, status=status.HTTP_200_OK)
 
 
+from backend.apps.api.tasks import generate_demo_data_task
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def onboarding_generate_demo(request):
@@ -42,5 +47,5 @@ def onboarding_generate_demo(request):
     if colegio is None:
         return Response({'detail': 'No se pudo resolver el colegio.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    OnboardingService.generate_demo_data(colegio=colegio, admin_user=request.user)
-    return Response({'detail': 'Datos demo generados.'}, status=status.HTTP_200_OK)
+    generate_demo_data_task.delay(colegio.id, request.user.id)
+    return Response({'detail': 'Datos demo generándose en segundo plano.'}, status=status.HTTP_200_OK)

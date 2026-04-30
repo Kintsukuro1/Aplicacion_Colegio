@@ -685,6 +685,44 @@ function UpcomingEvaluations({ evaluaciones }) {
   );
 }
 
+function DashboardLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '28px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="dashboard-loading-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="summary-tile"
+            style={{ minHeight: '118px', borderRadius: '18px', background: 'rgba(148, 163, 184, 0.08)' }}
+          >
+            <div style={{ height: '12px', width: '84px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.9rem' }} />
+            <div style={{ height: '28px', width: index % 2 === 0 ? '72px' : '104px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="chart-card" style={{ minHeight: '260px' }}>
+            <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
+            <div style={{ height: '180px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
+          </div>
+        ))}
+      </div>
+
+      <p className="section-muted" style={{ marginTop: '1rem' }}>Cargando dashboard ejecutivo...</p>
+    </article>
+  );
+}
+
 /* ── Main Component ─────────────────────────────────── */
 
 export default function DashboardPage() {
@@ -784,11 +822,7 @@ export default function DashboardPage() {
         </article>
       ) : null}
 
-      {loading ? (
-        <div className="loading-dot">
-          <span /><span /><span />
-        </div>
-      ) : null}
+      {loading ? <DashboardLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
       {!loading && data ? (

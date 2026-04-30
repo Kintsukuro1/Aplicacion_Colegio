@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 import GroupedSidebar from './components/GroupedSidebar';
@@ -7,39 +7,45 @@ import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './components/Toast';
 import { UpdateListener } from './components/UpdateListener';
-import LoginPage from './features/auth/LoginPage';
-import RegisterPage from './features/auth/RegisterPage';
-import DashboardPage from './features/dashboard/DashboardPage';
-import TeacherClassesPage from './features/profesor/TeacherClassesPage';
-import TeacherAttendancePage from './features/profesor/TeacherAttendancePage';
-import TeacherEvaluationsPage from './features/profesor/TeacherEvaluationsPage';
-import TeacherGradesPage from './features/profesor/TeacherGradesPage';
-import StudentSelfPage from './features/estudiante/StudentSelfPage';
-import AdminStudentsPage from './features/admin_escolar/AdminStudentsPage';
-import AdminOverviewPage from './features/admin_escolar/AdminOverviewPage';
-import AdminCoursesPage from './features/admin_escolar/AdminCoursesPage';
-import AdminClassesPage from './features/admin_escolar/AdminClassesPage';
-import AdminEvaluationsPage from './features/admin_escolar/AdminEvaluationsPage';
-import AdminGradesPage from './features/admin_escolar/AdminGradesPage';
-import AdminAttendancePage from './features/admin_escolar/AdminAttendancePage';
-import AdminImportExportPage from './features/admin_escolar/AdminImportExportPage';
-import CalendarEventsPage from './features/calendar/CalendarEventsPage';
-import MeetingRequestsPage from './features/reuniones/MeetingRequestsPage';
-import ActiveSessionsPage from './features/security/ActiveSessionsPage';
-import PasswordHistoryPage from './features/security/PasswordHistoryPage';
-import AsesorFinancieroPage from './features/asesor_financiero/AsesorFinancieroPage';
-import InspectorConvivenciaPage from './features/inspector_convivencia/InspectorConvivenciaPage';
-import PsicologoOrientadorPage from './features/psicologo_orientador/PsicologoOrientadorPage';
-import SoporteTecnicoPage from './features/soporte_tecnico/SoporteTecnicoPage';
-import BibliotecarioDigitalPage from './features/bibliotecario_digital/BibliotecarioDigitalPage';
-import CoordinadorAcademicoPage from './features/coordinador_academico/CoordinadorAcademicoPage';
-import ApoderadoPage from './features/apoderado/ApoderadoPage';
-import PricingPage from './features/subscriptions/PricingPage';
-import PaymentHistoryPage from './features/subscriptions/PaymentHistoryPage';
-import TransferNoticesPage from './features/subscriptions/TransferNoticesPage';
 import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';
+
+
+// Eager load only public/login pages if desired, but we can lazy load them too for max savings
+const LoginPage = lazy(() => import('./features/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
+
+// Lazy load feature modules (Code Splitting)
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
+const TeacherClassesPage = lazy(() => import('./features/profesor/TeacherClassesPage'));
+const TeacherAttendancePage = lazy(() => import('./features/profesor/TeacherAttendancePage'));
+const TeacherEvaluationsPage = lazy(() => import('./features/profesor/TeacherEvaluationsPage'));
+const TeacherGradesPage = lazy(() => import('./features/profesor/TeacherGradesPage'));
+const StudentSelfPage = lazy(() => import('./features/estudiante/StudentSelfPage'));
+const AdminStudentsPage = lazy(() => import('./features/admin_escolar/AdminStudentsPage'));
+const AdminOverviewPage = lazy(() => import('./features/admin_escolar/AdminOverviewPage'));
+const AdminCoursesPage = lazy(() => import('./features/admin_escolar/AdminCoursesPage'));
+const AdminClassesPage = lazy(() => import('./features/admin_escolar/AdminClassesPage'));
+const AdminEvaluationsPage = lazy(() => import('./features/admin_escolar/AdminEvaluationsPage'));
+const AdminGradesPage = lazy(() => import('./features/admin_escolar/AdminGradesPage'));
+const AdminAttendancePage = lazy(() => import('./features/admin_escolar/AdminAttendancePage'));
+const AdminImportExportPage = lazy(() => import('./features/admin_escolar/AdminImportExportPage'));
+const CalendarEventsPage = lazy(() => import('./features/calendar/CalendarEventsPage'));
+const MeetingRequestsPage = lazy(() => import('./features/reuniones/MeetingRequestsPage'));
+const ActiveSessionsPage = lazy(() => import('./features/security/ActiveSessionsPage'));
+const PasswordHistoryPage = lazy(() => import('./features/security/PasswordHistoryPage'));
+const AsesorFinancieroPage = lazy(() => import('./features/asesor_financiero/AsesorFinancieroPage'));
+const InspectorConvivenciaPage = lazy(() => import('./features/inspector_convivencia/InspectorConvivenciaPage'));
+const PsicologoOrientadorPage = lazy(() => import('./features/psicologo_orientador/PsicologoOrientadorPage'));
+const SoporteTecnicoPage = lazy(() => import('./features/soporte_tecnico/SoporteTecnicoPage'));
+const BibliotecarioDigitalPage = lazy(() => import('./features/bibliotecario_digital/BibliotecarioDigitalPage'));
+const CoordinadorAcademicoPage = lazy(() => import('./features/coordinador_academico/CoordinadorAcademicoPage'));
+const ApoderadoPage = lazy(() => import('./features/apoderado/ApoderadoPage'));
+const PricingPage = lazy(() => import('./features/subscriptions/PricingPage'));
+const PaymentHistoryPage = lazy(() => import('./features/subscriptions/PaymentHistoryPage'));
+const TransferNoticesPage = lazy(() => import('./features/subscriptions/TransferNoticesPage'));
+const LegacyProxy = lazy(() => import('./components/LegacyProxy'));
 
 const APP_ROUTES = [
   {
@@ -61,42 +67,48 @@ const APP_ROUTES = [
     to: '/admin-escolar/estudiantes',
     label: 'Admin Estudiantes',
     component: AdminStudentsPage,
-    anyOf: ['STUDENT_VIEW', 'STUDENT_EDIT'],
+    anyOf: ['STUDENT_EDIT', 'STUDENT_CREATE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/cursos',
     to: '/admin-escolar/cursos',
     label: 'Admin Cursos',
     component: AdminCoursesPage,
-    anyOf: ['COURSE_VIEW'],
+    anyOf: ['COURSE_EDIT', 'COURSE_CREATE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/clases',
     to: '/admin-escolar/clases',
     label: 'Admin Clases',
     component: AdminClassesPage,
-    anyOf: ['CLASS_VIEW'],
+    anyOf: ['CLASS_EDIT', 'CLASS_CREATE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/evaluaciones',
     to: '/admin-escolar/evaluaciones',
     label: 'Admin Evaluaciones',
     component: AdminEvaluationsPage,
-    anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
+    anyOf: ['GRADE_EDIT', 'GRADE_CREATE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/calificaciones',
     to: '/admin-escolar/calificaciones',
     label: 'Admin Calificaciones',
     component: AdminGradesPage,
-    anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
+    anyOf: ['GRADE_EDIT', 'GRADE_CREATE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/asistencias',
     to: '/admin-escolar/asistencias',
     label: 'Admin Asistencias',
     component: AdminAttendancePage,
-    anyOf: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'],
+    anyOf: ['CLASS_TAKE_ATTENDANCE', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'admin-escolar/importacion-exportacion',
@@ -104,6 +116,7 @@ const APP_ROUTES = [
     label: 'Admin Import/Export',
     component: AdminImportExportPage,
     anyOf: ['SYSTEM_ADMIN', 'SYSTEM_CONFIGURE'],
+    allOf: ['DASHBOARD_VIEW_SCHOOL'],
   },
   {
     path: 'calendario/eventos',
@@ -166,7 +179,7 @@ const APP_ROUTES = [
     to: '/estudiante/panel',
     label: 'Estudiante Panel',
     component: StudentSelfPage,
-    allOf: ['DASHBOARD_VIEW_SELF', 'CLASS_VIEW', 'GRADE_VIEW', 'CLASS_VIEW_ATTENDANCE'],
+    anyOf: ['PORTAL_ESTUDIANTE'],
   },
   {
     path: 'asesor-financiero/panel',
@@ -215,7 +228,7 @@ const APP_ROUTES = [
     to: '/apoderado/panel',
     label: 'Apoderado Panel',
     component: ApoderadoPage,
-    anyOf: ['DASHBOARD_VIEW_SELF', 'STUDENT_VIEW', 'FINANCE_VIEW'],
+    anyOf: ['PORTAL_APODERADO'],
   },
   {
     path: 'planes',
@@ -250,6 +263,15 @@ function AccessDeniedPage() {
         </div>
       </header>
     </section>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div style={{ padding: '2rem', display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+      <div style={{ height: '40px', width: '200px', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)' }} />
+      <div style={{ height: '300px', width: '100%', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)' }} />
+    </div>
   );
 }
 
@@ -347,7 +369,11 @@ function GuardedPage({ me, route }) {
   }
 
   const Component = route.component;
-  return <Component me={me} />;
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Component me={me} />
+    </Suspense>
+  );
 }
 
 function AuthorizedApp() {
@@ -412,7 +438,7 @@ function AuthorizedApp() {
               element={<GuardedPage me={me} route={route} />}
             />
           ))}
-          <Route path="*" element={<Navigate to={visibleRoutes[0]?.to || '/dashboard'} replace />} />
+          <Route path="*" element={<LegacyProxy />} />
         </Routes>
       </ShellLayout>
     </>
@@ -422,18 +448,20 @@ function AuthorizedApp() {
 export default function App() {
   return (
     <ToastProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <AuthorizedApp />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <Suspense fallback={<div className="page-loader">Cargando aplicación...</div>}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <AuthorizedApp />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
     </ToastProvider>
   );
 }

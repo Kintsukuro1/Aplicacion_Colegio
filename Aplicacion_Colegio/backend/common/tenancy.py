@@ -55,8 +55,23 @@ class TenantManager(models.Manager):
         school_id = get_current_tenant_school_id()
         if school_id is None:
             return queryset
-        school_value = str(school_id) if self.coerce_school_id_to_str else school_id
-        return queryset.filter(**{self.school_field: school_value})
+            
+        field_to_use = self.school_field
+        coerce_str = self.coerce_school_id_to_str
+        
+        # Fix Django RelatedManager behavior:
+        # When used as a RelatedManager (e.g. model.objects.prefetch_related), Django subclasses 
+        # this manager but drops __init__ kwargs. This causes it to fallback to defaults.
+        # We detect if we're a RelatedManager (by checking for 'instance') and read the intended 
+        # config from the model's default manager.
+        if hasattr(self, 'instance') and hasattr(self.model, '_default_manager'):
+            default_mgr = getattr(self.model, '_default_manager', None)
+            if isinstance(default_mgr, TenantManager):
+                field_to_use = getattr(default_mgr, 'school_field', field_to_use)
+                coerce_str = getattr(default_mgr, 'coerce_school_id_to_str', coerce_str)
+                
+        school_value = str(school_id) if coerce_str else school_id
+        return queryset.filter(**{field_to_use: school_value})
 
     def all_schools(self):
         return TenantQuerySet(self.model, using=self._db)

@@ -6,6 +6,46 @@ function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
+function formatDisplay(value) {
+  if (value === null || value === undefined || value === '') {
+    return '0';
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+function ApoderadoLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '300px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        <div className="card" style={{ minHeight: '180px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        <div className="card" style={{ minHeight: '180px', background: 'rgba(148, 163, 184, 0.06)' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function ApoderadoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,6 +60,24 @@ export default function ApoderadoPage() {
     estudiante_id: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const summaryCards = [
+    {
+      title: 'Justificativos',
+      value: justificativos.length,
+      subtitle: justificativos.length > 0 ? 'Registros pendientes o revisados' : 'No hay justificativos cargados',
+    },
+    {
+      title: 'Pendientes de firma',
+      value: pendientes.length,
+      subtitle: pendientes.length > 0 ? 'Documentos esperando acción' : 'No hay documentos pendientes',
+    },
+    {
+      title: 'Firmados',
+      value: firmados.length,
+      subtitle: firmados.length > 0 ? 'Documentos ya autorizados' : 'Sin firmas registradas',
+    },
+  ];
 
   async function loadData() {
     setLoading(true);
@@ -76,17 +134,29 @@ export default function ApoderadoPage() {
       <header className="page-header">
         <div>
           <h2>Apoderado Panel</h2>
-          <p>Seguimiento de justificativos y firma digital.</p>
+          <p>Seguimiento de justificativos y firma digital con estado resumido.</p>
         </div>
       </header>
 
-      {loading ? <p>Cargando panel...</p> : null}
+      {loading ? <ApoderadoLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {message ? <div className="card">{message}</div> : null}
 
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summaryCards.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{formatDisplay(item.value)}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
       {!loading ? (
         <div className="grid-2">
-          <article className="card">
+          <article className="card section-card">
             <h3>Justificativos ({justificativos.length})</h3>
             {justificativos.length === 0 ? <p>Sin justificativos.</p> : null}
             {justificativos.length > 0 ? (
@@ -100,7 +170,7 @@ export default function ApoderadoPage() {
             ) : null}
           </article>
 
-          <article className="card">
+          <article className="card section-card">
             <h3>Firmas</h3>
             <p>Pendientes: {pendientes.length}</p>
             <p>Firmados: {firmados.length}</p>

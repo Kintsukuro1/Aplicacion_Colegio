@@ -15,6 +15,47 @@ function formatCurrency(value) {
   }).format(numeric);
 }
 
+function formatNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return '0';
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+
+  return numeric.toFixed(0);
+}
+
+function AsesorFinancieroLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '124px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '260px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '96px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 3 ? '68px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        <div className="card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        <div className="card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function AsesorFinancieroPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +109,28 @@ export default function AsesorFinancieroPage() {
   const cuotasPorEstado = Array.isArray(dashboard?.cuotas_por_estado) ? dashboard.cuotas_por_estado : [];
   const becas = dashboard?.becas || {};
   const pagosRecientes = Array.isArray(dashboard?.pagos_recientes) ? dashboard.pagos_recientes : [];
+  const resumenCards = [
+    {
+      title: 'Emitido',
+      value: resumen.total_emitido,
+      subtitle: 'Monto total calculado en el periodo',
+    },
+    {
+      title: 'Pagado',
+      value: resumen.total_pagado,
+      subtitle: 'Pagos confirmados en el corte actual',
+    },
+    {
+      title: 'Pendiente',
+      value: resumen.total_pendiente,
+      subtitle: 'Saldo aún por recaudar',
+    },
+    {
+      title: 'Cobranza',
+      value: resumen.tasa_cobranza ?? 0,
+      subtitle: 'Porcentaje de recuperación',
+    },
+  ];
 
   return (
     <section>
@@ -104,11 +167,22 @@ export default function AsesorFinancieroPage() {
         </div>
       </header>
 
-      {loading ? <p>Cargando panel financiero...</p> : null}
+      {loading ? <AsesorFinancieroLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
       {!loading && !error ? (
-        <div className="grid-2">
+        <div>
+          <div className="summary-grid">
+            {resumenCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{item.title === 'Cobranza' ? `${formatNumber(item.value)}%` : formatCurrency(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+          </div>
+
+          <div className="grid-2" style={{ marginTop: '1.25rem' }}>
           <article className="card">
             <h3>Resumen Financiero</h3>
             <p>Total emitido: {formatCurrency(resumen.total_emitido)}</p>
@@ -195,6 +269,7 @@ export default function AsesorFinancieroPage() {
               </div>
             ) : null}
           </article>
+          </div>
         </div>
       ) : null}
     </section>

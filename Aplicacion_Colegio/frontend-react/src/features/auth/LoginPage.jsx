@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
 import { setTokens } from '../../lib/authStore';
@@ -7,21 +7,70 @@ import { useTenant } from '../../lib/tenantContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tenant } = useTenant();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [touched, setTouched] = useState({ email: false, password: false });
+
+  const emailError = useMemo(() => {
+    if (!touched.email) {
+      return '';
+    }
+
+    const value = email.trim();
+    if (!value) {
+      return 'Ingresa tu correo institucional.';
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      return 'Ingresa un correo válido.';
+    }
+
+    return '';
+  }, [email, touched.email]);
+
+  const passwordError = useMemo(() => {
+    if (!touched.password) {
+      return '';
+    }
+
+    if (!password.trim()) {
+      return 'Ingresa tu contraseña.';
+    }
+
+    return '';
+  }, [password, touched.password]);
+
+  const canSubmit = Boolean(!loading && !emailError && !passwordError && email.trim() && password.trim());
+
+  function getRedirectTarget() {
+    const fromPath = location.state?.from?.pathname;
+    return fromPath && fromPath !== '/login' ? fromPath : '/dashboard';
+  }
 
   async function onSubmit(event) {
     event.preventDefault();
     setError('');
+
+    setTouched({ email: true, password: true });
+
+    if (!email.trim() || !password.trim()) {
+      return;
+    }
+
+    if (emailError || passwordError) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const payload = await apiClient.post('/api/v1/auth/token/', { email, password });
+      const payload = await apiClient.post('/api/v1/auth/token/', { email: email.trim().toLowerCase(), password });
       setTokens({ access: payload.access, refresh: payload.refresh });
-      navigate('/dashboard', { replace: true });
+      navigate(getRedirectTarget(), { replace: true });
     } catch (err) {
       setError(err.payload?.detail || 'No se pudo iniciar sesion.');
     } finally {
@@ -31,7 +80,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={onSubmit}>
+      <form className="auth-card" onSubmit={onSubmit} noValidate>
         <div className="auth-logo">
           {tenant?.logo ? (
             <img src={tenant.logo} alt={`Logo ${tenant.nombre}`} className="tenant-logo" />
@@ -54,11 +103,18 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError('');
+            }}
+            onBlur={() => setTouched((current) => ({ ...current, email: true }))}
             required
             autoComplete="username"
             placeholder="correo@ejemplo.cl"
+            aria-invalid={Boolean(emailError || error)}
+            aria-describedby={emailError ? 'login-email-error' : undefined}
           />
+          {emailError ? <small id="login-email-error" className="field-error">{emailError}</small> : null}
         </label>
 
         <label>
@@ -66,16 +122,23 @@ export default function LoginPage() {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError('');
+            }}
+            onBlur={() => setTouched((current) => ({ ...current, password: true }))}
             required
             autoComplete="current-password"
             placeholder="••••••••"
+            aria-invalid={Boolean(passwordError || error)}
+            aria-describedby={passwordError ? 'login-password-error' : undefined}
           />
+          {passwordError ? <small id="login-password-error" className="field-error">{passwordError}</small> : null}
         </label>
 
         {error ? <div className="error-box">{error}</div> : null}
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={!canSubmit} aria-busy={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
         </button>
 

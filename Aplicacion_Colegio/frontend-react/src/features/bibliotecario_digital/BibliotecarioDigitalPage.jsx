@@ -16,6 +16,46 @@ const EMPTY_RESOURCE = {
   es_plan_lector: false,
 };
 
+function formatDisplay(value) {
+  if (value === null || value === undefined || value === '') {
+    return '0';
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+function BibliotecarioDigitalLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '130px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '310px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
+        <div className="card" style={{ minHeight: '200px', background: 'rgba(148, 163, 184, 0.06)' }} />
+        <div className="card" style={{ minHeight: '200px', background: 'rgba(148, 163, 184, 0.06)' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function BibliotecarioDigitalPage({ me }) {
   const [resources, setResources] = useState([]);
   const [users, setUsers] = useState([]);
@@ -38,6 +78,34 @@ export default function BibliotecarioDigitalPage({ me }) {
     () => hasCapability(me, 'LIBRARY_MANAGE_LOANS') || hasCapability(me, 'SYSTEM_ADMIN'),
     [me]
   );
+
+  const summaryCards = useMemo(() => {
+    const publishedCount = resources.filter((item) => item.publicado).length;
+    const loanCount = loans.length;
+
+    return [
+      {
+        title: 'Recursos',
+        value: resources.length,
+        subtitle: resources.length > 0 ? 'Materiales cargados en el catálogo' : 'Sin recursos cargados',
+      },
+      {
+        title: 'Publicados',
+        value: publishedCount,
+        subtitle: 'Recursos visibles para la comunidad',
+      },
+      {
+        title: 'Usuarios',
+        value: users.length,
+        subtitle: 'Disponibles para préstamos y búsquedas',
+      },
+      {
+        title: 'Préstamos activos',
+        value: loanCount,
+        subtitle: loanCount > 0 ? 'Circulación actual en curso' : 'No hay préstamos activos',
+      },
+    ];
+  }, [loans.length, resources, users.length]);
 
   useEffect(() => {
     let active = true;
@@ -201,13 +269,25 @@ export default function BibliotecarioDigitalPage({ me }) {
       <header className="page-header">
         <div>
           <h2>Bibliotecario Digital</h2>
-          <p>Catalogo de recursos y datos para prestamos.</p>
+          <p>Catálogo de recursos, publicaciones y préstamos con permisos por acción.</p>
         </div>
       </header>
 
-      {loading ? <p>Cargando catalogo...</p> : null}
+      {loading ? <BibliotecarioDigitalLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {message ? <div className="card">{message}</div> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summaryCards.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{formatDisplay(item.value)}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid-2">
         <article className="card">
@@ -405,8 +485,14 @@ export default function BibliotecarioDigitalPage({ me }) {
         </div>
       </form>
 
-      <article className="card">
-        <h3>Prestamos activos ({loans.length})</h3>
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Préstamos activos ({loans.length})</h3>
+            <p>Control de circulación y devoluciones desde el mismo panel.</p>
+          </div>
+        </div>
+
         {loans.length === 0 ? <p>Sin prestamos activos.</p> : null}
         {loans.length > 0 ? (
           <ul>

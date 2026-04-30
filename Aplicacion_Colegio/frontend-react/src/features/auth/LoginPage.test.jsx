@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 import LoginPage from './LoginPage';
 
@@ -33,6 +34,14 @@ describe('LoginPage', () => {
     setTokensMock.mockReset();
   });
 
+  function renderLoginPage(initialEntries = ['/login']) {
+    return render(
+      <MemoryRouter initialEntries={initialEntries}>
+        <LoginPage />
+      </MemoryRouter>
+    );
+  }
+
   it('stores tokens and redirects after successful login', async () => {
     const user = userEvent.setup();
     postMock.mockResolvedValue({
@@ -40,7 +49,7 @@ describe('LoginPage', () => {
       refresh: 'refresh-token',
     });
 
-    render(<LoginPage />);
+    renderLoginPage();
 
     await user.type(screen.getByLabelText('Correo'), 'admin@test.cl');
     await user.type(screen.getByLabelText('Contrasena'), 'Test#123456');
@@ -57,11 +66,34 @@ describe('LoginPage', () => {
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
   });
 
+  it('redirects back to the original route when login comes from a protected page', async () => {
+    const user = userEvent.setup();
+    postMock.mockResolvedValue({
+      access: 'access-token',
+      refresh: 'refresh-token',
+    });
+
+    renderLoginPage([
+      {
+        pathname: '/login',
+        state: { from: { pathname: '/profesor/clases' } },
+      },
+    ]);
+
+    await user.type(screen.getByLabelText('Correo'), 'profesor@test.cl');
+    await user.type(screen.getByLabelText('Contrasena'), 'Test#123456');
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/profesor/clases', { replace: true });
+    });
+  });
+
   it('shows backend error when login fails', async () => {
     const user = userEvent.setup();
     postMock.mockRejectedValue({ payload: { detail: 'Credenciales invalidas' } });
 
-    render(<LoginPage />);
+    renderLoginPage();
 
     await user.type(screen.getByLabelText('Correo'), 'admin@test.cl');
     await user.type(screen.getByLabelText('Contrasena'), 'wrong');
@@ -73,5 +105,20 @@ describe('LoginPage', () => {
 
     expect(setTokensMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('shows local validation errors and avoids request when email is invalid', async () => {
+    const user = userEvent.setup();
+
+    renderLoginPage();
+
+    await user.type(screen.getByLabelText('Correo'), 'correo-invalido');
+    await user.click(screen.getByLabelText('Contrasena'));
+    await user.tab();
+
+    expect(screen.getByText('Ingresa un correo válido.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+    expect(postMock).not.toHaveBeenCalled();
   });
 });

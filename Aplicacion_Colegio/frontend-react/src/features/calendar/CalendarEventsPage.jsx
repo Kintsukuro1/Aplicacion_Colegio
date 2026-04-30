@@ -34,6 +34,46 @@ const EMPTY_FORM = {
   color: '#3B82F6',
 };
 
+function formatDisplay(value) {
+  if (value === null || value === undefined || value === '') {
+    return '0';
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+function CalendarLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 3 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
+        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
+        <div style={{ height: '240px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
+      </div>
+    </article>
+  );
+}
+
 function normalizeFormForApi(form) {
   return {
     ...form,
@@ -82,6 +122,29 @@ export default function CalendarEventsPage({ me }) {
     () => hasCapability(me, 'ANNOUNCEMENT_DELETE') || hasCapability(me, 'SYSTEM_ADMIN'),
     [me],
   );
+  const activeFilters = useMemo(() => Object.values(filters).filter(Boolean).length, [filters]);
+  const summaryCards = useMemo(() => ([
+    {
+      title: 'Eventos visibles',
+      value: rows.length,
+      subtitle: 'Registros en la página actual',
+    },
+    {
+      title: 'Total filtrado',
+      value: count,
+      subtitle: 'Resultados para el conjunto actual',
+    },
+    {
+      title: 'Filtros activos',
+      value: activeFilters,
+      subtitle: 'Campos usados para acotar la búsqueda',
+    },
+    {
+      title: 'Estado',
+      value: loading ? 'Cargando' : 'Listo',
+      subtitle: canCreate || canEdit || canDelete ? 'Con permisos de operación' : 'Solo lectura',
+    },
+  ]), [activeFilters, canCreate, canDelete, canEdit, count, loading, rows.length]);
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
@@ -235,11 +298,24 @@ export default function CalendarEventsPage({ me }) {
       <header className="page-header">
         <div>
           <h2>Calendario Escolar</h2>
-          <p>CRUD de eventos academicos con filtros por tipo y fechas.</p>
+          <p>CRUD de eventos académicos con filtros por tipo, mes y rango de fechas.</p>
         </div>
       </header>
 
+      {loading ? <CalendarLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summaryCards.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{formatDisplay(item.value)}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <form className="card form-grid" onSubmit={onApplyFilters}>
         <h3 className="full">Filtros</h3>
@@ -364,54 +440,63 @@ export default function CalendarEventsPage({ me }) {
         </form>
       ) : null}
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Titulo</th>
-              <th>Tipo</th>
-              <th>Inicio</th>
-              <th>Fin</th>
-              <th>Visibilidad</th>
-              <th>Color</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id_evento}>
-                <td>{row.titulo}</td>
-                <td>{row.tipo_display || row.tipo}</td>
-                <td>{row.fecha_inicio}</td>
-                <td>{row.fecha_fin || '-'}</td>
-                <td>{row.visibilidad}</td>
-                <td>
-                  <span className="calendar-color-chip" style={{ background: row.color || '#3B82F6' }} />
-                </td>
-                <td className="actions-cell">
-                  {canEdit ? (
-                    <button type="button" className="small secondary" onClick={() => startEdit(row)}>
-                      Editar
-                    </button>
-                  ) : null}
-                  {canDelete ? (
-                    <button type="button" className="small danger" onClick={() => onDelete(row)}>
-                      Eliminar
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && !loading ? (
-              <tr>
-                <td colSpan={7}>Sin eventos para los filtros seleccionados.</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      {!loading && !error ? (
+        <article className="card section-card">
+          <div className="section-card-head">
+            <div>
+              <h3>Listado de Eventos</h3>
+              <p>Eventos académicos y administrativos cargados para la consulta actual.</p>
+            </div>
+          </div>
 
-      {loading ? <p>Cargando...</p> : null}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Titulo</th>
+                  <th>Tipo</th>
+                  <th>Inicio</th>
+                  <th>Fin</th>
+                  <th>Visibilidad</th>
+                  <th>Color</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id_evento}>
+                    <td>{row.titulo}</td>
+                    <td>{row.tipo_display || row.tipo}</td>
+                    <td>{row.fecha_inicio}</td>
+                    <td>{row.fecha_fin || '-'}</td>
+                    <td>{row.visibilidad}</td>
+                    <td>
+                      <span className="calendar-color-chip" style={{ background: row.color || '#3B82F6' }} />
+                    </td>
+                    <td className="actions-cell">
+                      {canEdit ? (
+                        <button type="button" className="small secondary" onClick={() => startEdit(row)}>
+                          Editar
+                        </button>
+                      ) : null}
+                      {canDelete ? (
+                        <button type="button" className="small danger" onClick={() => onDelete(row)}>
+                          Eliminar
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7}>Sin eventos para los filtros seleccionados.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      ) : null}
 
       <PaginationControls
         page={page}

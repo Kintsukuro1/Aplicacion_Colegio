@@ -615,21 +615,42 @@ graph TB
 
 ---
 
-## Próximos Pasos Opcionales (Post-MVP)
+## Fase 6: 🛡️ Hardening & Producción (Análisis de Debilidades y Optimización)
 
-### Alta Prioridad
-- 🔐 **SSO / OAuth**: Integración con Google Workspace / Microsoft 365 para facilitar login en colegios
-- 📧 **Email Templates**: Diseñar y automatizar notificaciones (bienvenida, pagos, alertas académicas)
-- 📊 **Analytics Mejorado**: Tracking de eventos clave (login, pagos, features usados) con Segment/Mixpanel
+> [!WARNING]
+> Tras la finalización de las 5 fases principales, el producto es comercialmente viable, pero a nivel de **arquitectura e ingeniería** presenta las siguientes debilidades críticas que deben abordarse antes de un escalamiento masivo.
 
-### Media Prioridad
-- 🌐 **i18n**: Soporte para inglés + otros idiomas de LATAM
-- 📱 **App Nativa**: React Native para iOS/Android (wrapping del PWA)
-- 🎨 **Temas Personalizados**: Permitir que cada colegio customize colores + logos
+### 🔴 Debilidad 1: Deuda Técnica Frontend (React vs Django)
+Actualmente el sistema tiene una **arquitectura híbrida**. Aunque el dashboard, pagos y onboarding están en React (PWA), todavía existen **159 archivos `.html`** en `frontend/templates/`. 
+- **Riesgo:** Experiencia de usuario fragmentada. Cada vez que el usuario navega a un módulo antiguo, el PWA sufre un "full page reload", rompiendo la sensación de aplicación nativa.
+- **Solución (Fase 6.1):** Trazar una estrategia de migración progresiva. Envolver las vistas Django faltantes en un iFrame temporal dentro de React o priorizar la reescritura de los 3 módulos más usados a componentes funcionales de React.
 
-### Baja Prioridad (Nice-to-have)
-- 🤖 **IA / Recomendaciones**: Sugerencias de acciones para directores (basadas en tendencias)
-- 📈 **Predicciones**: ML para predecir riesgo de abandono estudiantil
-- 🔗 **Integraciones**: Sincronizar datos con SII, SuperEduc (reportería oficial)
+### 🔴 Debilidad 2: React Eager Loading (Rendimiento Móvil)
+El archivo `frontend-react/src/App.jsx` importa todas las vistas de manera ansiosa (eager loading). Actualmente el bundle pesa `~214KB`, lo cual es aceptable, pero a medida que se migren los 159 templates restantes, este archivo pesará megabytes.
+- **Riesgo:** Tiempos de carga inicial extremadamente lentos en conexiones 3G/4G, lo que penaliza la experiencia PWA.
+- **Solución (Fase 6.2):** Implementar `React.lazy()` y `Suspense` en el enrutador para hacer *Code Splitting*. Esto dividirá la aplicación en pequeños "chunks" (trozos) que solo se descargan cuando el usuario entra a esa ruta específica.
+
+### 🔴 Debilidad 3: Procesamiento Síncrono (Cuellos de Botella)
+El backend procesa tareas pesadas en el hilo principal de la petición web. Cosas como la generación de datos demo (`generate_demo_data`), el procesamiento de Webhooks de MercadoPago/Transbank y la carga masiva de alumnos se ejecutan síncronamente.
+- **Riesgo:** Si Transbank envía un webhook y el servidor tarda más de unos segundos procesando, Transbank asumirá un error (Timeout). Un usuario subiendo 500 alumnos bloqueará el hilo, degradando el servicio para otros usuarios.
+- **Solución (Fase 6.3):** Integrar **Celery + Redis** para procesamiento en segundo plano (Background Workers). Todo webhook, envío de email o importación CSV debe ir a la cola de Celery.
+
+### 🔴 Debilidad 4: Seguridad API y Límites de Tasa (Rate Limiting)
+Los endpoints públicos como el registro (`/api/v1/onboarding/register/`) y comprobación de subdominio no tienen un límite estricto de peticiones por IP.
+- **Riesgo:** Un ataque automatizado (Botnet) puede inundar el registro creando miles de colegios falsos, saturando la base de datos PostgreSQL.
+- **Solución (Fase 6.4):** Instalar y configurar `django-ratelimit` o `rest_framework.throttling` para proteger las rutas públicas (Ej: máximo 3 intentos de registro por hora por IP). Adicionalmente, revisar N+1 queries en los endpoints del Dashboard usando `django-debug-toolbar`.
 
 ---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Plan de Acción Fase 6 propuesto:**
+> He analizado las debilidades del proyecto. Te propongo atacar estos problemas en el siguiente orden:
+> 
+> 1. **React Code Splitting** (Rápido, alto impacto en rendimiento móvil).
+> 2. **Implementación de Celery + Redis** (Crítico para la estabilidad de los webhooks de pago).
+> 3. **Rate Limiting y N+1 Queries** (Seguridad básica para endpoints expuestos).
+> 4. **Planificar la migración final de templates** (Mover los 159 templates restantes a React).
+> 
+> ¿Estás de acuerdo con este diagnóstico y orden de prioridades para comenzar a optimizar el sistema?

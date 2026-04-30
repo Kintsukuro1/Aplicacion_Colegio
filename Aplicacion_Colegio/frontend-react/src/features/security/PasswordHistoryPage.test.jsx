@@ -73,6 +73,8 @@ describe('PasswordHistoryPage', () => {
 
     expect(screen.getAllByText('admin@colegio.cl').length).toBeGreaterThan(0);
     expect(screen.getByText('PerfilEstudiante')).toBeInTheDocument();
+    expect(screen.getByText('Historial')).toBeInTheDocument();
+    expect(screen.getByText('Auditoria')).toBeInTheDocument();
   });
 
   it('applies audit filters and requests filtered endpoint', async () => {

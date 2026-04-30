@@ -165,6 +165,34 @@ export default function AdminOverviewPage() {
     ];
   }, [data, scope]);
 
+  function formatDisplay(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  }
+
+  function AdminOverviewLoadingState() {
+    return (
+      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+        <div className="section-card-head">
+          <div>
+            <div style={{ height: '12px', width: '140px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
+            <div style={{ height: '26px', width: '260px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
+          </div>
+        </div>
+
+        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
+              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
+              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
+            </div>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
   return (
     <section>
       <header className="page-header">
@@ -184,14 +212,17 @@ export default function AdminOverviewPage() {
         </label>
       </header>
 
-      {loading ? <p>Cargando panel...</p> : null}
+      {loading ? <AdminOverviewLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
       {!loading && !error ? (
         <>
-          <div className="grid-2">
+          <div className="summary-grid">
             {metrics.map((metric) => (
-              <MetricCard key={metric.title} title={metric.title} value={metric.value} />
+              <article key={metric.title} className="summary-tile">
+                <small>{metric.title}</small>
+                <strong>{formatDisplay(metric.value)}</strong>
+              </article>
             ))}
           </div>
 

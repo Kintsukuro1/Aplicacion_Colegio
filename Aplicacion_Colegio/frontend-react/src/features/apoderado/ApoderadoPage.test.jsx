@@ -41,6 +41,7 @@ describe('ApoderadoPage', () => {
     expect(screen.getByText(/Justificativos \(1\)/)).toBeInTheDocument();
     expect(screen.getByText('Pendientes: 1')).toBeInTheDocument();
     expect(screen.getByText('Firmados: 1')).toBeInTheDocument();
+    expect(screen.getByText('Pendientes de firma')).toBeInTheDocument();
   });
 
   it('submits sign document form', async () => {
@@ -73,7 +74,7 @@ describe('ApoderadoPage', () => {
 
     render(<ApoderadoPage />);
 
-    expect(screen.getByText('Cargando panel...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows backend error when signing fails', async () => {

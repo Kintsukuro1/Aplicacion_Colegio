@@ -127,6 +127,10 @@ CAPABILITIES = [
 
     # Certificados con QR
     'CERTIFICATE_EMIT',
+
+    # Portales Específicos
+    'PORTAL_ESTUDIANTE',
+    'PORTAL_APODERADO',
 ]
 
 DEFAULT_CAPABILITIES_BY_ROLE = {
@@ -194,6 +198,7 @@ DEFAULT_CAPABILITIES_BY_ROLE = {
         'CLASS_VIEW_ATTENDANCE',
         'GRADE_VIEW',
         'ANNOUNCEMENT_VIEW',
+        'PORTAL_ESTUDIANTE',
     },
     'apoderado': {
         'DASHBOARD_VIEW_SELF',
@@ -203,6 +208,7 @@ DEFAULT_CAPABILITIES_BY_ROLE = {
         'GRADE_VIEW',
         'ANNOUNCEMENT_VIEW',
         'FINANCE_VIEW',
+        'PORTAL_APODERADO',
     },
     'asesor_financiero': {
         'DASHBOARD_VIEW_SCHOOL',

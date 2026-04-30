@@ -13,6 +13,47 @@ const EMPTY_FORM = {
   periodo: '',
 };
 
+function formatNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) {
+    return String(value);
+  }
+
+  return numericValue.toFixed(1).replace(/\.0$/, '');
+}
+
+function TeacherEvaluationsLoadingState() {
+  return (
+    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
+      <div className="section-card-head">
+        <div>
+          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
+          <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
+        </div>
+      </div>
+
+      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
+            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
+            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
+        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
+        <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
+      </div>
+    </article>
+  );
+}
+
 export default function TeacherEvaluationsPage({ me }) {
   const [classes, setClasses] = useState([]);
   const [rows, setRows] = useState([]);
@@ -26,6 +67,36 @@ export default function TeacherEvaluationsPage({ me }) {
   const canEdit = hasCapability(me, 'GRADE_EDIT');
   const canDelete = hasCapability(me, 'GRADE_DELETE');
   const formLocked = editingId ? !canEdit : !canCreate;
+
+  const summary = useMemo(() => {
+    const totalEvaluations = rows.length;
+    const classCount = classes.length;
+    const editableCount = canEdit ? totalEvaluations : 0;
+    const deletableCount = canDelete ? totalEvaluations : 0;
+
+    return [
+      {
+        title: 'Evaluaciones',
+        value: totalEvaluations,
+        subtitle: totalEvaluations > 0 ? 'Registradas para la clase seleccionada' : 'Sin evaluaciones todavía',
+      },
+      {
+        title: 'Clases disponibles',
+        value: classCount,
+        subtitle: classCount > 0 ? 'Puedes filtrar por curso' : 'No hay clases cargadas',
+      },
+      {
+        title: 'Editables',
+        value: editableCount,
+        subtitle: canEdit ? 'Tienes permiso de edición' : 'Solo lectura para edición',
+      },
+      {
+        title: 'Eliminables',
+        value: deletableCount,
+        subtitle: canDelete ? 'Tienes permiso de eliminación' : 'Solo lectura para eliminación',
+      },
+    ];
+  }, [canDelete, canEdit, classes.length, rows.length]);
 
   const canSubmit = useMemo(() => {
     const canSaveCurrentAction = editingId ? canEdit : canCreate;
@@ -180,13 +251,25 @@ export default function TeacherEvaluationsPage({ me }) {
       <header className="page-header">
         <div>
           <h2>Profesor: Evaluaciones</h2>
-          <p>CRUD sobre `profesor/evaluaciones`.</p>
+          <p>Gestión de evaluaciones con permisos por acción y filtros por clase.</p>
         </div>
       </header>
 
-      {loading ? <p>Cargando...</p> : null}
+      {loading ? <TeacherEvaluationsLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
+
+      {!loading && !error ? (
+        <div className="summary-grid">
+          {summary.map((item) => (
+            <article key={item.title} className="summary-tile">
+              <small>{item.title}</small>
+              <strong>{formatNumber(item.value)}</strong>
+              <span>{item.subtitle}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <form className="card form-grid" onSubmit={onSubmit}>
         <h3>{editingId ? `Editar #${editingId}` : 'Nueva Evaluacion'}</h3>
@@ -251,49 +334,60 @@ export default function TeacherEvaluationsPage({ me }) {
         </div>
       </form>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Fecha</th>
-              <th>Ponderacion</th>
-              <th>Tipo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id_evaluacion}>
-                <td>{row.id_evaluacion}</td>
-                <td>{row.nombre}</td>
-                <td>{row.fecha_evaluacion}</td>
-                <td>{row.ponderacion}</td>
-                <td>{row.tipo_evaluacion}</td>
-                <td className="actions-cell">
-                  {canEdit ? (
-                    <button className="small" onClick={() => startEdit(row)}>
-                      Editar
-                    </button>
-                  ) : null}
-                  {canDelete ? (
-                    <button className="small danger" onClick={() => onDelete(row.id_evaluacion)}>
-                      Eliminar
-                    </button>
-                  ) : null}
-                  {!canEdit && !canDelete ? <span>Solo lectura</span> : null}
-                </td>
-              </tr>
-            ))}
-            {!loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan="6">Sin registros</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      {!loading && !error ? (
+        <article className="card section-card">
+          <div className="section-card-head">
+            <div>
+              <h3>Listado de Evaluaciones</h3>
+              <p>Selecciona una evaluación para editar o eliminar según tus permisos.</p>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Fecha</th>
+                  <th>Ponderación</th>
+                  <th>Tipo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id_evaluacion}>
+                    <td>{row.id_evaluacion}</td>
+                    <td>{row.nombre}</td>
+                    <td>{row.fecha_evaluacion}</td>
+                    <td>{formatNumber(row.ponderacion)}</td>
+                    <td>{row.tipo_evaluacion}</td>
+                    <td className="actions-cell">
+                      {canEdit ? (
+                        <button type="button" className="small" onClick={() => startEdit(row)}>
+                          Editar
+                        </button>
+                      ) : null}
+                      {canDelete ? (
+                        <button type="button" className="small danger" onClick={() => onDelete(row.id_evaluacion)}>
+                          Eliminar
+                        </button>
+                      ) : null}
+                      {!canEdit && !canDelete ? <span>Solo lectura</span> : null}
+                    </td>
+                  </tr>
+                ))}
+                {!loading && rows.length === 0 ? (
+                  <tr>
+                    <td colSpan="6">Sin registros</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      ) : null}
     </section>
   );
 }

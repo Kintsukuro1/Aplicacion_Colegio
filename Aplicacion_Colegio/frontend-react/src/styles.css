@@ -19,10 +19,10 @@
   --line: #e2e8f0;
   --line-light: #f1f5f9;
 
-  --brand: #0f766e;
-  --brand-strong: #115e59;
-  --brand-light: #ecfeff;
-  --brand-muted: rgba(15, 118, 110, 0.11);
+  --brand: #f97316;
+  --brand-strong: #ea580c;
+  --brand-light: #fff7ed;
+  --brand-muted: rgba(249, 115, 22, 0.11);
 
   --danger: #f43f5e;
   --danger-light: #fff1f2;
@@ -30,14 +30,14 @@
   --success-light: #ecfdf5;
   --warning: #f59e0b;
   --warning-light: #fffbeb;
-  --info: #0f766e;
-  --info-light: #ecfeff;
+  --info: #f97316;
+  --info-light: #fff7ed;
 
-  --sidebar-bg: #042f2e;
-  --sidebar-hover: #0b4a46;
-  --sidebar-active: #115e59;
-  --sidebar-text: #d5fffa;
-  --sidebar-text-dim: #8adfd5;
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f1f5f9;
+  --sidebar-active: #fff7ed;
+  --sidebar-text: #334155;
+  --sidebar-text-dim: #64748b;
 
   --toast-success: #059669;
   --toast-error: #e11d48;
@@ -256,6 +256,8 @@ button:disabled {
 main {
   padding: 1.75rem 2.25rem;
   overflow-y: auto;
+  position: relative;
+  z-index: 10;
 }
 
 /* ════════════════════════════════════════════
@@ -273,6 +275,7 @@ main {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--sidebar-hover) transparent;
+  z-index: 5;
 }
 
 .sidebar-header {

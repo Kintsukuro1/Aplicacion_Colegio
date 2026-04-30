@@ -1,0 +1,114 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import TeacherGradesPage from './TeacherGradesPage';
+
+const getMock = vi.fn();
+const postMock = vi.fn();
+const patchMock = vi.fn();
+const delMock = vi.fn();
+
+vi.mock('../../lib/apiClient', () => ({
+  apiClient: {
+    get: (...args) => getMock(...args),
+    post: (...args) => postMock(...args),
+    patch: (...args) => patchMock(...args),
+    del: (...args) => delMock(...args),
+  },
+}));
+
+describe('TeacherGradesPage', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    postMock.mockReset();
+    patchMock.mockReset();
+    delMock.mockReset();
+
+    getMock.mockImplementation(async (path) => {
+      if (path === '/api/v1/profesor/clases/') {
+        return {
+          results: [
+            { id: 1, curso_nombre: '7° Básico A', asignatura_nombre: 'Matemática' },
+            { id: 2, curso_nombre: '7° Básico B', asignatura_nombre: 'Lenguaje' },
+          ],
+        };
+      }
+
+      if (path === '/api/v1/estudiantes/') {
+        return {
+          results: [
+            { id: 101, nombre: 'Ana', apellido_paterno: 'Lagos' },
+            { id: 102, nombre: 'Bruno', apellido_paterno: 'Paz' },
+          ],
+        };
+      }
+
+      if (path === '/api/v1/profesor/evaluaciones/?clase_id=1') {
+        return {
+          results: [
+            { id_evaluacion: 11, nombre: 'Parcial 1', fecha_evaluacion: '2026-04-10', clase: 1 },
+            { id_evaluacion: 12, nombre: 'Trabajo 1', fecha_evaluacion: '2026-04-17', clase: 1 },
+          ],
+        };
+      }
+
+      if (path === '/api/v1/profesor/evaluaciones/?clase_id=2') {
+        return {
+          results: [
+            { id_evaluacion: 21, nombre: 'Parcial 2', fecha_evaluacion: '2026-04-20', clase: 2 },
+          ],
+        };
+      }
+
+      if (path === '/api/v1/profesor/calificaciones/?evaluacion_id=11') {
+        return {
+          results: [
+            { id_calificacion: 1, estudiante_nombre: 'Ana Lagos', nota: 6.5, fecha_creacion: '2026-04-12' },
+            { id_calificacion: 2, estudiante_nombre: 'Bruno Paz', nota: 5.0, fecha_creacion: '2026-04-12' },
+          ],
+        };
+      }
+
+      if (path === '/api/v1/profesor/calificaciones/?evaluacion_id=21') {
+        return {
+          results: [
+            { id_calificacion: 3, estudiante_nombre: 'Ana Lagos', nota: 7.0, fecha_creacion: '2026-04-21' },
+          ],
+        };
+      }
+
+      return { results: [] };
+    });
+  });
+
+  it('renders summaries and reloads grades when the class filter changes', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TeacherGradesPage
+        me={{ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Profesor: Calificaciones')).toBeInTheDocument();
+      expect(screen.getByText('Listado de Calificaciones')).toBeInTheDocument();
+      expect(screen.getByText('Calificaciones')).toBeInTheDocument();
+      expect(screen.getByText('Promedio')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Ana Lagos').length).toBeGreaterThanOrEqual(2);
+      expect(screen.getAllByText('Bruno Paz').length).toBeGreaterThanOrEqual(2);
+      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?evaluacion_id=11');
+    });
+
+    await user.selectOptions(screen.getByLabelText('Clase'), '2');
+
+    await waitFor(() => {
+      expect(screen.getAllByText('7').length).toBeGreaterThanOrEqual(2);
+      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?evaluacion_id=21');
+    });
+  });
+});

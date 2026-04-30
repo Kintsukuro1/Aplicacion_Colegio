@@ -46,6 +46,26 @@ export default function SoporteTecnicoPage({ me }) {
     [me]
   );
 
+  const summaryCards = useMemo(() => {
+    return [
+      {
+        title: 'Crear tickets',
+        value: canCreateTicket ? 'Habilitado' : 'Bloqueado',
+        subtitle: canCreateTicket ? 'Puedes abrir nuevas incidencias' : 'Solo lectura para nuevos tickets',
+      },
+      {
+        title: 'Resolver tickets',
+        value: canResolveTicket ? 'Habilitado' : 'Bloqueado',
+        subtitle: canResolveTicket ? 'Puedes actualizar estados' : 'No puedes cambiar estados',
+      },
+      {
+        title: 'Reset de contraseña',
+        value: canResetPassword ? 'Habilitado' : 'Bloqueado',
+        subtitle: canResetPassword ? 'Puedes iniciar el flujo de segundo aprobador' : 'No puedes ejecutar resets',
+      },
+    ];
+  }, [canCreateTicket, canResolveTicket, canResetPassword]);
+
   function onTicketChange(name, value) {
     setTicketForm((prev) => ({ ...prev, [name]: value }));
   }
@@ -139,9 +159,19 @@ export default function SoporteTecnicoPage({ me }) {
       <header className="page-header">
         <div>
           <h2>Soporte Tecnico</h2>
-          <p>Flujo base para crear y actualizar tickets.</p>
+          <p>Flujo operativo para tickets, estados y restablecimiento de contraseñas.</p>
         </div>
       </header>
+
+      <div className="summary-grid">
+        {summaryCards.map((item) => (
+          <article key={item.title} className="summary-tile">
+            <small>{item.title}</small>
+            <strong>{item.value}</strong>
+            <span>{item.subtitle}</span>
+          </article>
+        ))}
+      </div>
 
       {error ? <div className="error-box">{error}</div> : null}
       {message ? <div className="card">{message}</div> : null}

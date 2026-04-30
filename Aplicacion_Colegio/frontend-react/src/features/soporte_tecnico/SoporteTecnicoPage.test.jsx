@@ -20,6 +20,9 @@ describe('SoporteTecnicoPage', () => {
   it('disables create ticket action without SUPPORT_CREATE_TICKET', () => {
     render(<SoporteTecnicoPage me={{ capabilities: [] }} />);
 
+    expect(screen.getByText('Crear tickets')).toBeInTheDocument();
+    expect(screen.getAllByText('Bloqueado').length).toBeGreaterThanOrEqual(1);
+
     const button = screen.getByRole('button', { name: 'Crear ticket' });
     expect(button).toBeDisabled();
   });

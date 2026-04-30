@@ -69,6 +69,9 @@ describe('ActiveSessionsPage', () => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/seguridad/dashboard/');
     });
 
+    expect(screen.getAllByText('Sesiones activas').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('IPs bloqueadas').length).toBeGreaterThanOrEqual(1);
+
     await user.click(screen.getByRole('button', { name: 'Revocar' }));
 
     await waitFor(() => {
