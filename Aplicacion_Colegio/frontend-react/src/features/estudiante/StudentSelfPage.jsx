@@ -65,10 +65,10 @@ export default function StudentSelfPage() {
   const [selectedCycle, setSelectedCycle] = useState('');
 
   // Load main student data in parallel
-  const { data: profile } = useFetch('/api/v1/estudiante/mi-perfil/');
-  const { data: classesData = [] } = useFetch('/api/v1/estudiante/mis-clases/');
-  const { data: gradesData = [] } = useFetch('/api/v1/estudiante/mis-notas/');
-  const { data: attendanceData = [] } = useFetch('/api/v1/estudiante/mi-asistencia/');
+  const { data: profile, loading: loadingProfile } = useFetch('/api/v1/estudiante/mi-perfil/');
+  const { data: classesData = [], loading: loadingClasses } = useFetch('/api/v1/estudiante/mis-clases/');
+  const { data: gradesData = [], loading: loadingGrades } = useFetch('/api/v1/estudiante/mis-notas/');
+  const { data: attendanceData = [], loading: loadingAttendance } = useFetch('/api/v1/estudiante/mi-asistencia/');
   
   const classes = Array.isArray(classesData) ? classesData : [];
   const grades = Array.isArray(gradesData) ? gradesData : [];
@@ -90,8 +90,8 @@ export default function StudentSelfPage() {
     }
   });
 
-  // Determine overall loading state
-  const loading = !profile && !classesData && !gradesData && !attendanceData;
+  // Overall loading state: show loading if ANY endpoint is loading
+  const loading = loadingProfile || loadingClasses || loadingGrades || loadingAttendance || loadingHistory;
   const error = '';
 
   const quickLinks = [

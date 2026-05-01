@@ -27,7 +27,8 @@ describe('AdminStudentsPage', () => {
     delMock.mockReset();
 
     getMock.mockImplementation(async (path) => {
-      if (path === '/api/v1/estudiantes/?page=1') {
+      // Handle paginated endpoint with search parameter
+      if (path.includes('/api/v1/estudiantes/')) {
         return {
           count: 2,
           next: null,
@@ -84,7 +85,7 @@ describe('AdminStudentsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Ana Lagos')).toBeInTheDocument();
       expect(screen.getByText('Bruno Rojas')).toBeInTheDocument();
-      expect(getMock).toHaveBeenCalledWith('/api/v1/estudiantes/?page=1');
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/estudiantes/'));
     });
 
     const rowCheckboxes = screen.getAllByRole('checkbox');

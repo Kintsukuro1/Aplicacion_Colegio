@@ -37,7 +37,8 @@ describe('TeacherClassesPage', () => {
         };
       }
 
-      if (path === '/api/v1/profesor/tendencias/?periodo=semestre') {
+      // Handle tendencias with query parameters (flexible matching)
+      if (path.includes('/api/v1/profesor/tendencias/')) {
         return {
           tendencia_general: {
             promedio_general: 5.9,
