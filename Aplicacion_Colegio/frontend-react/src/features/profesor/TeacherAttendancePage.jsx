@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
+import { useFetch } from '../../lib/hooks';
 import { hasCapability } from '../../lib/capabilities';
 import { asResults } from '../../lib/httpHelpers';
 
@@ -55,16 +56,44 @@ function TeacherAttendanceLoadingState() {
 }
 
 export default function TeacherAttendancePage({ me }) {
-  const [classes, setClasses] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [rows, setRows] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const canTakeAttendance = hasCapability(me, 'CLASS_TAKE_ATTENDANCE');
+
+  // Load classes and students in parallel
+  const { data: classesResp, loading: loadingClasses, error: classesError, refetch: refetchClasses } = useFetch('/api/v1/profesor/clases/');
+  const { data: studentsResp, loading: loadingStudents, error: studentsError } = useFetch('/api/v1/estudiantes/');
+  
+  const classes = asResults(classesResp) || [];
+  const students = asResults(studentsResp) || [];
+
+  // Initialize form with first class when classes load
+  if (!form.clase && classes.length > 0) {
+    setForm((prev) => (prev.clase ? prev : { ...prev, clase: String(classes[0].id) }));
+  }
+
+  // Load attendance based on selected class and date
+  const attendanceParams = new URLSearchParams();
+  if (form.clase) {
+    attendanceParams.set('clase_id', form.clase);
+  }
+  if (form.fecha) {
+    attendanceParams.set('fecha', form.fecha);
+  }
+  const attendanceUrl = form.clase 
+    ? `/api/v1/profesor/asistencias/?${attendanceParams.toString()}`
+    : null;
+  const { data: attendanceResp, loading: loadingAttendance, error: attendanceError, refetch: refetchAttendance } = useFetch(attendanceUrl, {
+    skip: !form.clase,
+  });
+  const rows = asResults(attendanceResp) || [];
+
+  const loading = loadingClasses || loadingStudents || loadingAttendance;
+  const apiError = classesError || studentsError || attendanceError;
+
   const summary = useMemo(() => {
     const total = rows.length;
     const present = rows.filter((row) => row.estado === 'P').length;
@@ -82,79 +111,6 @@ export default function TeacherAttendancePage({ me }) {
   const canSubmit = useMemo(() => {
     return canTakeAttendance && Boolean(form.clase && form.estudiante && form.fecha && form.estado);
   }, [canTakeAttendance, form]);
-
-  async function loadBaseData() {
-    const [classPayload, studentPayload] = await Promise.all([
-      apiClient.get('/api/v1/profesor/clases/'),
-      apiClient.get('/api/v1/estudiantes/'),
-    ]);
-
-    const classRows = asResults(classPayload);
-    const studentRows = asResults(studentPayload);
-    setClasses(classRows);
-    setStudents(studentRows);
-
-    if (!form.clase && classRows.length) {
-      setForm((prev) => ({ ...prev, clase: String(classRows[0].id) }));
-    }
-  }
-
-  async function loadAttendance() {
-    const params = new URLSearchParams();
-    if (form.clase) {
-      params.set('clase_id', form.clase);
-    }
-    if (form.fecha) {
-      params.set('fecha', form.fecha);
-    }
-    const query = params.toString();
-    const payload = await apiClient.get(`/api/v1/profesor/asistencias/${query ? `?${query}` : ''}`);
-    setRows(asResults(payload));
-  }
-
-  useEffect(() => {
-    let active = true;
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        await loadBaseData();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar contexto de asistencia.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    async function refreshList() {
-      if (!form.clase) {
-        setRows([]);
-        return;
-      }
-      try {
-        await loadAttendance();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar asistencias.');
-        }
-      }
-    }
-    refreshList();
-    return () => {
-      active = false;
-    };
-  }, [form.clase, form.fecha]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -208,7 +164,7 @@ export default function TeacherAttendancePage({ me }) {
       } else {
         await apiClient.post('/api/v1/profesor/asistencias/', payload);
       }
-      await loadAttendance();
+      await refetchAttendance();
       resetForm();
     } catch (err) {
       setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar asistencia.');
@@ -227,7 +183,7 @@ export default function TeacherAttendancePage({ me }) {
     }
     try {
       await apiClient.del(`/api/v1/profesor/asistencias/${id}/`);
-      await loadAttendance();
+      await refetchAttendance();
     } catch (err) {
       setError(err.payload?.detail || 'No se pudo eliminar asistencia.');
     }
@@ -243,6 +199,7 @@ export default function TeacherAttendancePage({ me }) {
       </header>
 
       {loading ? <TeacherAttendanceLoadingState /> : null}
+      {apiError ? <div className="error-box">{apiError}</div> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {!canTakeAttendance ? <p>Modo solo lectura: falta capability `CLASS_TAKE_ATTENDANCE`.</p> : null}
 

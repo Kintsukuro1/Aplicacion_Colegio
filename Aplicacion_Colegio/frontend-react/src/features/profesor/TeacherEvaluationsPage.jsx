@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
+import { useFetch } from '../../lib/hooks';
 import { hasCapability } from '../../lib/capabilities';
 import { asResults } from '../../lib/httpHelpers';
 
@@ -55,11 +56,8 @@ function TeacherEvaluationsLoadingState() {
 }
 
 export default function TeacherEvaluationsPage({ me }) {
-  const [classes, setClasses] = useState([]);
-  const [rows, setRows] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -67,6 +65,30 @@ export default function TeacherEvaluationsPage({ me }) {
   const canEdit = hasCapability(me, 'GRADE_EDIT');
   const canDelete = hasCapability(me, 'GRADE_DELETE');
   const formLocked = editingId ? !canEdit : !canCreate;
+
+  // Load classes
+  const { data: classesResp, loading: loadingClasses, error: classesError, refetch: refetchClasses } = useFetch('/api/v1/profesor/clases/');
+  const classes = asResults(classesResp) || [];
+
+  // Initialize form with first class when classes load
+  if (!form.clase && classes.length > 0) {
+    setForm((prev) => (prev.clase ? prev : { ...prev, clase: String(classes[0].id) }));
+  }
+
+  // Load evaluations based on selected class
+  const evaluationsUrl = form.clase 
+    ? `/api/v1/profesor/evaluaciones/?clase_id=${form.clase}`
+    : null;
+  const { data: evaluationsResp, loading: loadingEvaluations, error: evaluationsError, refetch: refetchEvaluations } = useFetch(evaluationsUrl, {
+    skip: !form.clase,
+    onSuccess: () => {
+      setError('');
+    }
+  });
+  const rows = asResults(evaluationsResp) || [];
+
+  const loading = loadingClasses || loadingEvaluations;
+  const apiError = classesError || evaluationsError;
 
   const summary = useMemo(() => {
     const totalEvaluations = rows.length;
@@ -102,69 +124,6 @@ export default function TeacherEvaluationsPage({ me }) {
     const canSaveCurrentAction = editingId ? canEdit : canCreate;
     return canSaveCurrentAction && Boolean(form.clase && form.nombre && form.fecha_evaluacion);
   }, [canCreate, canEdit, editingId, form]);
-
-  async function loadClasses() {
-    const classPayload = await apiClient.get('/api/v1/profesor/clases/');
-    const classRows = asResults(classPayload);
-    setClasses(classRows);
-    if (!form.clase && classRows.length) {
-      setForm((prev) => ({ ...prev, clase: String(classRows[0].id) }));
-    }
-  }
-
-  async function loadEvaluations() {
-    const params = new URLSearchParams();
-    if (form.clase) {
-      params.set('clase_id', form.clase);
-    }
-    const query = params.toString();
-    const payload = await apiClient.get(`/api/v1/profesor/evaluaciones/${query ? `?${query}` : ''}`);
-    setRows(asResults(payload));
-  }
-
-  useEffect(() => {
-    let active = true;
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        await loadClasses();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar clases.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    async function refresh() {
-      if (!form.clase) {
-        setRows([]);
-        return;
-      }
-      try {
-        await loadEvaluations();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar evaluaciones.');
-        }
-      }
-    }
-    refresh();
-    return () => {
-      active = false;
-    };
-  }, [form.clase]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -221,7 +180,7 @@ export default function TeacherEvaluationsPage({ me }) {
       } else {
         await apiClient.post('/api/v1/profesor/evaluaciones/', payload);
       }
-      await loadEvaluations();
+      await refetchEvaluations();
       resetForm();
     } catch (err) {
       setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar evaluacion.');
@@ -240,7 +199,7 @@ export default function TeacherEvaluationsPage({ me }) {
     }
     try {
       await apiClient.del(`/api/v1/profesor/evaluaciones/${id}/`);
-      await loadEvaluations();
+      await refetchEvaluations();
     } catch (err) {
       setError(err.payload?.detail || 'No se pudo eliminar evaluacion.');
     }
@@ -256,6 +215,7 @@ export default function TeacherEvaluationsPage({ me }) {
       </header>
 
       {loading ? <TeacherEvaluationsLoadingState /> : null}
+      {apiError ? <div className="error-box">{apiError}</div> : null}
       {error ? <div className="error-box">{error}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
 
