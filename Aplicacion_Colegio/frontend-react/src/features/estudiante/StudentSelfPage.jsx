@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { useFetch } from '../../lib/hooks';
 import { apiClient } from '../../lib/apiClient';
 
 function formatNumber(value) {
@@ -61,16 +62,37 @@ function StudentSelfLoadingState() {
 }
 
 export default function StudentSelfPage() {
-  const [profile, setProfile] = useState(null);
-  const [classes, setClasses] = useState([]);
-  const [grades, setGrades] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [history, setHistory] = useState(null);
   const [selectedCycle, setSelectedCycle] = useState('');
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyError, setHistoryError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  // Load main student data in parallel
+  const { data: profile } = useFetch('/api/v1/estudiante/mi-perfil/');
+  const { data: classesData = [] } = useFetch('/api/v1/estudiante/mis-clases/');
+  const { data: gradesData = [] } = useFetch('/api/v1/estudiante/mis-notas/');
+  const { data: attendanceData = [] } = useFetch('/api/v1/estudiante/mi-asistencia/');
+  
+  const classes = Array.isArray(classesData) ? classesData : [];
+  const grades = Array.isArray(gradesData) ? gradesData : [];
+  const attendance = Array.isArray(attendanceData) ? attendanceData : [];
+  
+  // Load academic history with optional cycle parameter
+  const historyUrl = selectedCycle 
+    ? `/api/v1/estudiante/historial-academico/?ciclo=${selectedCycle}`
+    : '/api/v1/estudiante/historial-academico/';
+  const { 
+    data: history, 
+    loading: loadingHistory, 
+    error: historyError 
+  } = useFetch(historyUrl, {
+    onSuccess: (data) => {
+      if (!selectedCycle && data?.ciclo?.id) {
+        setSelectedCycle(String(data.ciclo.id));
+      }
+    }
+  });
+
+  // Determine overall loading state
+  const loading = !profile && !classesData && !gradesData && !attendanceData;
+  const error = '';
 
   const quickLinks = [
     { id: 'student-profile', label: 'Mi Perfil' },
@@ -127,68 +149,6 @@ export default function StudentSelfPage() {
   }, [classes.length, grades, history, profile]);
 
   const historyAverage = useMemo(() => buildAverage(history?.asignaturas || []), [history]);
-
-  async function loadAcademicHistory(cycleId = '') {
-    setLoadingHistory(true);
-    setHistoryError('');
-    try {
-      const query = cycleId ? `?ciclo=${cycleId}` : '';
-      const payload = await apiClient.get(`/api/v1/estudiante/historial-academico/${query}`);
-      setHistory(payload || null);
-      if (!cycleId && payload?.ciclo?.id) {
-        setSelectedCycle(String(payload.ciclo.id));
-      }
-    } catch (err) {
-      setHistory(null);
-      setHistoryError(err.payload?.detail || 'No se pudo cargar el historial academico.');
-    } finally {
-      setLoadingHistory(false);
-    }
-  }
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadStudentData() {
-      setLoading(true);
-      setError('');
-      try {
-        const [p, c, g, a] = await Promise.all([
-          apiClient.get('/api/v1/estudiante/mi-perfil/'),
-          apiClient.get('/api/v1/estudiante/mis-clases/'),
-          apiClient.get('/api/v1/estudiante/mis-notas/'),
-          apiClient.get('/api/v1/estudiante/mi-asistencia/'),
-        ]);
-        await loadAcademicHistory();
-        if (active) {
-          setProfile(p);
-          setClasses(c || []);
-          setGrades(g || []);
-          setAttendance(a || []);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar vista estudiante.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadStudentData();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCycle) {
-      return;
-    }
-    loadAcademicHistory(selectedCycle);
-  }, [selectedCycle]);
 
   return (
     <section>

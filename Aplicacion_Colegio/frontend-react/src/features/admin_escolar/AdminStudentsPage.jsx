@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
 import SearchBar from '../../components/SearchBar';
 import { useToast } from '../../components/Toast';
 import { apiClient } from '../../lib/apiClient';
-import { asPaginated } from '../../lib/httpHelpers';
+import { usePagination } from '../../lib/hooks';
 import { hasCapability } from '../../lib/capabilities';
 
 function isBatchEndpointUnavailable(error) {
@@ -76,26 +76,37 @@ function AdminStudentsLoadingState() {
 export default function AdminStudentsPage({ me }) {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const [rows, setRows] = useState([]);
-  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
   const [search, setSearch] = useState(searchParams.get('q') || '');
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkResult, setBulkResult] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Build pagination URL with search params
+  const paginationUrl = `/api/v1/estudiantes/?search=${encodeURIComponent(search)}`;
+  const { 
+    items: rows, 
+    loading, 
+    error: paginationError,
+    pagination,
+    goToPage,
+    refetch
+  } = usePagination(paginationUrl, {
+    skip: !me,
+    onSuccess: () => {
+      setSelectedIds([]);
+      setBulkResult(null);
+    }
+  });
 
   const canView = useMemo(() => hasCapability(me, 'STUDENT_VIEW') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canCreate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canUpdate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canDeactivate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const formLocked = editingId ? !canUpdate : !canCreate;
+  
   const summaryCards = useMemo(() => {
     const total = rows.length;
     const activeCount = rows.filter((row) => row.is_active).length;
@@ -131,7 +142,7 @@ export default function AdminStudentsPage({ me }) {
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
-    setPage(safePage);
+    goToPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
     if (search) nextParams.set('q', search);
@@ -141,29 +152,11 @@ export default function AdminStudentsPage({ me }) {
 
   function handleSearch(value) {
     setSearch(value);
-    setPage(1); // reset to page 1 when searching
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', '1');
     if (value) nextParams.set('q', value);
     else nextParams.delete('q');
     setSearchParams(nextParams, { replace: true });
-  }
-
-  async function loadStudents(targetPage = page, resetSelection = true, resetBulkResult = true) {
-    let url = `/api/v1/estudiantes/?page=${targetPage}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    const payload = await apiClient.get(url);
-    const paginated = asPaginated(payload);
-    setRows(paginated.results);
-    if (resetSelection) {
-      setSelectedIds([]);
-    }
-    if (resetBulkResult) {
-      setBulkResult(null);
-    }
-    setCount(paginated.count);
-    setHasNext(Boolean(paginated.next));
-    setHasPrevious(Boolean(paginated.previous));
   }
 
   function toggleSelect(studentId) {
@@ -184,32 +177,6 @@ export default function AdminStudentsPage({ me }) {
     }
     setSelectedIds(currentIds);
   }
-
-  useEffect(() => {
-    let active = true;
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        if (canView) {
-          await loadStudents();
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar estudiantes.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, [canView, page, search]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -255,7 +222,7 @@ export default function AdminStudentsPage({ me }) {
       } else {
         await apiClient.post('/api/v1/estudiantes/', form);
       }
-      await loadStudents(page);
+      await refetch();
       resetForm();
       toast.success(editingId ? 'Estudiante actualizado' : 'Estudiante creado');
     } catch (err) {
@@ -279,7 +246,7 @@ export default function AdminStudentsPage({ me }) {
 
     try {
       await apiClient.del(`/api/v1/estudiantes/${studentId}/`);
-      await loadStudents(page);
+      await refetch();
       toast.success('Estudiante desactivado');
     } catch (err) {
       const msg = err.payload?.detail || 'No se pudo desactivar estudiante.';
@@ -321,7 +288,7 @@ export default function AdminStudentsPage({ me }) {
 
       setBulkResult(result);
 
-      await loadStudents(page, true, false);
+      await refetch();
     } catch (err) {
       setError(err.payload?.detail || 'No se pudo completar la desactivacion masiva.');
     } finally {
@@ -383,7 +350,7 @@ export default function AdminStudentsPage({ me }) {
       />
 
       {loading ? <AdminStudentsLoadingState /> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {error || paginationError ? <div className="error-box">{error || paginationError}</div> : null}
 
       {!canCreate ? <p>Modo restringido: falta capability `STUDENT_EDIT` para crear.</p> : null}
 
@@ -560,10 +527,10 @@ export default function AdminStudentsPage({ me }) {
       ) : null}
 
       <PaginationControls
-        page={page}
-        count={count}
-        hasNext={hasNext}
-        hasPrevious={hasPrevious}
+        page={pagination.currentPage}
+        count={pagination.total}
+        hasNext={pagination.currentPage < pagination.totalPages}
+        hasPrevious={pagination.currentPage > 1}
         onPageChange={updatePage}
         loading={loading}
       />

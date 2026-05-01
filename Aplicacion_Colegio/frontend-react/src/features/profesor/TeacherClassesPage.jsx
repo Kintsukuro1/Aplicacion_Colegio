@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { apiClient } from '../../lib/apiClient';
+import { useFetch } from '../../lib/hooks';
 
 function formatNumber(value) {
   if (value === null || value === undefined || value === '') {
@@ -56,17 +56,28 @@ function TeacherClassesLoadingState() {
 }
 
 export default function TeacherClassesPage() {
-  const [rows, setRows] = useState([]);
-  const [trends, setTrends] = useState(null);
-  const [schedule, setSchedule] = useState(null);
   const [periodo, setPeriodo] = useState('semestre');
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [loadingTrends, setLoadingTrends] = useState(false);
-  const [loadingSchedule, setLoadingSchedule] = useState(false);
-  const [trendsError, setTrendsError] = useState('');
-  const [scheduleError, setScheduleError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  // Load classes
+  const { data: classesResp, loading, error } = useFetch('/api/v1/profesor/clases/');
+  const rows = (classesResp?.results || []);
+
+  // Build trends URL with parameters
+  const trendsParams = new URLSearchParams({ periodo });
+  if (selectedClassId) {
+    trendsParams.set('clase_id', selectedClassId);
+  }
+  const trendsUrl = `/api/v1/profesor/tendencias/?${trendsParams.toString()}`;
+  const { data: trends, loading: loadingTrends, error: trendsError } = useFetch(trendsUrl);
+
+  // Load schedule
+  const { data: schedule, loading: loadingSchedule, error: scheduleError } = useFetch('/api/v1/profesor/mi-horario/');
+
+  // Validate selectedClassId against loaded classes
+  if (selectedClassId && !rows.some((row) => String(row.id) === String(selectedClassId))) {
+    setSelectedClassId('');
+  }
 
   const summary = useMemo(() => {
     const totalClasses = rows.length;
@@ -98,106 +109,6 @@ export default function TeacherClassesPage() {
       },
     ];
   }, [rows, trends]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadClasses() {
-      setLoading(true);
-      setError('');
-      try {
-        const response = await apiClient.get('/api/v1/profesor/clases/');
-        if (active) {
-          setRows(response.results || []);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar clases.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadClasses();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadTrends() {
-      setLoadingTrends(true);
-      setTrendsError('');
-      try {
-        const params = new URLSearchParams({ periodo });
-        if (selectedClassId) {
-          params.set('clase_id', selectedClassId);
-        }
-        const response = await apiClient.get(`/api/v1/profesor/tendencias/?${params.toString()}`);
-        if (active) {
-          setTrends(response);
-        }
-      } catch (err) {
-        if (active) {
-          setTrends(null);
-          setTrendsError(err.payload?.detail || 'No se pudieron cargar tendencias docentes.');
-        }
-      } finally {
-        if (active) {
-          setLoadingTrends(false);
-        }
-      }
-    }
-
-    loadTrends();
-    return () => {
-      active = false;
-    };
-  }, [periodo, selectedClassId]);
-
-  useEffect(() => {
-    if (!selectedClassId) {
-      return;
-    }
-    const exists = rows.some((row) => String(row.id) === String(selectedClassId));
-    if (!exists) {
-      setSelectedClassId('');
-    }
-  }, [rows, selectedClassId]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSchedule() {
-      setLoadingSchedule(true);
-      setScheduleError('');
-      try {
-        const response = await apiClient.get('/api/v1/profesor/mi-horario/');
-        if (active) {
-          setSchedule(response || null);
-        }
-      } catch (err) {
-        if (active) {
-          setSchedule(null);
-          setScheduleError(err.payload?.detail || 'No se pudo cargar el horario docente.');
-        }
-      } finally {
-        if (active) {
-          setLoadingSchedule(false);
-        }
-      }
-    }
-
-    loadSchedule();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   return (
     <section>
