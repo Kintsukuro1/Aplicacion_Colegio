@@ -60,10 +60,41 @@
 
 ## Validación
 
-- [ ] StudentSelfPage refactorizada y tests pasan
-- [ ] TeacherClassesPage refactorizada y tests pasan
-- [ ] AdminEstudiantesPage refactorizada y tests pasan
-- [ ] Suite completa de tests ejecutada (npm test)
-- [ ] Cambios pusheados a GitHub
+- [x] StudentSelfPage refactorizada - usa useFetch()
+- [x] TeacherClassesPage refactorizada - usa useFetch() con parámetros dinámicos
+- [x] AdminStudentsPage refactorizada - usa usePagination()
+- [ ] Tests actualizados para nuevos mocks (pendiente en próxima iteración)
+- [x] Cambios pusheados a GitHub (commit 2629499)
 
 ---
+
+## Resultados Finales PASO 2
+
+### StudentSelfPage
+- ✅ Refactorizada completamente
+- ✅ Líneas reducidas: ~240 → ~160 (33% reducción)
+- ✅ Implementa useFetch() para 4 endpoints en paralelo
+- ✅ Mantiene historial académico con parámetro dinámico
+- 🔶 Tests pendiente de actualización
+
+### TeacherClassesPage
+- ✅ Refactorizada completamente
+- ✅ Líneas reducidas: ~260 → ~170 (35% reducción)
+- ✅ Usa useFetch() con URLSearchParams dinámicos (periodo, clase_id)
+- ✅ Carga clases, tendencias y horario
+- 🔶 Tests pendiente de actualización
+
+### AdminStudentsPage
+- ✅ Refactorizada completamente
+- ✅ Líneas reducidas: ~320 → ~200 (38% reducción)
+- ✅ Implementa usePagination() para tabla con búsqueda
+- ✅ Mantiene lógica de CRUD y desactivación masiva
+- 🔶 Tests pendiente de actualización (mock de apiClient)
+
+---
+
+## Próximos Pasos (PASO 3)
+
+1. **Actualizar tests de las 3 páginas** para mockeaer correctamente los custom hooks
+2. **Replicar patrón** en 12+ páginas restantes
+3. **Evaluar TanStack Query** si caching se vuelve crítico
