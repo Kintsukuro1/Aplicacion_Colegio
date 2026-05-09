@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
@@ -16,47 +21,12 @@ const EMPTY_RESOURCE = {
   es_plan_lector: false,
 };
 
-function formatDisplay(value) {
-  if (value === null || value === undefined || value === '') {
-    return '0';
-  }
 
-  if (typeof value === 'number') {
-    return String(value);
-  }
 
-  return String(value);
-}
-
-function BibliotecarioDigitalLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '130px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '310px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
-        <div className="card" style={{ minHeight: '200px', background: 'rgba(148, 163, 184, 0.06)' }} />
-        <div className="card" style={{ minHeight: '200px', background: 'rgba(148, 163, 184, 0.06)' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function BibliotecarioDigitalPage({ me }) {
+export default function BibliotecarioDigitalPage() {
+  const me = useAuthStore((state) => state.user);
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const [resources, setResources] = useState([]);
   const [users, setUsers] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -64,20 +34,31 @@ export default function BibliotecarioDigitalPage({ me }) {
   const [publishForm, setPublishForm] = useState({ recurso_id: '' });
   const [loanForm, setLoanForm] = useState({ recurso_id: '', usuario_id: '', dias_prestamo: 14 });
   const [returnForm, setReturnForm] = useState({ prestamo_id: '' });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishSaving, setPublishSaving] = useState(false);
   const [loanSaving, setLoanSaving] = useState(false);
   const [returnSaving, setReturnSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
-  const canCreate = useMemo(() => hasCapability(me, 'LIBRARY_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canEdit = useMemo(() => hasCapability(me, 'LIBRARY_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canManageLoans = useMemo(
-    () => hasCapability(me, 'LIBRARY_MANAGE_LOANS') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
-  );
+  const { canAny } = usePermissions(me);
+  const canCreate = canAny(['LIBRARY_CREATE', 'SYSTEM_ADMIN']);
+  const canEdit = canAny(['LIBRARY_EDIT', 'SYSTEM_ADMIN']);
+  const canManageLoans = canAny(['LIBRARY_MANAGE_LOANS', 'SYSTEM_ADMIN']);
+
+  const { data: resourcesData, isLoading: loadingResources, error: errorResourcesObj } = useQuery({
+    queryKey: ['bibliotecario-recursos'],
+    queryFn: () => apiClient.get('/api/bibliotecario/recursos/')
+  });
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ['bibliotecario-usuarios'],
+    queryFn: () => apiClient.get('/api/bibliotecario/usuarios/')
+  });
+  const { data: loansData, isLoading: loadingLoans } = useQuery({
+    queryKey: ['bibliotecario-prestamos'],
+    queryFn: () => apiClient.get('/api/bibliotecario/prestamos/')
+  });
+
+  const loading = loadingResources || loadingUsers || loadingLoans;
+  const error = errorResourcesObj?.message;
 
   const summaryCards = useMemo(() => {
     const publishedCount = resources.filter((item) => item.publicado).length;
@@ -108,39 +89,22 @@ export default function BibliotecarioDigitalPage({ me }) {
   }, [loans.length, resources, users.length]);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadData() {
-      setLoading(true);
-      setError('');
-      try {
-        const [resourceData, userData, loanData] = await Promise.all([
-          apiClient.get('/api/bibliotecario/recursos/'),
-          apiClient.get('/api/bibliotecario/usuarios/').catch(() => ({ usuarios: [] })),
-          apiClient.get('/api/bibliotecario/prestamos/').catch(() => ({ prestamos: [] })),
-        ]);
-        if (!active) {
-          return;
-        }
-        setResources(Array.isArray(resourceData?.recursos) ? resourceData.recursos : []);
-        setUsers(Array.isArray(userData?.usuarios) ? userData.usuarios : []);
-        setLoans(Array.isArray(loanData?.prestamos) ? loanData.prestamos : []);
-      } catch (err) {
-        if (active) {
-          setError(resolveError(err, 'No se pudo cargar informacion de biblioteca.'));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+    if (resourcesData) {
+      setResources(Array.isArray(resourcesData?.recursos) ? resourcesData.recursos : []);
     }
+  }, [resourcesData]);
 
-    loadData();
-    return () => {
-      active = false;
-    };
-  }, []);
+  useEffect(() => {
+    if (usersData) {
+      setUsers(Array.isArray(usersData?.usuarios) ? usersData.usuarios : []);
+    }
+  }, [usersData]);
+
+  useEffect(() => {
+    if (loansData) {
+      setLoans(Array.isArray(loansData?.prestamos) ? loansData.prestamos : []);
+    }
+  }, [loansData]);
 
   function onChange(name, value) {
     setResourceForm((prev) => ({ ...prev, [name]: value }));
@@ -149,21 +113,18 @@ export default function BibliotecarioDigitalPage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
-      setError('No tienes permisos para crear recursos.');
+      toast.error('No tienes permisos para crear recursos.');
       return;
     }
 
     setSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/bibliotecario/recursos/crear/', resourceForm);
-      setMessage(payload?.message || 'Recurso creado.');
+      toast.success(payload?.message || 'Recurso creado.');
       setResourceForm(EMPTY_RESOURCE);
-      const refresh = await apiClient.get('/api/bibliotecario/recursos/');
-      setResources(Array.isArray(refresh?.recursos) ? refresh.recursos : []);
+      await queryClient.invalidateQueries({ queryKey: ['bibliotecario-recursos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo crear el recurso.'));
+      toast.error(resolveError(err, 'No se pudo crear el recurso.'));
     } finally {
       setSaving(false);
     }
@@ -172,21 +133,18 @@ export default function BibliotecarioDigitalPage({ me }) {
   async function onTogglePublish(event) {
     event.preventDefault();
     if (!canEdit) {
-      setError('No tienes permisos para publicar/despublicar recursos.');
+      toast.error('No tienes permisos para publicar/despublicar recursos.');
       return;
     }
 
     setPublishSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/bibliotecario/recursos/${publishForm.recurso_id}/publicar/`, {});
-      setMessage(payload?.message || 'Publicacion actualizada.');
+      toast.success(payload?.message || 'Publicacion actualizada.');
       setPublishForm({ recurso_id: '' });
-      const refresh = await apiClient.get('/api/bibliotecario/recursos/');
-      setResources(Array.isArray(refresh?.recursos) ? refresh.recursos : []);
+      await queryClient.invalidateQueries({ queryKey: ['bibliotecario-recursos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo cambiar publicacion.'));
+      toast.error(resolveError(err, 'No se pudo cambiar publicacion.'));
     } finally {
       setPublishSaving(false);
     }
@@ -195,28 +153,25 @@ export default function BibliotecarioDigitalPage({ me }) {
   async function onCreateLoan(event) {
     event.preventDefault();
     if (!canManageLoans) {
-      setError('No tienes permisos para gestionar prestamos.');
+      toast.error('No tienes permisos para gestionar prestamos.');
       return;
     }
 
     setLoanSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/bibliotecario/prestamos/crear/', {
         recurso_id: Number(loanForm.recurso_id),
         usuario_id: Number(loanForm.usuario_id),
         dias_prestamo: Number(loanForm.dias_prestamo),
       });
-      setMessage(payload?.message || 'Prestamo registrado.');
+      toast.success(payload?.message || 'Prestamo registrado.');
       if (payload?.id) {
         setReturnForm({ prestamo_id: String(payload.id) });
       }
-      const refreshLoans = await apiClient.get('/api/bibliotecario/prestamos/').catch(() => ({ prestamos: [] }));
-      setLoans(Array.isArray(refreshLoans?.prestamos) ? refreshLoans.prestamos : []);
+      await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
       setLoanForm({ recurso_id: '', usuario_id: '', dias_prestamo: 14 });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo crear el prestamo.'));
+      toast.error(resolveError(err, 'No se pudo crear el prestamo.'));
     } finally {
       setLoanSaving(false);
     }
@@ -225,20 +180,19 @@ export default function BibliotecarioDigitalPage({ me }) {
   async function onReturnLoan(event) {
     event.preventDefault();
     if (!canManageLoans) {
-      setError('No tienes permisos para registrar devoluciones.');
+      toast.error('No tienes permisos para registrar devoluciones.');
       return;
     }
 
     setReturnSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/bibliotecario/prestamos/${returnForm.prestamo_id}/devolver/`, {});
-      setMessage(payload?.message || 'Devolucion registrada.');
+      toast.success(payload?.message || 'Devolucion registrada.');
       setLoans((prev) => prev.filter((item) => String(item.id) !== String(returnForm.prestamo_id)));
       setReturnForm({ prestamo_id: '' });
+      await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo registrar devolucion.'));
+      toast.error(resolveError(err, 'No se pudo registrar devolucion.'));
     } finally {
       setReturnSaving(false);
     }
@@ -246,19 +200,18 @@ export default function BibliotecarioDigitalPage({ me }) {
 
   async function quickReturnLoan(loanId) {
     if (!canManageLoans) {
-      setError('No tienes permisos para registrar devoluciones.');
+      toast.error('No tienes permisos para registrar devoluciones.');
       return;
     }
 
     setReturnSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/bibliotecario/prestamos/${loanId}/devolver/`, {});
-      setMessage(payload?.message || 'Devolucion registrada.');
+      toast.success(payload?.message || 'Devolucion registrada.');
       setLoans((prev) => prev.filter((item) => String(item.id) !== String(loanId)));
+      await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo registrar devolucion.'));
+      toast.error(resolveError(err, 'No se pudo registrar devolucion.'));
     } finally {
       setReturnSaving(false);
     }
@@ -273,28 +226,30 @@ export default function BibliotecarioDigitalPage({ me }) {
         </div>
       </header>
 
-      {loading ? <BibliotecarioDigitalLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
-      {message ? <div className="card">{message}</div> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summaryCards.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatDisplay(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      {!loading && !error ? (
-        <div className="grid-2">
+      <div className="grid-2">
         <article className="card section-card">
           <h3>Recursos ({resources.length})</h3>
-          {resources.length === 0 ? <p>Sin recursos.</p> : null}
-          {resources.length > 0 ? (
+          {loading ? (
+            <TableLoadingState />
+          ) : resources.length === 0 ? (
+            <p>Sin recursos.</p>
+          ) : (
             <ul>
               {resources.slice(0, 12).map((item) => (
                 <li key={item.id || item.id_recurso}>
@@ -302,25 +257,26 @@ export default function BibliotecarioDigitalPage({ me }) {
                 </li>
               ))}
             </ul>
-          ) : null}
+          )}
         </article>
 
         <article className="card section-card">
           <h3>Usuarios para prestamo ({users.length})</h3>
-          {users.length === 0 ? <p>Sin usuarios visibles o sin permisos.</p> : null}
-          {users.length > 0 ? (
+          {loading ? (
+            <TableLoadingState />
+          ) : users.length === 0 ? (
+            <p>Sin usuarios visibles o sin permisos.</p>
+          ) : (
             <ul>
               {users.slice(0, 12).map((item) => (
                 <li key={item.id}>{item.nombre || item.full_name || `Usuario #${item.id}`}</li>
               ))}
             </ul>
-          ) : null}
+          )}
         </article>
-        </div>
-      ) : null}
+      </div>
 
-      {!loading && !error ? (
-        <form className="card section-card form-grid" onSubmit={onSubmit}>
+      <form className="card section-card form-grid" onSubmit={onSubmit}>
         <h3>Nuevo recurso</h3>
 
         <label>
@@ -384,11 +340,9 @@ export default function BibliotecarioDigitalPage({ me }) {
             {saving ? 'Guardando...' : 'Crear recurso'}
           </button>
         </div>
-        </form>
-      ) : null}
+      </form>
 
-      {!loading && !error ? (
-        <div className="grid-2">
+      <div className="grid-2">
         <form className="card section-card form-grid" onSubmit={onTogglePublish}>
           <h3>Publicar o despublicar recurso</h3>
           <label>
@@ -468,11 +422,9 @@ export default function BibliotecarioDigitalPage({ me }) {
             </button>
           </div>
         </form>
-        </div>
-      ) : null}
+      </div>
 
-      {!loading && !error ? (
-        <form className="card section-card form-grid" onSubmit={onReturnLoan}>
+      <form className="card section-card form-grid" onSubmit={onReturnLoan}>
         <h3>Registrar devolucion</h3>
         <label>
           Prestamo ID
@@ -490,10 +442,8 @@ export default function BibliotecarioDigitalPage({ me }) {
             {returnSaving ? 'Guardando...' : 'Registrar devolucion'}
           </button>
         </div>
-        </form>
-      ) : null}
+      </form>
 
-      {!loading && !error ? (
       <article className="card section-card">
         <div className="section-card-head">
           <div>
@@ -502,8 +452,11 @@ export default function BibliotecarioDigitalPage({ me }) {
           </div>
         </div>
 
-        {loans.length === 0 ? <p>Sin prestamos activos.</p> : null}
-        {loans.length > 0 ? (
+        {loading ? (
+          <TableLoadingState />
+        ) : loans.length === 0 ? (
+          <p>Sin prestamos activos.</p>
+        ) : (
           <ul>
             {loans.slice(0, 20).map((item) => (
               <li key={item.id}>
@@ -523,9 +476,9 @@ export default function BibliotecarioDigitalPage({ me }) {
               </li>
             ))}
           </ul>
-        ) : null}
+        )}
       </article>
-      ) : null}
     </section>
   );
 }
+

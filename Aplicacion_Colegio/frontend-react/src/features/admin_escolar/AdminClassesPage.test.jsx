@@ -1,20 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import AdminClassesPage from './AdminClassesPage';
 
-const getMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
-
 describe('AdminClassesPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/profesor/clases/?page=1') {
         return {
@@ -47,11 +38,7 @@ describe('AdminClassesPage', () => {
   });
 
   it('renders summary cards and class rows', async () => {
-    render(
-      <MemoryRouter>
-        <AdminClassesPage me={{ capabilities: ['CLASS_VIEW'] }} />
-      </MemoryRouter>
-    );
+    renderWithProviders(<AdminClassesPage me={{ capabilities: ['CLASS_VIEW'] }} />);
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/?page=1');

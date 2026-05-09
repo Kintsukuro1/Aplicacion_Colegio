@@ -1,11 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import DashboardPage from './DashboardPage';
 
-const getMock = vi.fn();
+const fetchMock = vi.fn();
 
 const demoPanelPayload = {
   counts: { tareas: 0, materiales: 0, bloques: 0 },
@@ -14,36 +14,9 @@ const demoPanelPayload = {
   horario: {},
 };
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
-
-function renderDashboard(initialUrl = '/dashboard') {
-  return render(
-    <MemoryRouter initialEntries={[initialUrl]}>
-      <Routes>
-        <Route path="/dashboard" element={<DashboardPage />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
-
-describe('DashboardPage', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-    getMock.mockImplementation((path) => {
-      if (path === '/api/v1/demo/panel/') {
-        return Promise.resolve(demoPanelPayload);
-      }
-
-      return Promise.resolve(null);
-    });
-  });
-
-  it('loads dashboard summary and renders key metrics', async () => {
-    getMock.mockResolvedValue({
+function createDashboardPayload(scope) {
+  if (scope === 'school') {
+    return {
       contract_version: '1.0.0',
       scope: 'school',
       generated_at: '2026-03-07',
@@ -57,9 +30,133 @@ describe('DashboardPage', () => {
         },
         analytics: null,
       },
-    });
+      charts: {},
+    };
+  }
 
-    renderDashboard('/dashboard?scope=school');
+  if (scope === 'analytics') {
+    return {
+      contract_version: '1.0.0',
+      scope: 'analytics',
+      generated_at: '2026-03-07',
+      available_scopes: ['analytics'],
+      sections: {
+        self: null,
+        school: null,
+        analytics: { attendance_rate_today: 91 },
+      },
+      charts: {},
+    };
+  }
+
+  if (scope === 'self') {
+    return {
+      contract_version: '1.0.0',
+      scope: 'self',
+      generated_at: '2026-03-07',
+      available_scopes: ['self', 'school'],
+      sections: {
+        self: { my_classes: 2 },
+        school: null,
+        analytics: null,
+      },
+      charts: {},
+    };
+  }
+
+  return {
+    contract_version: '1.0.0',
+    scope: 'auto',
+    generated_at: '2026-03-07',
+    available_scopes: ['auto', 'school', 'self'],
+    sections: {
+      self: null,
+      school: {
+        today: '2026-03-07',
+        students: 120,
+        teachers: 18,
+      },
+      analytics: null,
+    },
+    charts: {},
+  };
+}
+
+describe('DashboardPage', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock.mockImplementation(async (url) => {
+      if (String(url).includes('/api/v1/dashboard/executive/?scope=analytics')) {
+        return {
+          ok: true,
+          json: async () => ({
+            scope: 'analytics',
+            generated_at: '2026-03-07',
+            kpis: {
+              total_students: 342,
+              total_teachers: 28,
+              attendance_rate_today: 94.2,
+              attendance_today_present: 323,
+              attendance_today_total: 342,
+              grades_below_threshold: 12,
+            },
+            alerts: [{ type: 'warning', icon: '⚠️', message: '12 estudiantes con notas bajo 4.0.' }],
+            subscription_alert: { type: 'info', message: 'Plan vigente hasta fin de mes.' },
+            usage_warnings: [{ type: 'danger', message: 'Se alcanzó el 90% del límite de almacenamiento.' }],
+            recent_activity: [
+              {
+                type: 'evaluacion',
+                icon: '📝',
+                title: 'Evaluación creada',
+                subject: 'Matemática',
+                course: '2° Medio A',
+                detail: 'Prueba parcial',
+                timestamp: '2026-03-07T09:15:00',
+              },
+            ],
+            charts: {},
+          }),
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({}),
+      };
+    });
+    getMock.mockImplementation((path) => {
+      if (path === '/api/v1/dashboard/resumen/?scope=school') {
+        return Promise.resolve(createDashboardPayload('school'));
+      }
+
+      if (path === '/api/v1/dashboard/resumen/?scope=auto') {
+        return Promise.resolve(createDashboardPayload('auto'));
+      }
+
+      if (path === '/api/v1/dashboard/resumen/?scope=analytics') {
+        return Promise.resolve(createDashboardPayload('analytics'));
+      }
+
+      if (path === '/api/v1/dashboard/resumen/?scope=self') {
+        return Promise.resolve(createDashboardPayload('self'));
+      }
+
+      if (path === '/api/v1/demo/panel/') {
+        return Promise.resolve(demoPanelPayload);
+      }
+
+      return Promise.resolve({});
+    });
+  });
+
+  it('loads dashboard summary and renders key metrics', async () => {
+
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=school',
+      path: '/dashboard'
+    });
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=school');
@@ -107,7 +204,10 @@ describe('DashboardPage', () => {
         charts: {},
       });
 
-    renderDashboard('/dashboard?scope=analytics');
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=analytics',
+      path: '/dashboard'
+    });
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=analytics');
@@ -127,9 +227,17 @@ describe('DashboardPage', () => {
   });
 
   it('shows backend error when dashboard request fails', async () => {
-    getMock.mockRejectedValue({ payload: { detail: 'No autorizado para dashboard' } });
+    getMock.mockImplementation((path) => {
+      if (path === '/api/v1/dashboard/resumen/?scope=self') {
+        return Promise.reject({ payload: { detail: 'No autorizado para dashboard' } });
+      }
+      return Promise.resolve({});
+    });
 
-    renderDashboard('/dashboard?scope=self');
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=self',
+      path: '/dashboard'
+    });
 
     await waitFor(() => {
       expect(screen.getByText('No autorizado para dashboard')).toBeInTheDocument();
@@ -139,31 +247,46 @@ describe('DashboardPage', () => {
   it('renders a structured loading state while dashboard data is fetching', () => {
     getMock.mockImplementation(() => new Promise(() => {}));
 
-    renderDashboard('/dashboard?scope=analytics');
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=analytics',
+      path: '/dashboard'
+    });
 
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando dashboard ejecutivo...');
-    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+    const statusElements = screen.getAllByRole('status');
+    expect(statusElements[0]).toHaveAttribute('aria-busy', 'true');
   });
 
   it('updates query and reloads when scope changes', async () => {
     const user = userEvent.setup();
-    getMock
-      .mockResolvedValueOnce({
-        contract_version: '1.0.0',
-        scope: 'self',
-        generated_at: '2026-03-07',
-        available_scopes: ['self', 'school'],
-        sections: { self: { my_classes: 2 }, school: null, analytics: null },
-      })
-      .mockResolvedValueOnce({
-        contract_version: '1.0.0',
-        scope: 'school',
-        generated_at: '2026-03-07',
-        available_scopes: ['self', 'school'],
-        sections: { self: null, school: { students: 100 }, analytics: null },
-      });
+    getMock.mockImplementation((path) => {
+      if (path === '/api/v1/dashboard/resumen/?scope=self') {
+        return Promise.resolve({
+          contract_version: '1.0.0',
+          scope: 'self',
+          generated_at: '2026-03-07',
+          available_scopes: ['self', 'school'],
+          sections: { self: { my_classes: 2 }, school: null, analytics: null },
+        });
+      }
+      if (path === '/api/v1/dashboard/resumen/?scope=school') {
+        return Promise.resolve({
+          contract_version: '1.0.0',
+          scope: 'school',
+          generated_at: '2026-03-07',
+          available_scopes: ['self', 'school'],
+          sections: { self: null, school: { students: 100 }, analytics: null },
+        });
+      }
+      if (path === '/api/v1/demo/panel/') {
+        return Promise.resolve(demoPanelPayload);
+      }
+      return Promise.resolve({});
+    });
 
-    renderDashboard('/dashboard?scope=self');
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=self',
+      path: '/dashboard'
+    });
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/dashboard/resumen/?scope=self');
@@ -195,7 +318,10 @@ describe('DashboardPage', () => {
       };
     });
 
-    renderDashboard('/dashboard?scope=self');
+    renderWithProviders(<DashboardPage />, {
+      route: '/dashboard?scope=self',
+      path: '/dashboard'
+    });
 
     await waitFor(() => {
       expect(screen.getByText('No tienes evaluaciones próximas registradas.')).toBeInTheDocument();

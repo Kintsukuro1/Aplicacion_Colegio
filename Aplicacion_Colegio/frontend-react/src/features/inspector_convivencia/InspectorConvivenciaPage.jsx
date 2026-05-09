@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 const EMPTY_FORM = {
   estudiante_id: '',
@@ -15,48 +20,25 @@ function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
-function InspectorConvivenciaLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div style={{ height: '18px', width: '220px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-      <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)' }} />
 
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '96px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '24px', width: index === 0 ? '74px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
 
-      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
-        <div className="card section-card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
-        <div className="card section-card" style={{ minHeight: '220px', background: 'rgba(148, 163, 184, 0.06)' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function InspectorConvivenciaPage({ me }) {
+export default function InspectorConvivenciaPage() {
+  const me = useAuthStore((state) => state.user);
+  const { canAny, isSystemAdmin } = usePermissions(me);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [justifications, setJustifications] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [reviewForm, setReviewForm] = useState({ justificativo_id: '', estado: 'APROBADO', observaciones: '' });
   const [delayForm, setDelayForm] = useState({ estudiante_id: '', clase_id: '', fecha: '', observaciones: '' });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
   const [delaySaving, setDelaySaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const canCreate = useMemo(() => hasCapability(me, 'DISCIPLINE_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canReview = useMemo(
-    () => hasCapability(me, 'JUSTIFICATION_APPROVE') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
-  );
+  const canCreate = isSystemAdmin || canAny(['DISCIPLINE_CREATE']);
+  const canReview = isSystemAdmin || canAny(['JUSTIFICATION_APPROVE']);
 
   const summaryCards = useMemo(
     () => [
@@ -79,44 +61,44 @@ export default function InspectorConvivenciaPage({ me }) {
     [classes.length, justifications.length, students.length]
   );
 
+  const { data: studentsData, isLoading: loadingStudents, error: errorStudentsObj } = useQuery({
+    queryKey: ['inspector-estudiantes'],
+    queryFn: () => apiClient.get('/api/inspector/estudiantes/')
+  });
+  const { data: classesData, isLoading: loadingClasses } = useQuery({
+    queryKey: ['inspector-clases'],
+    queryFn: () => apiClient.get('/api/v1/profesor/clases/')
+  });
+  const { data: justificationsData, isLoading: loadingJustifications } = useQuery({
+    queryKey: ['inspector-justificativos'],
+    queryFn: () => apiClient.get('/api/inspector/justificativos/')
+  });
+
+  const loading = loadingStudents || loadingClasses || loadingJustifications;
+  const error = errorStudentsObj?.message;
+
   useEffect(() => {
-    let active = true;
-
-    async function loadStudentsAndClasses() {
-      setLoading(true);
-      setError('');
-      try {
-        const [studentsPayload, classesPayload, justificationsPayload] = await Promise.all([
-          apiClient.get('/api/inspector/estudiantes/'),
-          apiClient.get('/api/v1/profesor/clases/').catch(() => ({ results: [] })),
-          apiClient.get('/api/inspector/justificativos/').catch(() => ({ justificativos: [] })),
-        ]);
-        if (active) {
-          setStudents(Array.isArray(studentsPayload?.estudiantes) ? studentsPayload.estudiantes : []);
-          const classRows = Array.isArray(classesPayload?.results)
-            ? classesPayload.results
-            : Array.isArray(classesPayload)
-              ? classesPayload
-              : [];
-          setClasses(classRows);
-          setJustifications(Array.isArray(justificationsPayload?.justificativos) ? justificationsPayload.justificativos : []);
-        }
-      } catch (err) {
-        if (active) {
-          setError(resolveError(err, 'No se pudo cargar estudiantes.'));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+    if (studentsData) {
+      setStudents(Array.isArray(studentsData?.estudiantes) ? studentsData.estudiantes : []);
     }
+  }, [studentsData]);
 
-    loadStudentsAndClasses();
-    return () => {
-      active = false;
-    };
-  }, []);
+  useEffect(() => {
+    if (classesData) {
+      const classRows = Array.isArray(classesData?.results)
+        ? classesData.results
+        : Array.isArray(classesData)
+          ? classesData
+          : [];
+      setClasses(classRows);
+    }
+  }, [classesData]);
+
+  useEffect(() => {
+    if (justificationsData) {
+      setJustifications(Array.isArray(justificationsData?.justificativos) ? justificationsData.justificativos : []);
+    }
+  }, [justificationsData]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -125,13 +107,11 @@ export default function InspectorConvivenciaPage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
-      setError('No tienes permisos para registrar anotaciones.');
+      toast.error('No tienes permisos para registrar anotaciones.');
       return;
     }
 
     setSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/inspector/anotaciones/crear/', {
         estudiante_id: Number(form.estudiante_id),
@@ -140,10 +120,10 @@ export default function InspectorConvivenciaPage({ me }) {
         descripcion: form.descripcion,
         gravedad: Number(form.gravedad),
       });
-      setMessage(payload?.message || 'Anotacion registrada.');
+      toast.success(payload?.message || 'Anotacion registrada.');
       setForm(EMPTY_FORM);
     } catch (err) {
-      setError(resolveError(err, 'No se pudo registrar la anotacion.'));
+      toast.error(resolveError(err, 'No se pudo registrar la anotacion.'));
     } finally {
       setSaving(false);
     }
@@ -152,13 +132,11 @@ export default function InspectorConvivenciaPage({ me }) {
   async function onReviewSubmit(event) {
     event.preventDefault();
     if (!canReview) {
-      setError('No tienes permisos para revisar justificativos.');
+      toast.error('No tienes permisos para revisar justificativos.');
       return;
     }
 
     setReviewSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(
         `/api/inspector/justificativos/${reviewForm.justificativo_id}/estado/`,
@@ -167,11 +145,12 @@ export default function InspectorConvivenciaPage({ me }) {
           observaciones: reviewForm.observaciones,
         }
       );
-      setMessage(payload?.message || 'Justificativo actualizado.');
+      toast.success(payload?.message || 'Justificativo actualizado.');
       setJustifications((prev) => prev.filter((item) => String(item.id) !== String(reviewForm.justificativo_id)));
       setReviewForm({ justificativo_id: '', estado: 'APROBADO', observaciones: '' });
+      await queryClient.invalidateQueries({ queryKey: ['inspector-justificativos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo actualizar el justificativo.'));
+      toast.error(resolveError(err, 'No se pudo actualizar el justificativo.'));
     } finally {
       setReviewSaving(false);
     }
@@ -179,22 +158,21 @@ export default function InspectorConvivenciaPage({ me }) {
 
   async function onQuickReview(justificativoId, estado) {
     if (!canReview) {
-      setError('No tienes permisos para revisar justificativos.');
+      toast.error('No tienes permisos para revisar justificativos.');
       return;
     }
 
     setReviewSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/inspector/justificativos/${justificativoId}/estado/`, {
         estado,
         observaciones: '',
       });
-      setMessage(payload?.message || 'Justificativo actualizado.');
+      toast.success(payload?.message || 'Justificativo actualizado.');
       setJustifications((prev) => prev.filter((item) => String(item.id) !== String(justificativoId)));
+      await queryClient.invalidateQueries({ queryKey: ['inspector-justificativos'] });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo actualizar el justificativo.'));
+      toast.error(resolveError(err, 'No se pudo actualizar el justificativo.'));
     } finally {
       setReviewSaving(false);
     }
@@ -203,13 +181,11 @@ export default function InspectorConvivenciaPage({ me }) {
   async function onDelaySubmit(event) {
     event.preventDefault();
     if (!canCreate) {
-      setError('No tienes permisos para registrar atrasos.');
+      toast.error('No tienes permisos para registrar atrasos.');
       return;
     }
 
     setDelaySaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/inspector/asistencia/registrar_atraso/', {
         estudiante_id: Number(delayForm.estudiante_id),
@@ -217,10 +193,10 @@ export default function InspectorConvivenciaPage({ me }) {
         fecha: delayForm.fecha,
         observaciones: delayForm.observaciones,
       });
-      setMessage(payload?.message || 'Atraso registrado.');
+      toast.success(payload?.message || 'Atraso registrado.');
       setDelayForm({ estudiante_id: '', clase_id: '', fecha: '', observaciones: '' });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo registrar el atraso.'));
+      toast.error(resolveError(err, 'No se pudo registrar el atraso.'));
     } finally {
       setDelaySaving(false);
     }
@@ -235,21 +211,21 @@ export default function InspectorConvivenciaPage({ me }) {
         </div>
       </header>
 
-      {loading ? <InspectorConvivenciaLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
-      {message ? <div className="card">{message}</div> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summaryCards.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{item.value}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 3 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
       <div className="grid-2">
         <form className="card form-grid" onSubmit={onSubmit}>
@@ -365,8 +341,11 @@ export default function InspectorConvivenciaPage({ me }) {
 
       <article className="card section-card">
         <h3>Justificativos pendientes ({justifications.length})</h3>
-        {justifications.length === 0 ? <p>Sin justificativos pendientes.</p> : null}
-        {justifications.length > 0 ? (
+        {loading ? (
+          <TableLoadingState />
+        ) : justifications.length === 0 ? (
+          <p>Sin justificativos pendientes.</p>
+        ) : (
           <ul>
             {justifications.slice(0, 15).map((item) => (
               <li key={item.id}>
@@ -397,7 +376,7 @@ export default function InspectorConvivenciaPage({ me }) {
               </li>
             ))}
           </ul>
-        ) : null}
+        )}
       </article>
 
       <form className="card form-grid" onSubmit={onDelaySubmit}>
@@ -469,3 +448,4 @@ export default function InspectorConvivenciaPage({ me }) {
     </section>
   );
 }
+

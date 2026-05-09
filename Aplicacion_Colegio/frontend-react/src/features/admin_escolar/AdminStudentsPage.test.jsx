@@ -1,93 +1,80 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import AdminStudentsPage from './AdminStudentsPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const delMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => delMock(...args),
-  },
-}));
+const STUDENT_DATA = {
+  count: 2,
+  next: null,
+  previous: null,
+  results: [
+    {
+      id: 1,
+      email: 'ana@example.com',
+      rut: '11.111.111-1',
+      nombre: 'Ana',
+      apellido_paterno: 'Lagos',
+      apellido_materno: 'Paz',
+      is_active: true,
+    },
+    {
+      id: 2,
+      email: 'bruno@example.com',
+      rut: '22.222.222-2',
+      nombre: 'Bruno',
+      apellido_paterno: 'Rojas',
+      apellido_materno: 'Diaz',
+      is_active: false,
+    },
+  ],
+};
 
 describe('AdminStudentsPage', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    delMock.mockReset();
 
+  it('renders summary cards and student rows after data loads', async () => {
     getMock.mockImplementation(async (path) => {
-      // Handle paginated endpoint with search parameter
       if (path.includes('/api/v1/estudiantes/')) {
-        return {
-          count: 2,
-          next: null,
-          previous: null,
-          results: [
-            {
-              id: 1,
-              email: 'ana@example.com',
-              rut: '11.111.111-1',
-              nombre: 'Ana',
-              apellido_paterno: 'Lagos',
-              apellido_materno: 'Paz',
-              is_active: true,
-            },
-            {
-              id: 2,
-              email: 'bruno@example.com',
-              rut: '22.222.222-2',
-              nombre: 'Bruno',
-              apellido_paterno: 'Rojas',
-              apellido_materno: 'Diaz',
-              is_active: false,
-            },
-          ],
-        };
+        return STUDENT_DATA;
       }
-
-      return {
-        count: 0,
-        next: null,
-        previous: null,
-        results: [],
-      };
+      return { count: 0, next: null, previous: null, results: [] };
     });
-  });
 
-  it('renders summary cards and supports row selection', async () => {
-    const user = userEvent.setup();
+    renderWithProviders(<AdminStudentsPage me={{ capabilities: ['STUDENT_VIEW', 'STUDENT_EDIT'] }} />);
 
-    render(
-      <MemoryRouter>
-        <AdminStudentsPage me={{ capabilities: ['STUDENT_VIEW', 'STUDENT_EDIT'] }} />
-      </MemoryRouter>
-    );
-
+    // Wait for header
     await waitFor(() => {
       expect(screen.getByText('Admin Escolar: Estudiantes')).toBeInTheDocument();
-      expect(screen.getByText('Gestión de estudiantes con búsqueda, edición y desactivación masiva.')).toBeInTheDocument();
-      expect(screen.getByText('Estudiantes visibles')).toBeInTheDocument();
-      expect(screen.getByText('Activos')).toBeInTheDocument();
-      expect(screen.getByText('Inactivos')).toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Ana Lagos')).toBeInTheDocument();
-      expect(screen.getByText('Bruno Rojas')).toBeInTheDocument();
-      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/estudiantes/'));
+    // Wait for data to render
+    expect(await screen.findByText('Ana Lagos')).toBeInTheDocument();
+    expect(screen.getByText('Bruno Rojas')).toBeInTheDocument();
+
+    // Summary cards should be visible
+    expect(screen.getByText('Estudiantes visibles')).toBeInTheDocument();
+    expect(screen.getByText('Activos')).toBeInTheDocument();
+    expect(screen.getByText('Inactivos')).toBeInTheDocument();
+  });
+
+  it('supports row selection and bulk actions', async () => {
+    const user = userEvent.setup();
+
+    getMock.mockImplementation(async (path) => {
+      if (path.includes('/api/v1/estudiantes/')) {
+        return STUDENT_DATA;
+      }
+      return { count: 0, next: null, previous: null, results: [] };
     });
 
+    renderWithProviders(<AdminStudentsPage me={{ capabilities: ['STUDENT_VIEW', 'STUDENT_EDIT'] }} />);
+
+    // Wait for data to render
+    expect(await screen.findByText('Ana Lagos')).toBeInTheDocument();
+    expect(screen.getByText('Bruno Rojas')).toBeInTheDocument();
+
+    // Select a row
     const rowCheckboxes = screen.getAllByRole('checkbox');
     await user.click(rowCheckboxes[1]);
 

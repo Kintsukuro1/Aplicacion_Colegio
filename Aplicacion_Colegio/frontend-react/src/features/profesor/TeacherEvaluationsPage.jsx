@@ -1,9 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../lib/apiClient';
-import { useFetch } from '../../lib/hooks';
-import { hasCapability } from '../../lib/capabilities';
+import { formatNumber } from '../../lib/formatters';
 import { asResults } from '../../lib/httpHelpers';
+import FormOverlay from '../../components/FormOverlay';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 const EMPTY_FORM = {
   clase: '',
@@ -14,76 +19,40 @@ const EMPTY_FORM = {
   periodo: '',
 };
 
-function formatNumber(value) {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
-    return String(value);
-  }
-
-  return numericValue.toFixed(1).replace(/\.0$/, '');
-}
-
-function TeacherEvaluationsLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-        <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function TeacherEvaluationsPage({ me }) {
+export default function TeacherEvaluationsPage() {
+  const me = useAuthStore((state) => state.user);
+  const { can } = usePermissions(me);
+  const queryClient = useQueryClient();
+  const [selectedClass, setSelectedClass] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const toast = useToast();
 
-  const canCreate = hasCapability(me, 'GRADE_CREATE');
-  const canEdit = hasCapability(me, 'GRADE_EDIT');
-  const canDelete = hasCapability(me, 'GRADE_DELETE');
+  const canCreate = can('GRADE_CREATE');
+  const canEdit = can('GRADE_EDIT');
+  const canDelete = can('GRADE_DELETE');
   const formLocked = editingId ? !canEdit : !canCreate;
 
-  // Load classes
-  const { data: classesResp, loading: loadingClasses, error: classesError, refetch: refetchClasses } = useFetch('/api/v1/profesor/clases/');
+  // React Query: Clases
+  const { data: classesResp, isLoading: loadingClasses, error: classesError } = useQuery({
+    queryKey: ['profesor-clases'],
+    queryFn: () => apiClient.get('/api/v1/profesor/clases/'),
+  });
   const classes = asResults(classesResp) || [];
 
-  // Initialize form with first class when classes load
-  if (!form.clase && classes.length > 0) {
-    setForm((prev) => (prev.clase ? prev : { ...prev, clase: String(classes[0].id) }));
-  }
-
-  // Load evaluations based on selected class
-  const evaluationsUrl = form.clase 
-    ? `/api/v1/profesor/evaluaciones/?clase_id=${form.clase}`
-    : null;
-  const { data: evaluationsResp, loading: loadingEvaluations, error: evaluationsError, refetch: refetchEvaluations } = useFetch(evaluationsUrl, {
-    skip: !form.clase,
-    onSuccess: () => {
-      setError('');
+  // Initialize selectedClass with first class when classes load
+  useEffect(() => {
+    if (!selectedClass && classes.length > 0) {
+      setSelectedClass(String(classes[0].id));
     }
+  }, [classes, selectedClass]);
+
+  // React Query: Evaluaciones (depende de selectedClass)
+  const { data: evaluationsResp, isLoading: loadingEvaluations, error: evaluationsError } = useQuery({
+    queryKey: ['profesor-evaluaciones', selectedClass],
+    queryFn: () => apiClient.get(`/api/v1/profesor/evaluaciones/?clase_id=${selectedClass}`),
+    enabled: !!selectedClass,
   });
   const rows = asResults(evaluationsResp) || [];
 
@@ -100,22 +69,22 @@ export default function TeacherEvaluationsPage({ me }) {
       {
         title: 'Evaluaciones',
         value: totalEvaluations,
-        subtitle: totalEvaluations > 0 ? 'Registradas para la clase seleccionada' : 'Sin evaluaciones todavía',
+        subtitle: totalEvaluations > 0 ? 'Registradas en esta clase' : 'Sin evaluaciones',
       },
       {
-        title: 'Clases disponibles',
+        title: 'Clases',
         value: classCount,
-        subtitle: classCount > 0 ? 'Puedes filtrar por curso' : 'No hay clases cargadas',
+        subtitle: classCount > 0 ? 'Cursos asignados' : 'No hay clases',
       },
       {
         title: 'Editables',
         value: editableCount,
-        subtitle: canEdit ? 'Tienes permiso de edición' : 'Solo lectura para edición',
+        subtitle: canEdit ? 'Permiso de edición' : 'Lectura',
       },
       {
         title: 'Eliminables',
         value: deletableCount,
-        subtitle: canDelete ? 'Tienes permiso de eliminación' : 'Solo lectura para eliminación',
+        subtitle: canDelete ? 'Permiso de eliminación' : 'Lectura',
       },
     ];
   }, [canDelete, canEdit, classes.length, rows.length]);
@@ -129,9 +98,22 @@ export default function TeacherEvaluationsPage({ me }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function startCreate() {
+    if (!canCreate) {
+      toast.error('No tienes permisos para crear evaluaciones.');
+      return;
+    }
+    setEditingId(null);
+    setForm({
+      ...EMPTY_FORM,
+      clase: selectedClass || (classes[0] ? String(classes[0].id) : ''),
+    });
+    setIsFormOpen(true);
+  }
+
   function startEdit(row) {
     if (!canEdit) {
-      setError('No tienes permisos para editar evaluaciones.');
+      toast.error('No tienes permisos para editar evaluaciones.');
       return;
     }
     setEditingId(row.id_evaluacion);
@@ -143,28 +125,64 @@ export default function TeacherEvaluationsPage({ me }) {
       tipo_evaluacion: row.tipo_evaluacion,
       periodo: row.periodo || '',
     });
+    setIsFormOpen(true);
   }
 
-  function resetForm() {
-    setEditingId(null);
-    setForm((prev) => ({
-      ...EMPTY_FORM,
-      clase: prev.clase || (classes[0] ? String(classes[0].id) : ''),
-    }));
+  function handleCloseModal() {
+    setIsFormOpen(false);
   }
+
+  const createMutation = useMutation({
+    mutationFn: async (payload) => {
+      return await apiClient.post('/api/v1/profesor/evaluaciones/', payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profesor-evaluaciones', selectedClass] });
+      setIsFormOpen(false);
+      toast.success('Evaluación creada exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo crear evaluación.');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      return await apiClient.patch(`/api/v1/profesor/evaluaciones/${id}/`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profesor-evaluaciones', selectedClass] });
+      setIsFormOpen(false);
+      toast.success('Evaluación actualizada exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo actualizar evaluación.');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      return await apiClient.del(`/api/v1/profesor/evaluaciones/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profesor-evaluaciones', selectedClass] });
+      toast.success('Evaluación eliminada exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || 'No se pudo eliminar evaluación.');
+    }
+  });
 
   async function onSubmit(event) {
     event.preventDefault();
     if (formLocked) {
-      setError(editingId ? 'No tienes permisos para editar evaluaciones.' : 'No tienes permisos para crear evaluaciones.');
+      toast.error(editingId ? 'No tienes permisos para editar evaluaciones.' : 'No tienes permisos para crear evaluaciones.');
       return;
     }
     if (!canSubmit) {
       return;
     }
 
-    setSaving(true);
-    setError('');
     const payload = {
       clase: Number(form.clase),
       nombre: form.nombre,
@@ -174,69 +192,62 @@ export default function TeacherEvaluationsPage({ me }) {
       periodo: form.periodo || null,
     };
 
-    try {
-      if (editingId) {
-        await apiClient.patch(`/api/v1/profesor/evaluaciones/${editingId}/`, payload);
-      } else {
-        await apiClient.post('/api/v1/profesor/evaluaciones/', payload);
-      }
-      await refetchEvaluations();
-      resetForm();
-    } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar evaluacion.');
-    } finally {
-      setSaving(false);
+    if (editingId) {
+      await updateMutation.mutateAsync({ id: editingId, payload });
+    } else {
+      await createMutation.mutateAsync(payload);
     }
   }
 
   async function onDelete(id) {
     if (!canDelete) {
-      setError('No tienes permisos para eliminar evaluaciones.');
+      toast.error('No tienes permisos para eliminar evaluaciones.');
       return;
     }
-    if (!window.confirm('Eliminar esta evaluacion?')) {
+    if (!window.confirm('¿Eliminar esta evaluación?')) {
       return;
     }
-    try {
-      await apiClient.del(`/api/v1/profesor/evaluaciones/${id}/`);
-      await refetchEvaluations();
-    } catch (err) {
-      setError(err.payload?.detail || 'No se pudo eliminar evaluacion.');
-    }
+    await deleteMutation.mutateAsync(id);
   }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <section>
-      <header className="page-header">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>Profesor: Evaluaciones</h2>
-          <p>Gestión de evaluaciones con permisos por acción y filtros por clase.</p>
+          <p>Gestión de evaluaciones mediante modales superpuestos y caché avanzado.</p>
         </div>
+        {canCreate ? (
+          <button type="button" className="primary" onClick={startCreate}>
+            + Nueva Evaluación
+          </button>
+        ) : null}
       </header>
 
-      {loading ? <TeacherEvaluationsLoadingState /> : null}
-      {apiError ? <div className="error-box">{apiError}</div> : null}
-      {error ? <div className="error-box">{error}</div> : null}
-      {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
+      {apiError ? <div className="error-box">{apiError?.message || 'Error en la petición'}</div> : null}
+      {!canCreate && !canEdit && !canDelete ? <p>Modo lectura.</p> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summary.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatNumber(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loadingClasses
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summary.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      <form className="card form-grid" onSubmit={onSubmit}>
-        <h3>{editingId ? `Editar #${editingId}` : 'Nueva Evaluacion'}</h3>
-
+      <div className="card form-grid">
+        <h3>Filtro</h3>
         <label>
           Clase
-          <select value={form.clase} onChange={(e) => onChange('clase', e.target.value)} required disabled={formLocked}>
+          <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
             <option value="">Seleccionar</option>
             {classes.map((row) => (
               <option key={row.id} value={row.id}>
@@ -245,64 +256,19 @@ export default function TeacherEvaluationsPage({ me }) {
             ))}
           </select>
         </label>
+      </div>
 
-        <label>
-          Nombre
-          <input value={form.nombre} onChange={(e) => onChange('nombre', e.target.value)} required disabled={formLocked} />
-        </label>
-
-        <label>
-          Fecha Evaluacion
-          <input
-            type="date"
-            value={form.fecha_evaluacion}
-            onChange={(e) => onChange('fecha_evaluacion', e.target.value)}
-            required
-            disabled={formLocked}
-          />
-        </label>
-
-        <label>
-          Ponderacion
-          <input value={form.ponderacion} onChange={(e) => onChange('ponderacion', e.target.value)} disabled={formLocked} />
-        </label>
-
-        <label>
-          Tipo
-          <select value={form.tipo_evaluacion} onChange={(e) => onChange('tipo_evaluacion', e.target.value)} disabled={formLocked}>
-            <option value="sumativa">Sumativa</option>
-            <option value="formativa">Formativa</option>
-            <option value="diagnostica">Diagnostica</option>
-            <option value="acumulativa">Acumulativa</option>
-          </select>
-        </label>
-
-        <label>
-          Periodo
-          <input value={form.periodo} onChange={(e) => onChange('periodo', e.target.value)} disabled={formLocked} />
-        </label>
-
-        <div className="actions full">
-          <button type="submit" disabled={!canSubmit || saving}>
-            {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-          </button>
-          {editingId ? (
-            <button type="button" className="secondary" onClick={resetForm}>
-              Cancelar Edicion
-            </button>
-          ) : null}
-        </div>
-      </form>
-
-      {!loading && !error ? (
-        <article className="card section-card">
-          <div className="section-card-head">
-            <div>
-              <h3>Listado de Evaluaciones</h3>
-              <p>Selecciona una evaluación para editar o eliminar según tus permisos.</p>
-            </div>
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Listado de Evaluaciones</h3>
+            <p>Selecciona una evaluación para editar o eliminar según tus permisos.</p>
           </div>
+        </div>
 
+        {loading ? (
+          <TableLoadingState />
+        ) : (
           <div className="table-wrap">
             <table>
               <thead>
@@ -321,7 +287,7 @@ export default function TeacherEvaluationsPage({ me }) {
                     <td>{row.id_evaluacion}</td>
                     <td>{row.nombre}</td>
                     <td>{row.fecha_evaluacion}</td>
-                    <td>{formatNumber(row.ponderacion)}</td>
+                    <td>{formatNumber(row.ponderacion)}%</td>
                     <td>{row.tipo_evaluacion}</td>
                     <td className="actions-cell">
                       {canEdit ? (
@@ -330,7 +296,7 @@ export default function TeacherEvaluationsPage({ me }) {
                         </button>
                       ) : null}
                       {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_evaluacion)}>
+                        <button type="button" className="small danger" onClick={() => onDelete(row.id_evaluacion)} disabled={deleteMutation.isPending}>
                           Eliminar
                         </button>
                       ) : null}
@@ -338,7 +304,7 @@ export default function TeacherEvaluationsPage({ me }) {
                     </td>
                   </tr>
                 ))}
-                {!loading && rows.length === 0 ? (
+                {!loadingEvaluations && rows.length === 0 ? (
                   <tr>
                     <td colSpan="6">Sin registros</td>
                   </tr>
@@ -346,10 +312,77 @@ export default function TeacherEvaluationsPage({ me }) {
               </tbody>
             </table>
           </div>
+        )}
 
-          {rows.length === 0 ? <p className="section-muted">No hay evaluaciones para la clase seleccionada.</p> : null}
-        </article>
-      ) : null}
+        {!loading && rows.length === 0 ? <p className="section-muted">No hay evaluaciones para la clase seleccionada.</p> : null}
+      </article>
+
+      <FormOverlay
+        isOpen={isFormOpen}
+        onClose={handleCloseModal}
+        title={editingId ? `Editar Evaluación #${editingId}` : 'Nueva Evaluación'}
+      >
+        <form className="form-grid" onSubmit={onSubmit} style={{ marginTop: '0', padding: '0', background: 'transparent', boxShadow: 'none' }}>
+          
+          <label style={{ gridColumn: '1 / -1' }}>
+            Clase
+            <select value={form.clase} onChange={(e) => onChange('clase', e.target.value)} required disabled={formLocked || isSaving}>
+              <option value="">Seleccionar</option>
+              {classes.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.curso_nombre} - {row.asignatura_nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ gridColumn: '1 / -1' }}>
+            Nombre
+            <input value={form.nombre} onChange={(e) => onChange('nombre', e.target.value)} required disabled={formLocked || isSaving} />
+          </label>
+
+          <label>
+            Fecha Evaluación
+            <input
+              type="date"
+              value={form.fecha_evaluacion}
+              onChange={(e) => onChange('fecha_evaluacion', e.target.value)}
+              required
+              disabled={formLocked || isSaving}
+            />
+          </label>
+
+          <label>
+            Ponderación (%)
+            <input type="number" step="0.1" value={form.ponderacion} onChange={(e) => onChange('ponderacion', e.target.value)} disabled={formLocked || isSaving} />
+          </label>
+
+          <label>
+            Tipo
+            <select value={form.tipo_evaluacion} onChange={(e) => onChange('tipo_evaluacion', e.target.value)} disabled={formLocked || isSaving}>
+              <option value="sumativa">Sumativa</option>
+              <option value="formativa">Formativa</option>
+              <option value="diagnostica">Diagnostica</option>
+              <option value="acumulativa">Acumulativa</option>
+            </select>
+          </label>
+
+          <label>
+            Periodo
+            <input value={form.periodo} onChange={(e) => onChange('periodo', e.target.value)} disabled={formLocked || isSaving} />
+          </label>
+
+          <div className="actions full" style={{ marginTop: '1rem' }}>
+            <button type="submit" disabled={!canSubmit || isSaving}>
+              {isSaving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
+            </button>
+            <button type="button" className="secondary" onClick={handleCloseModal} disabled={isSaving}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </FormOverlay>
     </section>
   );
 }
+

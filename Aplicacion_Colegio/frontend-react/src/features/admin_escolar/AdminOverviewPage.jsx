@@ -2,31 +2,32 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
+import { useFetch } from '../../lib/hooks';
+import { SummarySkeleton } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
 const SCOPES = ['school', 'analytics'];
-
-function MetricCard({ title, value }) {
-  return (
-    <article className="card">
-      <h3>{title}</h3>
-      <p className="metric-value">{value ?? '-'}</p>
-    </article>
-  );
-}
 
 export default function AdminOverviewPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialScope = searchParams.get('scope');
   const [scope, setScope] = useState(SCOPES.includes(initialScope) ? initialScope : 'school');
-  const [data, setData] = useState(null);
-  const [cycles, setCycles] = useState([]);
   const [selectedCycleId, setSelectedCycleId] = useState('');
-  const [cycleStats, setCycleStats] = useState(null);
-  const [cycleError, setCycleError] = useState('');
   const [transitionMessage, setTransitionMessage] = useState('');
   const [transitionLoading, setTransitionLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  const overviewUrl = `/api/v1/dashboard/resumen/?scope=${scope}`;
+  const { data: overviewResp, loading: loadingOverview, error: overviewError, refetch: refetchOverview } = useFetch(overviewUrl);
+
+  const { data: cyclesResp, loading: loadingCycles, error: cyclesError } = useFetch('/api/v1/ciclos-academicos/');
+  const cycles = Array.isArray(cyclesResp?.results) ? cyclesResp.results : [];
+
+  const cycleStatsUrl = selectedCycleId ? `/api/v1/ciclos-academicos/${selectedCycleId}/estadisticas/` : null;
+  const { data: cycleStatsResp, loading: loadingCycleStats, error: cycleStatsError, refetch: refetchCycleStats } = useFetch(cycleStatsUrl, { skip: !selectedCycleId });
+  const cycleStats = cycleStatsResp || null;
+
+  const loading = loadingOverview || loadingCycles || loadingCycleStats || transitionLoading;
+  const error = overviewError || cyclesError || cycleStatsError || '';
 
   useEffect(() => {
     const currentScope = searchParams.get('scope');
@@ -39,77 +40,25 @@ export default function AdminOverviewPage() {
   }, [scope, searchParams, setSearchParams]);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadOverview() {
-      setLoading(true);
-      setError('');
-      try {
-        const [payload, cyclesPayload] = await Promise.all([
-          apiClient.get(`/api/v1/dashboard/resumen/?scope=${scope}`),
-          apiClient.get('/api/v1/ciclos-academicos/').catch(() => ({ results: [] })),
-        ]);
-        if (active) {
-          setData(payload);
-          const cycleRows = Array.isArray(cyclesPayload?.results) ? cyclesPayload.results : [];
-          setCycles(cycleRows);
-          if (!selectedCycleId && cycleRows.length) {
-            setSelectedCycleId(String(cycleRows[0].id));
-          }
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar panel admin escolar.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadOverview();
-    return () => {
-      active = false;
-    };
-  }, [scope, selectedCycleId]);
+    // Trigger refetch when scope changes to keep data fresh.
+    refetchOverview && refetchOverview();
+  }, [scope]);
 
   useEffect(() => {
     if (!selectedCycleId) {
-      setCycleStats(null);
       return;
     }
-
-    let active = true;
-    async function loadCycleStats() {
-      setCycleError('');
-      setTransitionMessage('');
-      try {
-        const payload = await apiClient.get(`/api/v1/ciclos-academicos/${selectedCycleId}/estadisticas/`);
-        if (active) {
-          setCycleStats(payload);
-        }
-      } catch (err) {
-        if (active) {
-          setCycleStats(null);
-          setCycleError(err.payload?.detail || 'No se pudieron cargar estadisticas del ciclo.');
-        }
-      }
-    }
-
-    loadCycleStats();
-    return () => {
-      active = false;
-    };
+    // refetch currently selected cycle stats
+    refetchCycleStats && refetchCycleStats();
   }, [selectedCycleId]);
 
   async function refreshCycles() {
     const cyclesPayload = await apiClient.get('/api/v1/ciclos-academicos/');
     const cycleRows = Array.isArray(cyclesPayload?.results) ? cyclesPayload.results : [];
-    setCycles(cycleRows);
-    if (!cycleRows.some((item) => String(item.id) === String(selectedCycleId)) && cycleRows.length) {
+    if (!selectedCycleId && cycleRows.length) {
       setSelectedCycleId(String(cycleRows[0].id));
     }
+    return cycleRows;
   }
 
   async function transitionCycle(nuevoEstado) {
@@ -117,7 +66,6 @@ export default function AdminOverviewPage() {
       return;
     }
     setTransitionLoading(true);
-    setCycleError('');
     setTransitionMessage('');
     try {
       const payload = await apiClient.post(`/api/v1/ciclos-academicos/${selectedCycleId}/transicion/`, {
@@ -128,23 +76,20 @@ export default function AdminOverviewPage() {
           Array.isArray(payload.warnings) && payload.warnings.length ? ` | Alertas: ${payload.warnings.join(' | ')}` : ''
         }`,
       );
-      const statsPayload = await apiClient.get(`/api/v1/ciclos-academicos/${selectedCycleId}/estadisticas/`);
-      setCycleStats(statsPayload);
+      await refetchCycleStats?.();
       await refreshCycles();
     } catch (err) {
-      setCycleError(err.payload?.detail || err.payload?.nuevo_estado || 'No se pudo aplicar transicion.');
+      setTransitionMessage(err.payload?.detail || err.payload?.nuevo_estado || 'No se pudo aplicar transicion.');
     } finally {
       setTransitionLoading(false);
     }
   }
 
   const metrics = useMemo(() => {
-    if (!data || !data.sections) {
-      return [];
-    }
-
+    const source = overviewResp || {};
+    if (!source || !source.sections) return [];
     if (scope === 'school') {
-      const school = data.sections.school || {};
+      const school = source.sections.school || {};
       return [
         { title: 'Estudiantes', value: school.students },
         { title: 'Profesores', value: school.teachers },
@@ -154,8 +99,7 @@ export default function AdminOverviewPage() {
         { title: 'Evaluaciones Proximas', value: school.evaluations_upcoming },
       ];
     }
-
-    const analytics = data.sections.analytics || {};
+    const analytics = source.sections.analytics || {};
     return [
       { title: 'Asistencias Hoy (Total)', value: analytics.attendance_today_total },
       { title: 'Asistencias Hoy (Presentes)', value: analytics.attendance_today_present },
@@ -163,35 +107,9 @@ export default function AdminOverviewPage() {
       { title: 'Evaluaciones 7 Dias', value: analytics.evaluations_next_7_days },
       { title: 'Notas Bajo 4.0', value: analytics.grades_below_4 },
     ];
-  }, [data, scope]);
+  }, [overviewResp, scope]);
 
-  function formatDisplay(value) {
-    if (value === null || value === undefined || value === '') return '-';
-    if (typeof value === 'number') return String(value);
-    return String(value);
-  }
 
-  function AdminOverviewLoadingState() {
-    return (
-      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-        <div className="section-card-head">
-          <div>
-            <div style={{ height: '12px', width: '140px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
-            <div style={{ height: '26px', width: '260px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
-          </div>
-        </div>
-
-        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
-              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
-              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
-            </div>
-          ))}
-        </div>
-      </article>
-    );
-  }
 
   return (
     <section>
@@ -212,19 +130,22 @@ export default function AdminOverviewPage() {
         </label>
       </header>
 
-      {loading ? <AdminOverviewLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
-      {!loading && !error ? (
-        <>
-          <div className="summary-grid">
-            {metrics.map((metric) => (
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: scope === 'school' ? 6 : 5 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : metrics.map((metric) => (
               <article key={metric.title} className="summary-tile">
                 <small>{metric.title}</small>
-                <strong>{formatDisplay(metric.value)}</strong>
+                <strong>{formatNumber(metric.value) || '-'}</strong>
               </article>
             ))}
-          </div>
+      </div>
+
+      {!error ? (
 
           <article className="card section-card">
             <h3>Gestion de Ciclos Academicos</h3>
@@ -242,7 +163,7 @@ export default function AdminOverviewPage() {
               </label>
             </div>
 
-            {cycleError ? <div className="error-box">{cycleError}</div> : null}
+            {cycleStatsError ? <div className="error-box">{cycleStatsError}</div> : null}
             {transitionMessage ? <div className="info-box">{transitionMessage}</div> : null}
 
             {cycleStats ? (
@@ -296,7 +217,6 @@ export default function AdminOverviewPage() {
               <p>Selecciona un ciclo para ver estadisticas.</p>
             )}
           </article>
-        </>
       ) : null}
     </section>
   );

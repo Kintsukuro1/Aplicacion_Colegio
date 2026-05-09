@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { usePermissions } from '../../lib/hooks/usePermissions';
 
 const STATES = ['pendiente', 'confirmada', 'reprogramada', 'rechazada', 'completada', 'cancelada'];
 const TYPES = ['academica', 'conductual', 'orientacion', 'administrativa', 'general'];
 
-export default function MeetingRequestsPage({ me }) {
-  const [rows, setRows] = useState([]);
+export default function MeetingRequestsPage() {  const me = useAuthStore((state) => state.user);  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState('');
@@ -16,15 +16,9 @@ export default function MeetingRequestsPage({ me }) {
   const [newDate, setNewDate] = useState({});
   const [newTime, setNewTime] = useState({});
 
-  const canView = useMemo(
-    () => hasCapability(me, 'CLASS_VIEW') || hasCapability(me, 'SYSTEM_CONFIGURE') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me],
-  );
-
-  const canRespond = useMemo(
-    () => hasCapability(me, 'CLASS_VIEW') || hasCapability(me, 'SYSTEM_CONFIGURE') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me],
-  );
+  const { canAny } = usePermissions(me);
+  const canView = canAny(['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN']);
+  const canRespond = canAny(['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN']);
 
   async function loadRows() {
     setLoading(true);
@@ -245,3 +239,4 @@ export default function MeetingRequestsPage({ me }) {
     </section>
   );
 }
+

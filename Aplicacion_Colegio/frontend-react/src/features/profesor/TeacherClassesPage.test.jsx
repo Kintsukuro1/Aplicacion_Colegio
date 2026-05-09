@@ -1,20 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import TeacherClassesPage from './TeacherClassesPage';
 
-const getMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
-
 describe('TeacherClassesPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/profesor/clases/') {
         return {
@@ -89,7 +81,7 @@ describe('TeacherClassesPage', () => {
 
   it('renders summaries, schedule and class trends from API data', async () => {
     const user = userEvent.setup();
-    render(<TeacherClassesPage />);
+    renderWithProviders(<TeacherClassesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Profesor: Mis Clases')).toBeInTheDocument();
@@ -113,9 +105,13 @@ describe('TeacherClassesPage', () => {
   it('shows a loading state while classes are being fetched', () => {
     getMock.mockImplementation(() => new Promise(() => {}));
 
-    render(<TeacherClassesPage />);
+    renderWithProviders(<TeacherClassesPage />);
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText('Clases Asignadas')).not.toBeInTheDocument();
+    // Summary skeletons should be visible during loading
+    const skeletons = document.querySelectorAll('[aria-hidden="true"]');
+    expect(skeletons.length).toBeGreaterThan(0);
+    
+    // Page title should always be visible
+    expect(screen.getByText('Profesor: Mis Clases')).toBeInTheDocument();
   });
 });

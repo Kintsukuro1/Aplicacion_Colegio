@@ -13,7 +13,7 @@
         <div class="conversaciones-panel">
             <div class="panel-header">
                 <h3>Conversaciones</h3>
-                <button class="btn-nuevo-mensaje" onclick="nuevoMensaje()">
+                <button type="button" class="btn-nuevo-mensaje" onclick="nuevoMensaje()">
                     <span>➕</span> Nuevo mensaje
                 </button>
             </div>
@@ -119,11 +119,144 @@
 </div>
 
 
+<div class="modal" id="modalNuevoMensaje" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.55); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+    <div class="modal-dialog" style="width:min(560px, 100%);">
+        <div class="modal-content" style="background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(15, 23, 42, 0.25);">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #e2e8f0;">
+                <h3 class="modal-title" style="margin:0;">Nuevo mensaje</h3>
+                <button type="button" class="modal-close" data-dismiss="modal" style="border:0; background:transparent; font-size:1.1rem; cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="formNuevoMensaje" class="modal-body" style="padding:20px; display:grid; gap:16px;">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="clase" class="form-label">Clase: *</label>
+                    <select id="clase" name="clase_id" class="form-control" required>
+                        <option value="">Selecciona una clase</option>
+                        {% for clase in clases %}
+                        <option value="{{ clase.id }}" data-destinatario-id="{{ clase.profesor_id }}" data-destinatario-nombre="{{ clase.profesor.get_full_name }}">
+                            {{ clase.asignatura.nombre }} - {{ clase.curso.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <input type="hidden" id="destinatario_id" name="destinatario_id" value="">
+                <div class="form-group">
+                    <label class="form-label">Para:</label>
+                    <div id="destinatarioPreview" class="form-control" style="background:#f8fafc; min-height:42px; display:flex; align-items:center;">Selecciona una clase</div>
+                </div>
+                <div class="form-group">
+                    <label for="mensaje" class="form-label">Mensaje: *</label>
+                    <textarea id="mensaje" name="contenido" class="form-control" rows="5" required></textarea>
+                </div>
+            </form>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:12px; padding:0 20px 20px;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnEnviarNuevo">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 <script>
 function nuevoMensaje() {
-    // Este módulo se inicia normalmente desde el detalle de clase,
-    // donde el link incluye clase_id y destinatario_id.
-    window.location.href = "{% url 'dashboard' %}?pagina=mis_clases";
+    const modal = document.getElementById('modalNuevoMensaje');
+    modal.style.display = 'flex';
 }
+
+function cerrarNuevoMensaje() {
+    const modal = document.getElementById('modalNuevoMensaje');
+    modal.style.display = 'none';
+}
+
+function actualizarDestinatario() {
+    const select = document.getElementById('clase');
+    const preview = document.getElementById('destinatarioPreview');
+    const destinatarioInput = document.getElementById('destinatario_id');
+    const option = select.options[select.selectedIndex];
+
+    if (!option || !option.value) {
+        preview.textContent = 'Selecciona una clase';
+        destinatarioInput.value = '';
+        return;
+    }
+
+    const destinatarioId = option.dataset.destinatarioId || '';
+    const destinatarioNombre = option.dataset.destinatarioNombre || 'Destinatario no disponible';
+
+    destinatarioInput.value = destinatarioId;
+    preview.textContent = destinatarioNombre;
+}
+
+function enviarNuevoMensaje() {
+    const form = document.getElementById('formNuevoMensaje');
+    const claseId = document.getElementById('clase').value;
+    const destinatarioId = document.getElementById('destinatario_id').value;
+    const contenido = document.getElementById('mensaje').value.trim();
+
+    if (!claseId) {
+        alert('Selecciona una clase');
+        return;
+    }
+
+    if (!destinatarioId) {
+        alert('Selecciona una clase válida');
+        return;
+    }
+
+    if (!contenido) {
+        alert('Escribe un mensaje');
+        return;
+    }
+
+    const formData = new FormData(form);
+
+    fetch('/mensajeria/nueva/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cerrarNuevoMensaje();
+            window.location.href = `/mensajeria/conversacion/${data.conversacion_id}/`;
+        } else {
+            alert(data.message || 'No se pudo enviar el mensaje');
+        }
+    })
+    .catch(() => {
+        alert('Error de conexión');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('clase');
+    const btnEnviar = document.getElementById('btnEnviarNuevo');
+    const modal = document.getElementById('modalNuevoMensaje');
+
+    if (select) {
+        select.addEventListener('change', actualizarDestinatario);
+    }
+
+    if (btnEnviar) {
+        btnEnviar.addEventListener('click', enviarNuevoMensaje);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal || event.target.dataset.dismiss === 'modal') {
+                cerrarNuevoMensaje();
+            }
+        });
+    }
+});
 </script>

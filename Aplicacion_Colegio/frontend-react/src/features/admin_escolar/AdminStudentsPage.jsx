@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
 import SearchBar from '../../components/SearchBar';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { useToast } from '../../components/Toast';
 import { apiClient } from '../../lib/apiClient';
+import { formatNumber } from '../../lib/formatters';
 import { usePagination } from '../../lib/hooks';
-import { hasCapability } from '../../lib/capabilities';
+import { usePermissions } from '../../lib/hooks/usePermissions';
 
 function isBatchEndpointUnavailable(error) {
   return error?.status === 404 || error?.status === 405;
@@ -33,47 +36,10 @@ const EMPTY_FORM = {
   is_active: true,
 };
 
-function formatDisplay(value) {
-  if (value === null || value === undefined || value === '') {
-    return '0';
-  }
 
-  if (typeof value === 'number') {
-    return String(value);
-  }
 
-  return String(value);
-}
-
-function AdminStudentsLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 3 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-        <div style={{ height: '240px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function AdminStudentsPage({ me }) {
+export default function AdminStudentsPage() {
+  const me = useAuthStore((state) => state.user);
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('q') || '');
@@ -82,7 +48,7 @@ export default function AdminStudentsPage({ me }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const { canAny } = usePermissions(me);
 
   // Build pagination URL with search params
   const paginationUrl = `/api/v1/estudiantes/?search=${encodeURIComponent(search)}`;
@@ -101,10 +67,10 @@ export default function AdminStudentsPage({ me }) {
     }
   });
 
-  const canView = useMemo(() => hasCapability(me, 'STUDENT_VIEW') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canCreate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canUpdate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canDeactivate = useMemo(() => hasCapability(me, 'STUDENT_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
+  const canView = useMemo(() => canAny(['STUDENT_VIEW', 'SYSTEM_ADMIN']), [canAny]);
+  const canCreate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
+  const canUpdate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
+  const canDeactivate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
   const formLocked = editingId ? !canUpdate : !canCreate;
   
   const summaryCards = useMemo(() => {
@@ -184,7 +150,7 @@ export default function AdminStudentsPage({ me }) {
 
   function startEdit(row) {
     if (!canUpdate) {
-      setError('No tienes permisos para editar estudiantes.');
+      toast.error('No tienes permisos para editar estudiantes.');
       return;
     }
     setEditingId(row.id);
@@ -206,7 +172,7 @@ export default function AdminStudentsPage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (formLocked) {
-      setError(editingId ? 'No tienes permisos para editar estudiantes.' : 'No tienes permisos para crear estudiantes.');
+      toast.error(editingId ? 'No tienes permisos para editar estudiantes.' : 'No tienes permisos para crear estudiantes.');
       return;
     }
     if (!canSubmit) {
@@ -214,7 +180,6 @@ export default function AdminStudentsPage({ me }) {
     }
 
     setSaving(true);
-    setError('');
 
     try {
       if (editingId) {
@@ -227,7 +192,6 @@ export default function AdminStudentsPage({ me }) {
       toast.success(editingId ? 'Estudiante actualizado' : 'Estudiante creado');
     } catch (err) {
       const msg = err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar estudiante.';
-      setError(msg);
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -236,7 +200,7 @@ export default function AdminStudentsPage({ me }) {
 
   async function onDelete(studentId) {
     if (!canDeactivate) {
-      setError('No tienes permisos para desactivar estudiantes.');
+      toast.error('No tienes permisos para desactivar estudiantes.');
       return;
     }
 
@@ -250,14 +214,12 @@ export default function AdminStudentsPage({ me }) {
       toast.success('Estudiante desactivado');
     } catch (err) {
       const msg = err.payload?.detail || 'No se pudo desactivar estudiante.';
-      setError(msg);
       toast.error(msg);
     }
   }
 
   async function runBulkDeactivate(targetIds) {
     setSaving(true);
-    setError('');
     setBulkResult(null);
 
     try {
@@ -289,8 +251,9 @@ export default function AdminStudentsPage({ me }) {
       setBulkResult(result);
 
       await refetch();
+      toast.success('Desactivacion masiva completada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo completar la desactivacion masiva.');
+      toast.error(err.payload?.detail || 'No se pudo completar la desactivacion masiva.');
     } finally {
       setSaving(false);
     }
@@ -298,12 +261,12 @@ export default function AdminStudentsPage({ me }) {
 
   async function onBulkDeactivate() {
     if (!canDeactivate) {
-      setError('No tienes permisos para desactivar estudiantes.');
+      toast.error('No tienes permisos para desactivar estudiantes.');
       return;
     }
 
     if (selectedIds.length === 0) {
-      setError('Selecciona al menos un estudiante para desactivar.');
+      toast.error('Selecciona al menos un estudiante para desactivar.');
       return;
     }
 
@@ -349,22 +312,23 @@ export default function AdminStudentsPage({ me }) {
         placeholder="Buscar por nombre, email, RUT..."
       />
 
-      {loading ? <AdminStudentsLoadingState /> : null}
-      {error || paginationError ? <div className="error-box">{error || paginationError}</div> : null}
+      {paginationError ? <div className="error-box">{paginationError}</div> : null}
 
       {!canCreate ? <p>Modo restringido: falta capability `STUDENT_EDIT` para crear.</p> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summaryCards.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatDisplay(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
       {canCreate || canUpdate ? (
         <form className="card form-grid" onSubmit={onSubmit}>
@@ -433,67 +397,71 @@ export default function AdminStudentsPage({ me }) {
         </div>
       )}
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))}
-                  onChange={toggleSelectAllCurrentPage}
-                  disabled={!canDeactivate || rows.length === 0}
-                />
-              </th>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>RUT</th>
-              <th>Activo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
+      {loading ? (
+        <TableLoadingState />
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(row.id)}
-                    onChange={() => toggleSelect(row.id)}
-                    disabled={!canDeactivate}
+                    checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))}
+                    onChange={toggleSelectAllCurrentPage}
+                    disabled={!canDeactivate || rows.length === 0}
                   />
-                </td>
-                <td>{row.id}</td>
-                <td>{`${row.nombre} ${row.apellido_paterno || ''}`.trim()}</td>
-                <td>{row.email}</td>
-                <td>{row.rut}</td>
-                <td>{row.is_active ? <span className="badge badge-active">Activo</span> : <span className="badge badge-inactive">Inactivo</span>}</td>
-                <td className="actions-cell">
-                  {canUpdate ? (
-                    <>
-                      <button type="button" className="small" onClick={() => startEdit(row)}>
-                        Editar
+                </th>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>RUT</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(row.id)}
+                      onChange={() => toggleSelect(row.id)}
+                      disabled={!canDeactivate}
+                    />
+                  </td>
+                  <td>{row.id}</td>
+                  <td>{`${row.nombre} ${row.apellido_paterno || ''}`.trim()}</td>
+                  <td>{row.email}</td>
+                  <td>{row.rut}</td>
+                  <td>{row.is_active ? <span className="badge badge-active">Activo</span> : <span className="badge badge-inactive">Inactivo</span>}</td>
+                  <td className="actions-cell">
+                    {canUpdate ? (
+                      <>
+                        <button type="button" className="small" onClick={() => startEdit(row)}>
+                          Editar
+                        </button>
+                      </>
+                    ) : null}
+                    {canDeactivate ? (
+                      <button type="button" className="small danger" onClick={() => onDelete(row.id)}>
+                        Desactivar
                       </button>
-                    </>
-                  ) : null}
-                  {canDeactivate ? (
-                    <button type="button" className="small danger" onClick={() => onDelete(row.id)}>
-                      Desactivar
-                    </button>
-                  ) : null}
-                  {!canUpdate && !canDeactivate ? <span>-</span> : null}
-                </td>
-              </tr>
-            ))}
-            {!loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan="7">Sin registros</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                    ) : null}
+                    {!canUpdate && !canDeactivate ? <span>-</span> : null}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan="7">Sin registros</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {canDeactivate ? (
         <div className="card section-card">
@@ -537,3 +505,4 @@ export default function AdminStudentsPage({ me }) {
     </section>
   );
 }
+

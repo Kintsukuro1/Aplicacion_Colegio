@@ -1,12 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders, postMock } from '../../test/test-utils';
 
 import LoginPage from './LoginPage';
 
 const navigateMock = vi.fn();
-const postMock = vi.fn();
 const setTokensMock = vi.fn();
 
 vi.mock('react-router-dom', async () => {
@@ -17,11 +16,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    post: (...args) => postMock(...args),
-  },
-}));
+
 
 vi.mock('../../lib/authStore', () => ({
   setTokens: (...args) => setTokensMock(...args),
@@ -29,17 +24,16 @@ vi.mock('../../lib/authStore', () => ({
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     navigateMock.mockReset();
-    postMock.mockReset();
     setTokensMock.mockReset();
   });
 
   function renderLoginPage(initialEntries = ['/login']) {
-    return render(
-      <MemoryRouter initialEntries={initialEntries}>
-        <LoginPage />
-      </MemoryRouter>
-    );
+    return renderWithProviders(<LoginPage />, {
+      route: initialEntries[0].pathname ? initialEntries[0].pathname : initialEntries[0],
+      path: '/login'
+    });
   }
 
   it('stores tokens and redirects after successful login', async () => {

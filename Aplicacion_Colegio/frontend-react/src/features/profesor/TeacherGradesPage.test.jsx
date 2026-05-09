@@ -1,29 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import TeacherGradesPage from './TeacherGradesPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const delMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => delMock(...args),
-  },
-}));
-
 describe('TeacherGradesPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    delMock.mockReset();
+    useAuthStore.getState().setUser({ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] });
 
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/profesor/clases/') {
@@ -82,14 +67,14 @@ describe('TeacherGradesPage', () => {
     });
   });
 
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
+  });
+
   it('renders summaries and reloads grades when the class filter changes', async () => {
     const user = userEvent.setup();
 
-    render(
-      <TeacherGradesPage
-        me={{ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] }}
-      />
-    );
+    renderWithProviders(<TeacherGradesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Profesor: Calificaciones')).toBeInTheDocument();

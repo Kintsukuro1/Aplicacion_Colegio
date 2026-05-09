@@ -289,15 +289,21 @@ function cerrarModal() {
 
 function enviarNuevoMensaje() {
     const form = document.getElementById('formNuevoMensaje');
-    const destinatario = document.getElementById('destinatario').value;
-    const mensaje = document.getElementById('mensaje').value.trim();
+    const clase_id = document.getElementById('clase').value;
+    const destinatario_id = document.getElementById('destinatario').value;
+    const contenido = document.getElementById('mensaje').value.trim();
     
-    if (!destinatario) {
+    if (!clase_id) {
+        showToast('Selecciona una clase', 'warning');
+        return;
+    }
+    
+    if (!destinatario_id) {
         showToast('Selecciona un destinatario', 'warning');
         return;
     }
     
-    if (!mensaje) {
+    if (!contenido) {
         showToast('Escribe un mensaje', 'warning');
         return;
     }
@@ -319,7 +325,7 @@ function enviarNuevoMensaje() {
             
             // Redirigir a la nueva conversación
             setTimeout(() => {
-                window.location.href = `/mensajeria/?conversacion=${data.conversacion_id}`;
+                window.location.href = `/mensajeria/conversacion/${data.conversacion_id}/`;
             }, 1000);
         } else {
             showToast(data.message || 'Error al enviar mensaje', 'error');

@@ -1,74 +1,47 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import PaginationControls from '../../components/PaginationControls';
 import { apiClient } from '../../lib/apiClient';
-import { asPaginated } from '../../lib/httpHelpers';
-import { hasCapability } from '../../lib/capabilities';
+import { usePagination } from '../../lib/hooks';
+import { formatNumber } from '../../lib/formatters';
+import FormOverlay from '../../components/FormOverlay';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
-export default function AdminCoursesPage({ me }) {
+const EMPTY_FORM = {
+  nombre: '',
+  activo: true,
+  nivel_id: '',
+  ciclo_academico_id: '',
+};
+
+export default function AdminCoursesPage() {
+  const me = useAuthStore((state) => state.user);
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const [rows, setRows] = useState([]);
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
-  const [form, setForm] = useState({
-    nombre: '',
-    activo: true,
-    nivel_id: '',
-    ciclo_academico_id: '',
-  });
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { canAny } = usePermissions(me);
 
-  const canView = useMemo(() => hasCapability(me, 'COURSE_VIEW') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canCreate = useMemo(() => hasCapability(me, 'COURSE_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canUpdate = useMemo(() => hasCapability(me, 'COURSE_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canDelete = useMemo(() => hasCapability(me, 'COURSE_DELETE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
+  const canView = useMemo(() => canAny(['COURSE_VIEW', 'SYSTEM_ADMIN']), [canAny]);
+  const canCreate = useMemo(() => canAny(['COURSE_CREATE', 'SYSTEM_ADMIN']), [canAny]);
+  const canUpdate = useMemo(() => canAny(['COURSE_EDIT', 'SYSTEM_ADMIN']), [canAny]);
+  const canDelete = useMemo(() => canAny(['COURSE_DELETE', 'SYSTEM_ADMIN']), [canAny]);
   const formLocked = editingId ? !canUpdate : !canCreate;
   const canSubmit = useMemo(() => {
     return Boolean(form.nombre && form.nivel_id);
   }, [form]);
 
-  function formatDisplay(value) {
-    if (value === null || value === undefined || value === '') return '0';
-    if (typeof value === 'number') return String(value);
-    return String(value);
-  }
-
-  function AdminCoursesLoadingState() {
-    return (
-      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-        <div className="section-card-head">
-          <div>
-            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-            <div style={{ height: '14px', width: '300px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-          </div>
-        </div>
-
-        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-              <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-            </div>
-          ))}
-        </div>
-
-        <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-          <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-          <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-        </div>
-      </article>
-      );
-      }
-
-      function updatePage(nextPage) {
+  function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
     setPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
@@ -80,14 +53,33 @@ export default function AdminCoursesPage({ me }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function resetForm() {
+  function startCreate() {
+    if (!canCreate) {
+      toast.error('No tienes permisos para crear cursos.');
+      return;
+    }
     setEditingId(null);
+    setForm(EMPTY_FORM);
+    setIsFormOpen(true);
+  }
+
+  function startEdit(row) {
+    if (!canUpdate) {
+      toast.error('No tienes permisos para editar cursos.');
+      return;
+    }
+    setEditingId(row.id_curso);
     setForm({
-      nombre: '',
-      activo: true,
-      nivel_id: '',
-      ciclo_academico_id: '',
+      nombre: row.nombre || '',
+      activo: Boolean(row.activo),
+      nivel_id: row.nivel_id ? String(row.nivel_id) : '',
+      ciclo_academico_id: row.ciclo_academico_id ? String(row.ciclo_academico_id) : '',
     });
+    setIsFormOpen(true);
+  }
+
+  function handleCloseModal() {
+    setIsFormOpen(false);
   }
 
   function toPayload() {
@@ -103,104 +95,96 @@ export default function AdminCoursesPage({ me }) {
     return payload;
   }
 
-  function startEdit(row) {
-    if (!canUpdate) {
-      setError('No tienes permisos para editar cursos.');
-      return;
-    }
+  const paginationUrl = '/api/v1/cursos/';
+  const { items: rows, pagination, loading, error: apiError } = usePagination(paginationUrl, {
+    params: { page },
+    pageMode: true,
+    skip: !canView,
+  });
 
-    setEditingId(row.id_curso);
-    setForm({
-      nombre: row.nombre || '',
-      activo: Boolean(row.activo),
-      nivel_id: row.nivel_id ? String(row.nivel_id) : '',
-      ciclo_academico_id: row.ciclo_academico_id ? String(row.ciclo_academico_id) : '',
-    });
-  }
-
-  async function loadCourses(targetPage = page) {
-    const payload = await apiClient.get(`/api/v1/cursos/?page=${targetPage}`);
-    const paginated = asPaginated(payload);
-    setRows(paginated.results);
-    setCount(paginated.count);
-    setHasNext(Boolean(paginated.next));
-    setHasPrevious(Boolean(paginated.previous));
-  }
+  const hasNext = pagination.currentPage < Math.max(0, pagination.totalPages - 1);
+  const hasPrevious = pagination.currentPage > 0;
 
   useEffect(() => {
-    let active = true;
+    if (apiError) setError(apiError);
+  }, [apiError]);
 
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        if (!canView) {
-          return;
-        }
-        await loadCourses(page);
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar cursos.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+  const createMutation = useMutation({
+    mutationFn: async (payload) => {
+      return await apiClient.post('/api/v1/cursos/', payload);
+    },
+    onSuccess: () => {
+      // Invalidate both exact page query and general list
+      queryClient.invalidateQueries({ queryKey: [paginationUrl] });
+      setIsFormOpen(false);
+      toast.success('Curso creado exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo crear curso.');
     }
+  });
 
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, [canView, page]);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      return await apiClient.patch(`/api/v1/cursos/${id}/`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [paginationUrl] });
+      setIsFormOpen(false);
+      toast.success('Curso actualizado exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo actualizar curso.');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      return await apiClient.del(`/api/v1/cursos/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [paginationUrl] });
+      toast.success('Curso eliminado exitosamente');
+    },
+    onError: (err) => {
+      toast.error(err.payload?.detail || 'No se pudo eliminar curso.');
+    }
+  });
 
   async function onSubmit(event) {
     event.preventDefault();
 
     if (formLocked) {
-      setError(editingId ? 'No tienes permisos para editar cursos.' : 'No tienes permisos para crear cursos.');
+      toast.error(editingId ? 'No tienes permisos para editar cursos.' : 'No tienes permisos para crear cursos.');
       return;
     }
     if (!canSubmit) {
       return;
     }
 
-    setSaving(true);
-    setError('');
-    try {
-      const payload = toPayload();
-      if (editingId) {
-        await apiClient.patch(`/api/v1/cursos/${editingId}/`, payload);
-      } else {
-        await apiClient.post('/api/v1/cursos/', payload);
-      }
-      await loadCourses(page);
-      resetForm();
-    } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar curso.');
-    } finally {
-      setSaving(false);
+    const payload = toPayload();
+
+    if (editingId) {
+      await updateMutation.mutateAsync({ id: editingId, payload });
+    } else {
+      await createMutation.mutateAsync(payload);
     }
   }
 
   async function onDelete(courseId) {
     if (!canDelete) {
-      setError('No tienes permisos para eliminar cursos.');
+      toast.error('No tienes permisos para eliminar cursos.');
       return;
     }
 
-    if (!window.confirm('Eliminar este curso?')) {
+    if (!window.confirm('¿Eliminar este curso?')) {
       return;
     }
 
-    try {
-      await apiClient.del(`/api/v1/cursos/${courseId}/`);
-      await loadCourses(page);
-    } catch (err) {
-      setError(err.payload?.detail || 'No se pudo eliminar curso.');
-    }
+    await deleteMutation.mutateAsync(courseId);
   }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   if (!canView) {
     return (
@@ -217,108 +201,54 @@ export default function AdminCoursesPage({ me }) {
 
   return (
     <section>
-      <header className="page-header">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>Admin Escolar: Cursos</h2>
-          <p>CRUD de cursos sobre API v1 (`/api/v1/cursos/`).</p>
+          <p>CRUD de cursos utilizando FormOverlay y React Query.</p>
         </div>
+        {canCreate ? (
+          <button type="button" className="primary" onClick={startCreate}>
+            + Nuevo Curso
+          </button>
+        ) : null}
       </header>
 
-      {loading ? <AdminCoursesLoadingState /> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {error && !isFormOpen ? <div className="error-box">{error}</div> : null}
+      {!canCreate && !canUpdate && !canDelete ? <p>Modo restringido: Solo lectura.</p> : null}
 
-      {!canCreate ? <p>Modo restringido: falta capability `COURSE_CREATE` para crear.</p> : null}
-
-      {canCreate || canUpdate ? (
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3>{editingId ? `Editar curso #${editingId}` : 'Nuevo Curso'}</h3>
-
-          <label>
-            Nombre
-            <input
-              value={form.nombre}
-              onChange={(e) => onChange('nombre', e.target.value)}
-              required
-              disabled={formLocked}
-            />
-          </label>
-
-          <label>
-            Nivel ID
-            <input
-              type="number"
-              value={form.nivel_id}
-              onChange={(e) => onChange('nivel_id', e.target.value)}
-              required
-              disabled={formLocked}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Ciclo Academico ID (opcional)
-            <input
-              type="number"
-              value={form.ciclo_academico_id}
-              onChange={(e) => onChange('ciclo_academico_id', e.target.value)}
-              disabled={formLocked}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Activo
-            <select
-              value={form.activo ? '1' : '0'}
-              onChange={(e) => onChange('activo', e.target.value === '1')}
-              disabled={formLocked}
-            >
-              <option value="1">Si</option>
-              <option value="0">No</option>
-            </select>
-          </label>
-
-          <div className="actions full">
-            <button type="submit" disabled={!canSubmit || saving || formLocked}>
-              {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-            </button>
-            {editingId ? (
-              <button type="button" className="secondary" onClick={resetForm}>
-                Cancelar Edicion
-              </button>
-            ) : null}
-          </div>
-        </form>
-      ) : null}
-
-      {!loading && !error ? (
-        <>
-          <div className="summary-grid">
-            {(
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : (
               [
                 { title: 'Cursos visibles', value: rows.length, subtitle: rows.length > 0 ? 'Registros de la pagina actual' : 'Sin cursos cargados' },
-                { title: 'Total paginado', value: count, subtitle: 'Resultados totales en el backend' },
+                { title: 'Total paginado', value: pagination.total, subtitle: 'Resultados totales en el backend' },
                 { title: 'Siguiente pagina', value: hasNext ? 'Si' : 'No', subtitle: 'Indica si hay más registros' },
                 { title: 'Pagina previa', value: hasPrevious ? 'Si' : 'No', subtitle: 'Indica si existe retroceso' },
               ]
             ).map((item) => (
               <article key={item.title} className="summary-tile">
                 <small>{item.title}</small>
-                <strong>{formatDisplay(item.value)}</strong>
+                <strong>{formatNumber(item.value)}</strong>
                 <span>{item.subtitle}</span>
               </article>
             ))}
+      </div>
+
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Listado de Cursos</h3>
+            <p>Cursos con sus datos de operación visibles para administración.</p>
           </div>
+        </div>
 
-          <article className="card section-card">
-            <div className="section-card-head">
-              <div>
-                <h3>Listado de Cursos</h3>
-                <p>Cursos con sus datos de operación visibles para administración.</p>
-              </div>
-            </div>
-
-            <div className="table-wrap">
+        {loading ? (
+          <TableLoadingState />
+        ) : (
+          <div className="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -347,7 +277,7 @@ export default function AdminCoursesPage({ me }) {
                         </button>
                       ) : null}
                       {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_curso)}>
+                        <button type="button" className="small danger" onClick={() => onDelete(row.id_curso)} disabled={deleteMutation.isPending}>
                           Eliminar
                         </button>
                       ) : null}
@@ -363,20 +293,80 @@ export default function AdminCoursesPage({ me }) {
               </tbody>
             </table>
           </div>
+        )}
+      </article>
 
-          </article>
+      <PaginationControls
+        page={page}
+        count={pagination.total}
+        hasNext={hasNext}
+        hasPrevious={hasPrevious}
+        onPageChange={updatePage}
+        loading={loading}
+      />
 
-          <PaginationControls
-            page={page}
-            count={count}
-            hasNext={hasNext}
-            hasPrevious={hasPrevious}
-            onPageChange={updatePage}
-            loading={loading}
-          />
-        </>
-      ) : null}
+      <FormOverlay
+        isOpen={isFormOpen}
+        onClose={handleCloseModal}
+        title={editingId ? `Editar curso #${editingId}` : 'Nuevo Curso'}
+      >
+        <form className="form-grid" onSubmit={onSubmit} style={{ marginTop: '0', padding: '0', background: 'transparent', boxShadow: 'none' }}>
+          <label style={{ gridColumn: '1 / -1' }}>
+            Nombre
+            <input
+              value={form.nombre}
+              onChange={(e) => onChange('nombre', e.target.value)}
+              required
+              disabled={formLocked || isSaving}
+            />
+          </label>
 
+          <label>
+            Nivel ID
+            <input
+              type="number"
+              value={form.nivel_id}
+              onChange={(e) => onChange('nivel_id', e.target.value)}
+              required
+              disabled={formLocked || isSaving}
+              min="1"
+            />
+          </label>
+
+          <label>
+            Ciclo Academico ID (opcional)
+            <input
+              type="number"
+              value={form.ciclo_academico_id}
+              onChange={(e) => onChange('ciclo_academico_id', e.target.value)}
+              disabled={formLocked || isSaving}
+              min="1"
+            />
+          </label>
+
+          <label>
+            Activo
+            <select
+              value={form.activo ? '1' : '0'}
+              onChange={(e) => onChange('activo', e.target.value === '1')}
+              disabled={formLocked || isSaving}
+            >
+              <option value="1">Si</option>
+              <option value="0">No</option>
+            </select>
+          </label>
+
+          <div className="actions full" style={{ marginTop: '1rem' }}>
+            <button type="submit" disabled={!canSubmit || formLocked || isSaving}>
+              {isSaving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
+            </button>
+            <button type="button" className="secondary" onClick={handleCloseModal} disabled={isSaving}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </FormOverlay>
     </section>
   );
 }
+

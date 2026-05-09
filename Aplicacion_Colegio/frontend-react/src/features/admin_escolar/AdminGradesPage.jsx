@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
-import { asPaginated } from '../../lib/httpHelpers';
+import { usePagination } from '../../lib/hooks';
+import { formatNumber } from '../../lib/formatters';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 function isBatchEndpointUnavailable(error) {
   return error?.status === 404 || error?.status === 405;
@@ -22,14 +26,11 @@ function toBulkResult(payload, fallbackFailedIds = []) {
   return { success, failed, failedIds };
 }
 
-export default function AdminGradesPage({ me }) {
+export default function AdminGradesPage() {
+  const me = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const [rows, setRows] = useState([]);
-  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
+  const page = Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1;
   const [selectedIds, setSelectedIds] = useState([]);
   const [form, setForm] = useState({
     evaluacion: '',
@@ -40,54 +41,24 @@ export default function AdminGradesPage({ me }) {
   const [processingBulk, setProcessingBulk] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const toast = useToast();
+  const { canAny } = usePermissions(me);
 
   const canView = useMemo(
     () =>
-      hasCapability(me, 'GRADE_VIEW') ||
-      hasCapability(me, 'GRADE_CREATE') ||
-      hasCapability(me, 'GRADE_EDIT') ||
-      hasCapability(me, 'GRADE_DELETE') ||
-      hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
+      canAny(['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE', 'SYSTEM_ADMIN']),
+    [canAny]
   );
-  const canCreate = useMemo(() => hasCapability(me, 'GRADE_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canEdit = useMemo(() => hasCapability(me, 'GRADE_EDIT') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  const canDelete = useMemo(() => hasCapability(me, 'GRADE_DELETE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
-  function formatDisplay(value) {
-    if (value === null || value === undefined || value === '') return '0';
-    if (typeof value === 'number') return String(value);
-    return String(value);
-  }
+  const canCreate = useMemo(() => canAny(['GRADE_CREATE', 'SYSTEM_ADMIN']), [canAny]);
+  const canEdit = useMemo(() => canAny(['GRADE_EDIT', 'SYSTEM_ADMIN']), [canAny]);
+  const canDelete = useMemo(() => canAny(['GRADE_DELETE', 'SYSTEM_ADMIN']), [canAny]);
+  const paginationUrl = '/api/v1/profesor/calificaciones/';
+  const { items: rows, pagination, loading, error: apiError, refetch: refetchGrades } = usePagination(paginationUrl, {
+    params: { page },
+    pageMode: true,
+    skip: !canView,
+  });
 
-  function AdminGradesLoadingState() {
-    return (
-      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-        <div className="section-card-head">
-          <div>
-            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-            <div style={{ height: '14px', width: '300px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-          </div>
-        </div>
-
-        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-              <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-            </div>
-          ))}
-        </div>
-
-        <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-          <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-          <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-        </div>
-      </article>
-    );
-  }
   const formLocked = editingId ? !canEdit : !canCreate;
   const canSubmit = useMemo(() => {
     return Boolean(form.evaluacion && form.estudiante && form.nota !== '');
@@ -116,7 +87,7 @@ export default function AdminGradesPage({ me }) {
 
   function startEdit(row) {
     if (!canEdit) {
-      setError('No tienes permisos para editar calificaciones.');
+      toast.error('No tienes permisos para editar calificaciones.');
       return;
     }
 
@@ -128,56 +99,14 @@ export default function AdminGradesPage({ me }) {
     });
   }
 
-  async function loadGrades(targetPage = page, resetSelection = true, resetBulk = true) {
-    const payload = await apiClient.get(`/api/v1/profesor/calificaciones/?page=${targetPage}`);
-    const paginated = asPaginated(payload);
-    setRows(paginated.results);
-    if (resetSelection) {
-      setSelectedIds([]);
-    }
-    if (resetBulk) {
-      setBulkResult(null);
-    }
-    setCount(paginated.count);
-    setHasNext(Boolean(paginated.next));
-    setHasPrevious(Boolean(paginated.previous));
-  }
-
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
-    setPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
     setSearchParams(nextParams, { replace: true });
+    setSelectedIds([]);
+    setBulkResult(null);
   }
-
-  useEffect(() => {
-    let active = true;
-
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        if (!canView) {
-          return;
-        }
-        await loadGrades(page);
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar calificaciones.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, [canView, page]);
 
   const summaryCards = useMemo(() => {
     return [
@@ -188,27 +117,27 @@ export default function AdminGradesPage({ me }) {
       },
       {
         title: 'Total paginado',
-        value: count,
+        value: pagination.total,
         subtitle: 'Resultados totales en el backend',
       },
       {
         title: 'Siguiente pagina',
-        value: hasNext ? 'Si' : 'No',
+        value: pagination.hasNext ? 'Si' : 'No',
         subtitle: 'Indica si hay más registros',
       },
       {
         title: 'Pagina previa',
-        value: hasPrevious ? 'Si' : 'No',
+        value: pagination.hasPrevious ? 'Si' : 'No',
         subtitle: 'Indica si existe retroceso',
       },
     ];
-  }, [count, hasNext, hasPrevious, rows.length]);
+  }, [pagination.total, pagination.hasNext, pagination.hasPrevious, rows.length]);
 
   async function onSubmit(event) {
     event.preventDefault();
 
     if (formLocked) {
-      setError(editingId ? 'No tienes permisos para editar calificaciones.' : 'No tienes permisos para crear calificaciones.');
+      toast.error(editingId ? 'No tienes permisos para editar calificaciones.' : 'No tienes permisos para crear calificaciones.');
       return;
     }
     if (!canSubmit) {
@@ -216,7 +145,6 @@ export default function AdminGradesPage({ me }) {
     }
 
     setSaving(true);
-    setError('');
     try {
       const payload = toPayload();
       if (editingId) {
@@ -224,10 +152,11 @@ export default function AdminGradesPage({ me }) {
       } else {
         await apiClient.post('/api/v1/profesor/calificaciones/', payload);
       }
-      await loadGrades(page);
+      await refetchGrades();
       resetForm();
+      toast.success(editingId ? 'Calificacion actualizada' : 'Calificacion creada');
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar calificacion.');
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar calificacion.');
     } finally {
       setSaving(false);
     }
@@ -235,7 +164,7 @@ export default function AdminGradesPage({ me }) {
 
   async function onDelete(gradeId) {
     if (!canDelete) {
-      setError('No tienes permisos para eliminar calificaciones.');
+      toast.error('No tienes permisos para eliminar calificaciones.');
       return;
     }
 
@@ -245,9 +174,10 @@ export default function AdminGradesPage({ me }) {
 
     try {
       await apiClient.del(`/api/v1/profesor/calificaciones/${gradeId}/`);
-      await loadGrades(page);
+      await refetchGrades();
+      toast.success('Calificacion eliminada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo eliminar calificacion.');
+      toast.error(err.payload?.detail || 'No se pudo eliminar calificacion.');
     }
   }
 
@@ -272,7 +202,6 @@ export default function AdminGradesPage({ me }) {
 
   async function runBulkDelete(targetIds) {
     setProcessingBulk(true);
-    setError('');
     setBulkResult(null);
 
     try {
@@ -303,15 +232,11 @@ export default function AdminGradesPage({ me }) {
 
       setBulkResult(result);
 
-      const payload = await apiClient.get(`/api/v1/profesor/calificaciones/?page=${page}`);
-      const paginated = asPaginated(payload);
-      setRows(paginated.results);
+      await refetchGrades();
       setSelectedIds([]);
-      setCount(paginated.count);
-      setHasNext(Boolean(paginated.next));
-      setHasPrevious(Boolean(paginated.previous));
+      toast.success('Eliminacion masiva completada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo completar la eliminacion masiva.');
+      toast.error(err.payload?.detail || 'No se pudo completar la eliminacion masiva.');
     } finally {
       setProcessingBulk(false);
     }
@@ -319,12 +244,12 @@ export default function AdminGradesPage({ me }) {
 
   async function onBulkDelete() {
     if (!canDelete) {
-      setError('No tienes permisos para eliminar calificaciones.');
+      toast.error('No tienes permisos para eliminar calificaciones.');
       return;
     }
 
     if (selectedIds.length === 0) {
-      setError('Selecciona al menos una calificacion para eliminar.');
+      toast.error('Selecciona al menos una calificacion para eliminar.');
       return;
     }
 
@@ -364,8 +289,7 @@ export default function AdminGradesPage({ me }) {
         </div>
       </header>
 
-      {loading ? <AdminGradesLoadingState /> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {apiError ? <div className="error-box">{apiError}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
       {!canDelete ? <p>Modo restringido: falta capability `GRADE_DELETE` para eliminacion masiva.</p> : null}
 
@@ -424,27 +348,32 @@ export default function AdminGradesPage({ me }) {
         </form>
       ) : null}
 
-      {!loading && !error ? (
-        <div>
-          <div className="summary-grid">
-            {summaryCards.map((item) => (
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
               <article key={item.title} className="summary-tile">
                 <small>{item.title}</small>
-                <strong>{formatDisplay(item.value)}</strong>
+                <strong>{formatNumber(item.value)}</strong>
                 <span>{item.subtitle}</span>
               </article>
             ))}
+      </div>
+
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Listado de Calificaciones</h3>
+            <p>Calificaciones del profesor con sus datos de operación visibles para administración.</p>
           </div>
+        </div>
 
-          <article className="card section-card">
-            <div className="section-card-head">
-              <div>
-                <h3>Listado de Calificaciones</h3>
-                <p>Calificaciones del profesor con sus datos de operación visibles para administración.</p>
-              </div>
-            </div>
-
-            <div className="table-wrap">
+        {loading ? (
+          <TableLoadingState />
+        ) : (
+          <div className="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -503,50 +432,49 @@ export default function AdminGradesPage({ me }) {
               </tbody>
             </table>
           </div>
+        )}
+      </article>
 
-          {canDelete ? (
-            <div className="card section-card">
-              <div className="bulk-actions-bar">
-                <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={onBulkDelete}
-                  disabled={processingBulk || selectedIds.length === 0}
-                >
-                  {processingBulk ? 'Eliminando...' : 'Eliminar Seleccionadas'}
-                </button>
-              </div>
+      {canDelete ? (
+        <div className="card section-card">
+          <div className="bulk-actions-bar">
+            <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
+            <button
+              type="button"
+              className="danger"
+              onClick={onBulkDelete}
+              disabled={processingBulk || selectedIds.length === 0}
+            >
+              {processingBulk ? 'Eliminando...' : 'Eliminar Seleccionadas'}
+            </button>
+          </div>
 
-              {bulkResult ? (
-                <p className="bulk-result-text">
-                  Eliminacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
-                  {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
-                </p>
-              ) : null}
-
-              {bulkResult && bulkResult.failed > 0 ? (
-                <div className="bulk-retry-actions">
-                  <button type="button" className="secondary" onClick={retryFailedBulkDelete} disabled={processingBulk}>
-                    {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+          {bulkResult ? (
+            <p className="bulk-result-text">
+              Eliminacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
+              {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
+            </p>
           ) : null}
 
-          </article>
-
-          <PaginationControls
-            page={page}
-            count={count}
-            hasNext={hasNext}
-            hasPrevious={hasPrevious}
-            onPageChange={updatePage}
-            loading={loading}
-          />
+          {bulkResult && bulkResult.failed > 0 ? (
+            <div className="bulk-retry-actions">
+              <button type="button" className="secondary" onClick={retryFailedBulkDelete} disabled={processingBulk}>
+                {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
+
+      <PaginationControls
+        page={page}
+        count={pagination.total}
+        hasNext={pagination.hasNext}
+        hasPrevious={pagination.hasPrevious}
+        onPageChange={updatePage}
+        loading={loading}
+      />
     </section>
   );
 }
+

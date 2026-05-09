@@ -1,51 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, paginated, getMock, postMock, patchMock, deleteMock } from '../../test/test-utils';
 
 import AdminCoursesPage from './AdminCoursesPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const deleteMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => deleteMock(...args),
-  },
-}));
-
-function renderPage(me, initialUrl = '/admin/cursos') {
-  return render(
-    <MemoryRouter initialEntries={[initialUrl]}>
-      <Routes>
-        <Route path="/admin/cursos" element={<AdminCoursesPage me={me} />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
-
-function paginated(results) {
-  return {
-    count: results.length,
-    next: null,
-    previous: null,
-    results,
-  };
-}
-
 describe('AdminCoursesPage', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    deleteMock.mockReset();
-    vi.restoreAllMocks();
-  });
 
   it('loads course list for users with COURSE_VIEW', async () => {
     getMock.mockResolvedValue(
@@ -61,13 +21,13 @@ describe('AdminCoursesPage', () => {
       ])
     );
 
-    renderPage({ capabilities: ['COURSE_VIEW'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/cursos/?page=1');
+    renderWithProviders(<AdminCoursesPage me={{ capabilities: ['COURSE_VIEW'] }} />, {
+      route: '/admin/cursos',
+      path: '/admin/cursos'
     });
 
-    expect(screen.getByText('5A')).toBeInTheDocument();
+    // Wait for data to load and render
+    expect(await screen.findByText('5A')).toBeInTheDocument();
   });
 
   it('creates a new course when user has COURSE_CREATE', async () => {
@@ -116,11 +76,15 @@ describe('AdminCoursesPage', () => {
       ciclo_academico_id: 2026,
     });
 
-    renderPage({ capabilities: ['COURSE_VIEW', 'COURSE_CREATE'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/cursos/?page=1');
+    renderWithProviders(<AdminCoursesPage me={{ capabilities: ['COURSE_VIEW', 'COURSE_CREATE'] }} />, {
+      route: '/admin/cursos',
+      path: '/admin/cursos'
     });
+
+    // Wait for data to render
+    expect(await screen.findByText('5A')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '+ Nuevo Curso' }));
 
     await user.type(screen.getByLabelText('Nombre'), '6B');
     await user.type(screen.getByLabelText('Nivel ID'), '7');
@@ -174,11 +138,13 @@ describe('AdminCoursesPage', () => {
       nombre: '5A Editado',
     });
 
-    renderPage({ capabilities: ['COURSE_VIEW', 'COURSE_EDIT'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/cursos/?page=1');
+    renderWithProviders(<AdminCoursesPage me={{ capabilities: ['COURSE_VIEW', 'COURSE_EDIT'] }} />, {
+      route: '/admin/cursos',
+      path: '/admin/cursos'
     });
+
+    // Wait for data to render
+    expect(await screen.findByText('5A')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Editar' }));
 
@@ -219,11 +185,13 @@ describe('AdminCoursesPage', () => {
 
     deleteMock.mockResolvedValue(null);
 
-    renderPage({ capabilities: ['COURSE_VIEW', 'COURSE_DELETE'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/cursos/?page=1');
+    renderWithProviders(<AdminCoursesPage me={{ capabilities: ['COURSE_VIEW', 'COURSE_DELETE'] }} />, {
+      route: '/admin/cursos',
+      path: '/admin/cursos'
     });
+
+    // Wait for data to render
+    expect(await screen.findByText('5A')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Eliminar' }));
 
@@ -235,13 +203,14 @@ describe('AdminCoursesPage', () => {
   it('shows restricted mode for read-only users', async () => {
     getMock.mockResolvedValue(paginated([]));
 
-    renderPage({ capabilities: ['COURSE_VIEW'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/cursos/?page=1');
+    renderWithProviders(<AdminCoursesPage me={{ capabilities: ['COURSE_VIEW'] }} />, {
+      route: '/admin/cursos',
+      path: '/admin/cursos'
     });
 
-    expect(screen.getByText(/Modo restringido: falta capability `COURSE_CREATE`/)).toBeInTheDocument();
-    expect(screen.getByText('Sin registros')).toBeInTheDocument();
+    // Wait for data to load and table to render
+    expect(await screen.findByText('Sin registros')).toBeInTheDocument();
+
+    expect(screen.getByText(/Modo restringido: Solo lectura./)).toBeInTheDocument();
   });
 });

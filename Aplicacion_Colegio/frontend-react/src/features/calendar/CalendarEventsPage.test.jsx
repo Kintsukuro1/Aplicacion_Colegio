@@ -1,30 +1,15 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock, postMock, patchMock, deleteMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import CalendarEventsPage from './CalendarEventsPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const delMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => delMock(...args),
-  },
-}));
-
 describe('CalendarEventsPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    delMock.mockReset();
+    vi.restoreAllMocks();
+    useAuthStore.getState().setUser({ capabilities: ['ANNOUNCEMENT_VIEW', 'ANNOUNCEMENT_CREATE'] });
 
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/calendario/?page=1') {
@@ -86,14 +71,14 @@ describe('CalendarEventsPage', () => {
     });
   });
 
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
+  });
+
   it('renders summary cards and reloads when filters are applied', async () => {
     const user = userEvent.setup();
 
-    render(
-      <MemoryRouter>
-        <CalendarEventsPage me={{ capabilities: ['ANNOUNCEMENT_VIEW', 'ANNOUNCEMENT_CREATE'] }} />
-      </MemoryRouter>
-    );
+    renderWithProviders(<CalendarEventsPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Calendario Escolar')).toBeInTheDocument();

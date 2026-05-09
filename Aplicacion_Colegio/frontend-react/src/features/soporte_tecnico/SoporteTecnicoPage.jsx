@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
-export default function SoporteTecnicoPage({ me }) {
+export default function SoporteTecnicoPage() {
+  const me = useAuthStore((state) => state.user);
+  const { canAny, isSystemAdmin } = usePermissions(me);
   const [ticketForm, setTicketForm] = useState({
     titulo: '',
     descripcion: '',
@@ -27,24 +31,11 @@ export default function SoporteTecnicoPage({ me }) {
   const [savingTicket, setSavingTicket] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [savingReset, setSavingReset] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const toast = useToast();
 
-  const canCreateTicket = useMemo(
-    () => hasCapability(me, 'SUPPORT_CREATE_TICKET') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
-  );
-  const canResolveTicket = useMemo(
-    () => hasCapability(me, 'SUPPORT_RESOLVE_TICKET') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
-  );
-  const canResetPassword = useMemo(
-    () =>
-      hasCapability(me, 'SUPPORT_RESET_PASSWORD') ||
-      hasCapability(me, 'SUPPORT_RESOLVE_TICKET') ||
-      hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
-  );
+  const canCreateTicket = isSystemAdmin || canAny(['SUPPORT_CREATE_TICKET']);
+  const canResolveTicket = isSystemAdmin || canAny(['SUPPORT_RESOLVE_TICKET']);
+  const canResetPassword = isSystemAdmin || canAny(['SUPPORT_RESET_PASSWORD', 'SUPPORT_RESOLVE_TICKET']);
 
   const summaryCards = useMemo(() => {
     return [
@@ -77,22 +68,20 @@ export default function SoporteTecnicoPage({ me }) {
   async function onCreateTicket(event) {
     event.preventDefault();
     if (!canCreateTicket) {
-      setError('No tienes permisos para crear tickets.');
+      toast.error('No tienes permisos para crear tickets.');
       return;
     }
 
     setSavingTicket(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/soporte/tickets/crear/', ticketForm);
-      setMessage(payload?.message || 'Ticket creado correctamente.');
+      toast.success(payload?.message || 'Ticket creado correctamente.');
       setTicketForm({ titulo: '', descripcion: '', categoria: 'OTRO', prioridad: 'MEDIA' });
       if (payload?.id) {
         setStatusForm((prev) => ({ ...prev, ticket_id: String(payload.id) }));
       }
     } catch (err) {
-      setError(resolveError(err, 'No se pudo crear el ticket.'));
+      toast.error(resolveError(err, 'No se pudo crear el ticket.'));
     } finally {
       setSavingTicket(false);
     }
@@ -101,22 +90,20 @@ export default function SoporteTecnicoPage({ me }) {
   async function onUpdateStatus(event) {
     event.preventDefault();
     if (!canResolveTicket) {
-      setError('No tienes permisos para resolver tickets.');
+      toast.error('No tienes permisos para resolver tickets.');
       return;
     }
 
     setSavingStatus(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/soporte/tickets/${statusForm.ticket_id}/estado/`, {
         estado: statusForm.estado,
         resolucion: statusForm.resolucion,
       });
-      setMessage(payload?.message || 'Estado de ticket actualizado.');
+      toast.success(payload?.message || 'Estado de ticket actualizado.');
       setStatusForm({ ticket_id: '', estado: 'EN_PROGRESO', resolucion: '' });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo actualizar el ticket.'));
+      toast.error(resolveError(err, 'No se pudo actualizar el ticket.'));
     } finally {
       setSavingStatus(false);
     }
@@ -125,13 +112,11 @@ export default function SoporteTecnicoPage({ me }) {
   async function onResetPassword(event) {
     event.preventDefault();
     if (!canResetPassword) {
-      setError('No tienes permisos para restablecer contrasenas.');
+      toast.error('No tienes permisos para restablecer contrasenas.');
       return;
     }
 
     setSavingReset(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/soporte/usuarios/${resetForm.user_id}/reset_password/`, {
         approval_request_id: resetForm.approval_request_id ? Number(resetForm.approval_request_id) : undefined,
@@ -139,16 +124,16 @@ export default function SoporteTecnicoPage({ me }) {
       });
 
       if (payload?.requires_approval && payload?.request_id) {
-        setMessage(
+        toast.info(
           `Solicitud registrada (request_id ${payload.request_id}). Usa ese ID y la nueva contrasena para ejecutar el reset con segundo aprobador.`
         );
         setResetForm((prev) => ({ ...prev, approval_request_id: String(payload.request_id) }));
       } else {
-        setMessage(payload?.message || 'Contrasena restablecida correctamente.');
+        toast.success(payload?.message || 'Contrasena restablecida correctamente.');
         setResetForm({ user_id: '', approval_request_id: '', new_password: '' });
       }
     } catch (err) {
-      setError(resolveError(err, 'No se pudo ejecutar reset de contrasena.'));
+      toast.error(resolveError(err, 'No se pudo ejecutar reset de contrasena.'));
     } finally {
       setSavingReset(false);
     }
@@ -172,9 +157,6 @@ export default function SoporteTecnicoPage({ me }) {
           </article>
         ))}
       </div>
-
-      {error ? <div className="error-box">{error}</div> : null}
-      {message ? <div className="card">{message}</div> : null}
 
       <div className="grid-2">
         <form className="card form-grid" onSubmit={onCreateTicket}>
@@ -329,3 +311,4 @@ export default function SoporteTecnicoPage({ me }) {
     </section>
   );
 }
+

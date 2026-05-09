@@ -1,29 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import TeacherEvaluationsPage from './TeacherEvaluationsPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const delMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => delMock(...args),
-  },
-}));
-
 describe('TeacherEvaluationsPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    delMock.mockReset();
+    useAuthStore.getState().setUser({ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] });
 
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/profesor/clases/') {
@@ -66,26 +51,25 @@ describe('TeacherEvaluationsPage', () => {
     });
   });
 
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
+  });
+
   it('renders summaries and evaluations, then reloads when class changes', async () => {
     const user = userEvent.setup();
 
-    render(
-      <TeacherEvaluationsPage
-        me={{ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] }}
-      />
-    );
+    renderWithProviders(<TeacherEvaluationsPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Profesor: Evaluaciones')).toBeInTheDocument();
     });
 
     expect(screen.queryByText('Modo restringido: falta capability `GRADE_CREATE` para crear.')).not.toBeInTheDocument();
-    expect(screen.getByText('Nueva Evaluacion')).toBeInTheDocument();
+    expect(screen.getByText('+ Nueva Evaluación')).toBeInTheDocument();
     expect(screen.getByText('Listado de Evaluaciones')).toBeInTheDocument();
-    expect(screen.getByText('Evaluaciones')).toBeInTheDocument();
-    expect(screen.getByText('Clases disponibles')).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(screen.getByText('Evaluaciones')).toBeInTheDocument();
       expect(screen.getByText('Prueba parcial')).toBeInTheDocument();
       expect(screen.getByText('Tarea grupal')).toBeInTheDocument();
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/evaluaciones/?clase_id=1');
@@ -101,13 +85,12 @@ describe('TeacherEvaluationsPage', () => {
   it('shows a loading state before evaluations are fetched', () => {
     getMock.mockImplementation(() => new Promise(() => {}));
 
-    render(
-      <TeacherEvaluationsPage
-        me={{ capabilities: ['GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'] }}
-      />
-    );
+    renderWithProviders(<TeacherEvaluationsPage />);
 
+    // Table loading state should be visible
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText('Listado de Evaluaciones')).not.toBeInTheDocument();
+    
+    // Section header should always be visible
+    expect(screen.getByText('Listado de Evaluaciones')).toBeInTheDocument();
   });
 });

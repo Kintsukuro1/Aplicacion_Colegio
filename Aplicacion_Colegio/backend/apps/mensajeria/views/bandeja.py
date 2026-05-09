@@ -1,19 +1,51 @@
-# mensajeria/views/bandeja.py
 """Vista de bandeja de mensajes."""
 
 from __future__ import annotations
-
-from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect, render
 
+from backend.apps.cursos.models import Clase
 from backend.apps.mensajeria.services import MensajeriaService
 from backend.common.utils.dashboard_helpers import build_dashboard_context
-from backend.common.utils.auth_helpers import normalizar_rol
-from backend.apps.core.services.dashboard_service import DashboardService
+
+
+def _get_clases_for_user(user):
+    """Obtener clases accesibles por el usuario."""
+    if hasattr(user, 'perfil_estudiante'):
+        return (
+            Clase.objects.filter(
+                estudiantes__estudiante=user,
+                estudiantes__activo=True,
+                activo=True,
+            )
+            .select_related('curso', 'asignatura', 'profesor')
+            .distinct()
+            .order_by('asignatura__nombre', 'curso__nombre')
+        )
+
+    if hasattr(user, 'perfil_profesor'):
+        return (
+            Clase.objects.filter(profesor=user, activo=True)
+            .select_related('curso', 'asignatura', 'profesor')
+            .order_by('asignatura__nombre', 'curso__nombre')
+        )
+
+    if hasattr(user, 'perfil_apoderado'):
+        return (
+            Clase.objects.filter(
+                estudiantes__estudiante__apoderados__user=user,
+                estudiantes__activo=True,
+                activo=True,
+            )
+            .select_related('curso', 'asignatura', 'profesor')
+            .distinct()
+            .order_by('asignatura__nombre', 'curso__nombre')
+        )
+
+    return Clase.objects.none()
 
 
 @login_required()
@@ -64,11 +96,22 @@ def bandeja_mensajes(request):
     if redirect_response:
         return redirect_response
 
+    # Obtener clases del usuario
+    clases = _get_clases_for_user(request.user)
+    
+    # Obtener lista de clases ordenada por nombre
+    from backend.apps.cursos.models import Clase
+    if isinstance(clases, Clase.objects.none().__class__):
+        clases_list = list(clases)
+    else:
+        clases_list = list(Clase.objects.filter(id__in=clases).order_by('nombre'))
+
     context.update(
         {
             'conversaciones': MensajeriaService.get_conversaciones_data(request.user),
             'conversacion_actual': None,
             'mensajes': [],
+            'clases': list(_get_clases_for_user(request.user)),
         }
     )
     return render(request, 'dashboard.html', context)

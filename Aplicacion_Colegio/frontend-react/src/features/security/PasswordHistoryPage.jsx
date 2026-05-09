@@ -1,62 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
+import { useFetch } from '../../lib/hooks';
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
-function formatDisplay(value) {
-  if (value === null || value === undefined || value === '') {
-    return '0';
-  }
 
-  if (typeof value === 'number') {
-    return String(value);
-  }
 
-  return String(value);
-}
-
-function PasswordHistoryLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '140px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 2 ? '84px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-        <div style={{ height: '18px', width: '200px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-        <div style={{ height: '200px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function PasswordHistoryPage({ me }) {
-  const [rows, setRows] = useState([]);
+export default function PasswordHistoryPage() {  const me = useAuthStore((state) => state.user);  const [rows, setRows] = useState([]);
   const [auditRows, setAuditRows] = useState([]);
   const [periodDays, setPeriodDays] = useState('7');
   const [modelFilter, setModelFilter] = useState('');
-  const [loading, setLoading] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
-  const [error, setError] = useState('');
   const [auditError, setAuditError] = useState('');
 
-  const canView = useMemo(
-    () => hasCapability(me, 'AUDIT_VIEW') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me],
-  );
+  const { canAny } = usePermissions(me);
+  const canView = canAny(['AUDIT_VIEW', 'SYSTEM_ADMIN']);
+
+  const { data: passwordData, loading, error } = useFetch('/api/v1/seguridad/password-history/');
+
+  useEffect(() => {
+    if (passwordData) {
+      setRows(Array.isArray(passwordData?.entries) ? passwordData.entries : []);
+    }
+  }, [passwordData]);
 
   const summaryCards = useMemo(() => {
     return [
@@ -83,20 +52,6 @@ export default function PasswordHistoryPage({ me }) {
     ];
   }, [auditRows.length, modelFilter, periodDays, rows.length]);
 
-  async function loadRows() {
-    setLoading(true);
-    setError('');
-    try {
-      const payload = await apiClient.get('/api/v1/seguridad/password-history/');
-      setRows(Array.isArray(payload?.entries) ? payload.entries : []);
-    } catch (err) {
-      setError(err.payload?.detail || 'No se pudo cargar el historial de contrasenas.');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function loadSensitiveAudit() {
     setLoadingAudit(true);
     setAuditError('');
@@ -121,9 +76,8 @@ export default function PasswordHistoryPage({ me }) {
 
   useEffect(() => {
     if (!canView) return;
-    loadRows();
     loadSensitiveAudit();
-  }, [canView]);
+  }, [canView, periodDays, modelFilter]);
 
   if (!canView) {
     return (
@@ -149,30 +103,32 @@ export default function PasswordHistoryPage({ me }) {
 
       {error ? <div className="error-box">{error}</div> : null}
 
-      {loading ? <PasswordHistoryLoadingState /> : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summaryCards.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatDisplay(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
-      {!loading && !error ? (
-        <article className="card section-card">
-          <div className="section-card-head">
+      <article className="card section-card">
+        <div className="section-card-head">
             <div>
               <h3>Historial de contraseñas</h3>
               <p>Registro de cambios de credenciales y metadatos visibles para auditoría.</p>
             </div>
           </div>
 
-          <div className="table-wrap">
+          {loading ? (
+            <TableLoadingState />
+          ) : (
+            <div className="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -200,9 +156,9 @@ export default function PasswordHistoryPage({ me }) {
                 ) : null}
               </tbody>
             </table>
-          </div>
+            </div>
+          )}
         </article>
-      ) : null}
 
       <article className="card section-card">
         <h3>Auditoria de Datos Sensibles</h3>
@@ -231,16 +187,19 @@ export default function PasswordHistoryPage({ me }) {
         </div>
 
         {auditError ? <div className="error-box section-card">{auditError}</div> : null}
-        {loadingAudit ? <p>Cargando auditoria...</p> : null}
+        
+        {loadingAudit ? (
+          <TableLoadingState />
+        ) : (
+          <>
+            {!auditError && auditRows.length === 0 ? (
+              <p className="section-muted">No hay accesos sensibles en el periodo consultado.</p>
+            ) : null}
 
-        {!loadingAudit && !auditError && auditRows.length === 0 ? (
-          <p className="section-muted">No hay accesos sensibles en el periodo consultado.</p>
-        ) : null}
-
-        <div className="table-wrap section-card">
-          <table>
-            <thead>
-              <tr>
+            <div className="table-wrap section-card">
+              <table>
+                <thead>
+                  <tr>
                 <th>Fecha</th>
                 <th>Usuario</th>
                 <th>Rol</th>
@@ -270,7 +229,10 @@ export default function PasswordHistoryPage({ me }) {
             </tbody>
           </table>
         </div>
+        </>
+        )}
       </article>
     </section>
   );
 }
+

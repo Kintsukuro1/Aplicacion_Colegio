@@ -1,20 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import AsesorFinancieroPage from './AsesorFinancieroPage';
 
-const getMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
-
 describe('AsesorFinancieroPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
+    vi.restoreAllMocks();
 
     getMock.mockImplementation(async (path) => {
       if (path.startsWith('/api/v1/finanzas/dashboard/')) {
@@ -60,7 +53,7 @@ describe('AsesorFinancieroPage', () => {
   it('renders financial summaries and reloads when filters change', async () => {
     const user = userEvent.setup();
 
-    render(<AsesorFinancieroPage />);
+    renderWithProviders(<AsesorFinancieroPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Asesor Financiero')).toBeInTheDocument();

@@ -1,51 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, paginated, getMock, postMock, patchMock, deleteMock } from '../../test/test-utils';
 
 import AdminAttendancePage from './AdminAttendancePage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const deleteMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => deleteMock(...args),
-  },
-}));
-
-function renderPage(me, initialUrl = '/admin/asistencias') {
-  return render(
-    <MemoryRouter initialEntries={[initialUrl]}>
-      <Routes>
-        <Route path="/admin/asistencias" element={<AdminAttendancePage me={me} />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
-
-function paginated(results) {
-  return {
-    count: results.length,
-    next: null,
-    previous: null,
-    results,
-  };
-}
-
 describe('AdminAttendancePage', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    deleteMock.mockReset();
-    vi.restoreAllMocks();
-  });
 
   it('creates attendance with CLASS_TAKE_ATTENDANCE capability', async () => {
     const user = userEvent.setup();
@@ -56,11 +16,18 @@ describe('AdminAttendancePage', () => {
 
     postMock.mockResolvedValue({ id_asistencia: 77 });
 
-    renderPage({ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }, '/admin/asistencias?clase_id=31');
+    renderWithProviders(<AdminAttendancePage me={{ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }} />, {
+      route: '/admin/asistencias?clase_id=31',
+      path: '/admin/asistencias'
+    });
 
+    // Wait for classes to load
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/');
     });
+
+    // Wait for form to be ready
+    await screen.findByLabelText('Estudiante ID');
 
     await user.type(screen.getByLabelText('Estudiante ID'), '44');
     await user.type(screen.getAllByLabelText('Fecha')[1], '2026-03-07');
@@ -102,11 +69,13 @@ describe('AdminAttendancePage', () => {
     patchMock.mockResolvedValue({ id_asistencia: 77, estado: 'P' });
     deleteMock.mockResolvedValue(null);
 
-    renderPage({ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }, '/admin/asistencias?clase_id=31');
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/asistencias/?page=1&clase_id=31');
+    renderWithProviders(<AdminAttendancePage me={{ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }} />, {
+      route: '/admin/asistencias?clase_id=31',
+      path: '/admin/asistencias'
     });
+
+    // Wait for data to render
+    expect(await screen.findByText('Alumno Uno')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Editar' }));
     await user.selectOptions(screen.getByLabelText('Estado'), 'P');
@@ -136,13 +105,13 @@ describe('AdminAttendancePage', () => {
       .mockResolvedValueOnce({ results: [{ id: 31, curso_nombre: '6A', asignatura_nombre: 'Historia' }] })
       .mockResolvedValue(paginated([]));
 
-    renderPage({ capabilities: ['CLASS_VIEW_ATTENDANCE'] }, '/admin/asistencias?clase_id=31');
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/asistencias/?page=1&clase_id=31');
+    renderWithProviders(<AdminAttendancePage me={{ capabilities: ['CLASS_VIEW_ATTENDANCE'] }} />, {
+      route: '/admin/asistencias?clase_id=31',
+      path: '/admin/asistencias'
     });
 
-    expect(screen.getByText(/falta capability `CLASS_TAKE_ATTENDANCE`/)).toBeInTheDocument();
+    // Wait for the restricted mode message to render
+    expect(await screen.findByText(/falta capability `CLASS_TAKE_ATTENDANCE`/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Crear' })).not.toBeInTheDocument();
   });
 });

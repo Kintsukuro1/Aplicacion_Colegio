@@ -1,22 +1,31 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import StudentSelfPage from './StudentSelfPage';
 
-const getMock = vi.fn();
+function createDeferred() {
+  let resolve;
+  let reject;
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
+  const promise = new Promise((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
+
 
 describe('StudentSelfPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
+    vi.restoreAllMocks();
   });
 
   it('renders a structured student overview from API data', async () => {
+    const historyDeferred = createDeferred();
+
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/estudiante/mi-perfil/') {
         return {
@@ -50,29 +59,36 @@ describe('StudentSelfPage', () => {
       }
 
       if (path.includes('/api/v1/estudiante/historial-academico/')) {
-        return {
-          ciclo: { id: 2026, nombre: '2026', estado: 'Activo' },
-          ciclos_disponibles: [{ id: 2026, nombre: '2026', estado: 'Activo' }],
-          asignaturas: [
-            { clase_id: 1, asignatura: 'Matemática', curso: '7° Básico A', promedio: 6.2, porcentaje_asistencia: 95, notas: [6.0, 6.4] },
-            { clase_id: 2, asignatura: 'Lenguaje', curso: '7° Básico A', promedio: 5.8, porcentaje_asistencia: 92, notas: [5.5, 6.1] },
-          ],
-        };
+        return historyDeferred.promise;
       }
 
       throw new Error(`Unexpected endpoint: ${path}`);
     });
 
-    render(<StudentSelfPage />);
+    renderWithProviders(<StudentSelfPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Estudiante: Mi Panel')).toBeInTheDocument();
+      expect(screen.getByText('Valentina Rojas')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('button', { name: 'Mi Perfil' })).toBeInTheDocument();
+    expect(screen.getByText('Cargando historial académico')).toBeInTheDocument();
+
+    await act(async () => {
+      historyDeferred.resolve({
+        ciclo: { id: 2026, nombre: '2026', estado: 'Activo' },
+        ciclos_disponibles: [{ id: 2026, nombre: '2026', estado: 'Activo' }],
+        asignaturas: [
+          { clase_id: 1, asignatura: 'Matemática', curso: '7° Básico A', promedio: 6.2, porcentaje_asistencia: 95, notas: [6.0, 6.4] },
+          { clase_id: 2, asignatura: 'Lenguaje', curso: '7° Básico A', promedio: 5.8, porcentaje_asistencia: 92, notas: [5.5, 6.1] },
+        ],
+      });
+    });
 
     await waitFor(() => {
-      expect(screen.getByText('Valentina Rojas')).toBeInTheDocument();
+      expect(screen.getByText('2026')).toBeInTheDocument();
+      expect(screen.getAllByText('Matemática').length).toBeGreaterThan(0);
     });
   });
 });

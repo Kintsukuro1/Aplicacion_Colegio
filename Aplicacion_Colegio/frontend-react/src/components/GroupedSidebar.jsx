@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTenant } from '../lib/tenantContext';
+import { useAuthStore } from '../lib/store/useAuthStore';
 
 const STORAGE_KEY = 'sidebar-collapsed-groups';
 
@@ -105,7 +106,8 @@ function getInitials(name) {
   return parts[0].substring(0, 2).toUpperCase();
 }
 
-export default function GroupedSidebar({ visibleRoutes, me, onLogout, isOpen, onClose }) {
+export default function GroupedSidebar({ visibleRoutes, onLogout, isOpen, onClose }) {
+  const me = useAuthStore((state) => state.user);
   const { tenant } = useTenant();
   const [collapsed, setCollapsed] = useState(loadCollapsed);
   const location = useLocation();

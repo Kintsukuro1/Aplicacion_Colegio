@@ -213,8 +213,18 @@
             <form id="formNuevoMensaje" class="modal-body">
                 {% csrf_token %}
                 <div class="form-group">
+                    <label for="clase" class="form-label">Clase: *</label>
+                    <select id="clase" name="clase_id" class="form-control" required>
+                        <option value="">Selecciona una clase</option>
+                        {% for clase in clases %}
+                        <option value="{{ clase.id }}">{{ clase.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label for="destinatario" class="form-label">Para: *</label>
-                    <select id="destinatario" name="destinatario" class="form-control" required>
+                    <select id="destinatario" name="destinatario_id" class="form-control" required>
                         <option value="">Selecciona un destinatario</option>
                         {% for profesor in profesores %}
                         <option value="{{ profesor.id }}">{{ profesor.get_full_name }} - {{ profesor.get_rol_display }}</option>

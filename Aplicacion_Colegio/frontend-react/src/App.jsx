@@ -1,7 +1,18 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
-import GroupedSidebar from './components/GroupedSidebar';
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+import AppSidebar from './components/AppSidebar';
 import MobileBottomNav from './components/MobileBottomNav';
 import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -10,8 +21,7 @@ import { UpdateListener } from './components/UpdateListener';
 import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';
-
-
+import { useAuthStore } from './lib/store/useAuthStore';
 // Eager load only public/login pages if desired, but we can lazy load them too for max savings
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
@@ -287,7 +297,7 @@ function PageLoader() {
   );
 }
 
-function ShellLayout({ children, me, visibleRoutes }) {
+function ShellLayout({ children, visibleRoutes }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -327,7 +337,8 @@ function ShellLayout({ children, me, visibleRoutes }) {
     } catch {
       // Logout local debe continuar incluso si falla la revocacion remota.
     } finally {
-      clearTokens();
+      const logoutStore = useAuthStore.getState().logout;
+      logoutStore();
       navigate('/login', { replace: true });
     }
   }
@@ -341,8 +352,7 @@ function ShellLayout({ children, me, visibleRoutes }) {
         aria-hidden="true"
       />
 
-      <GroupedSidebar
-        me={me}
+      <AppSidebar
         visibleRoutes={visibleRoutes}
         onLogout={onLogout}
         isOpen={sidebarOpen}
@@ -375,7 +385,8 @@ function ShellLayout({ children, me, visibleRoutes }) {
   );
 }
 
-function GuardedPage({ me, route }) {
+function GuardedPage({ route }) {
+  const me = useAuthStore((state) => state.user);
   if (!canAccessRoute(me, route)) {
     return <AccessDeniedPage />;
   }
@@ -383,13 +394,15 @@ function GuardedPage({ me, route }) {
   const Component = route.component;
   return (
     <Suspense fallback={<PageLoader />}>
-      <Component me={me} />
+      <Component />
     </Suspense>
   );
 }
 
 function AuthorizedApp() {
-  const [me, setMe] = useState(null);
+  const me = useAuthStore((state) => state.user);
+  const setMe = useAuthStore((state) => state.setUser);
+  const logout = useAuthStore((state) => state.logout);
   const [loadingMe, setLoadingMe] = useState(true);
 
   useEffect(() => {
@@ -404,7 +417,7 @@ function AuthorizedApp() {
         }
       } catch {
         if (active) {
-          clearTokens();
+          logout();
         }
       } finally {
         if (active) {
@@ -417,7 +430,7 @@ function AuthorizedApp() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [setMe, logout]);
 
   const visibleRoutes = useMemo(() => {
     if (!me) {
@@ -441,13 +454,13 @@ function AuthorizedApp() {
   return (
     <>
       <UpdateListener />
-      <ShellLayout me={me} visibleRoutes={visibleRoutes}>
+      <ShellLayout visibleRoutes={visibleRoutes}>
         <Routes>
           {APP_ROUTES.map((route) => (
             <Route
               key={route.path}
               path={route.path}
-              element={<GuardedPage me={me} route={route} />}
+              element={<GuardedPage route={route} />}
             />
           ))}
           <Route path="*" element={<LegacyProxy />} />
@@ -459,21 +472,24 @@ function AuthorizedApp() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <Suspense fallback={<div className="page-loader">Cargando aplicación...</div>}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <AuthorizedApp />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Suspense>
-    </ToastProvider>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <Suspense fallback={<div className="page-loader">Cargando aplicación...</div>}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AuthorizedApp />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Suspense>
+      </ToastProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }

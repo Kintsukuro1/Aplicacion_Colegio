@@ -1,121 +1,83 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
+import { useFetch } from '../../lib/hooks';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
-function formatDisplay(value) {
-  if (value === null || value === undefined || value === '') {
-    return '0';
-  }
 
-  if (typeof value === 'number') {
-    return String(value);
-  }
 
-  return String(value);
-}
-
-function ActiveSessionsLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '126px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '320px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-        <div style={{ height: '18px', width: '200px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-        <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function ActiveSessionsPage({ me }) {
+export default function ActiveSessionsPage() {
+  const me = useAuthStore((state) => state.user);
   const [rows, setRows] = useState([]);
   const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const canView = useMemo(
-    () => hasCapability(me, 'AUDIT_VIEW') || hasCapability(me, 'SYSTEM_ADMIN'),
-    [me],
-  );
+  const { canAny } = usePermissions(me);
+  const canView = canAny(['AUDIT_VIEW', 'SYSTEM_ADMIN']);
 
-  const summaryCards = useMemo(() => {
-    const sessionCount = rows.length;
-    const blockedCount = dashboard?.ips_bloqueadas ?? 0;
-    const failedCount = dashboard?.intentos_fallidos_24h ?? 0;
-    const sensitiveAccessCount = dashboard?.accesos_datos_sensibles_24h ?? 0;
+  const { data: sessionsData, loading: loadingSessions, error: errorSessions, refetch: refetchSessions } = useFetch('/api/v1/seguridad/sesiones-activas/');
+  const { data: dashboardData, loading: loadingDashboard, error: errorDashboard, refetch: refetchDashboard } = useFetch('/api/v1/seguridad/dashboard/');
 
-    return [
+  const loading = loadingSessions || loadingDashboard;
+  const error = errorSessions || errorDashboard;
+
+  useEffect(() => {
+    if (sessionsData) {
+      setRows(Array.isArray(sessionsData?.sesiones) ? sessionsData.sesiones : []);
+    }
+  }, [sessionsData]);
+
+  useEffect(() => {
+    if (dashboardData) {
+      setDashboard(dashboardData || null);
+    }
+  }, [dashboardData]);
+
+  const summaryCards = useMemo(
+    () => [
       {
         title: 'Sesiones activas',
-        value: sessionCount,
-        subtitle: sessionCount > 0 ? 'Usuarios con sesión vigente' : 'Sin sesiones visibles',
+        value: rows.length,
+        subtitle: rows.length > 0 ? 'Usuarios con sesion vigente' : 'Sin sesiones visibles',
       },
       {
         title: 'IPs bloqueadas',
-        value: blockedCount,
-        subtitle: 'Direcciones con restricción activa',
+        value: dashboard?.ips_bloqueadas ?? 0,
+        subtitle: 'Direcciones con restriccion activa',
       },
       {
         title: 'Fallos 24h',
-        value: failedCount,
+        value: dashboard?.intentos_fallidos_24h ?? 0,
         subtitle: 'Intentos fallidos recientes',
       },
       {
         title: 'Accesos sensibles',
-        value: sensitiveAccessCount,
+        value: dashboard?.accesos_datos_sensibles_24h ?? 0,
         subtitle: 'Eventos de acceso auditados',
       },
-    ];
-  }, [dashboard, rows.length]);
+    ],
+    [dashboard, rows.length]
+  );
 
   async function loadRows() {
-    setLoading(true);
-    setError('');
-    setMessage('');
-    try {
-      const [sessionsPayload, dashboardPayload] = await Promise.all([
-        apiClient.get('/api/v1/seguridad/sesiones-activas/'),
-        apiClient.get('/api/v1/seguridad/dashboard/'),
-      ]);
-      setRows(Array.isArray(sessionsPayload?.sesiones) ? sessionsPayload.sesiones : []);
-      setDashboard(dashboardPayload || null);
-    } catch (err) {
-      setError(err.payload?.detail || 'No se pudieron cargar las sesiones activas.');
-      setRows([]);
-      setDashboard(null);
-    } finally {
-      setLoading(false);
-    }
+    await Promise.all([refetchSessions(), refetchDashboard()]);
   }
 
   async function revokeSession(row) {
     if (!window.confirm(`Revocar sesion #${row.id} de ${row.user_email}?`)) {
       return;
     }
-    setError('');
+    setErrorMsg('');
     try {
       await apiClient.post(`/api/v1/seguridad/sesiones/${row.id}/revocar/`, {});
       setMessage(`Sesion #${row.id} revocada correctamente.`);
       await loadRows();
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo revocar la sesion.');
+      setErrorMsg(err.payload?.detail || 'No se pudo revocar la sesion.');
     }
   }
 
@@ -123,14 +85,14 @@ export default function ActiveSessionsPage({ me }) {
     if (!window.confirm(`Desbloquear IP ${ip}?`)) {
       return;
     }
-    setError('');
+    setErrorMsg('');
     setMessage('');
     try {
       const payload = await apiClient.post('/api/v1/seguridad/desbloquear-ip/', { ip });
       setMessage(payload?.detail || `IP ${ip} desbloqueada.`);
       await loadRows();
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo desbloquear la IP.');
+      setErrorMsg(err.payload?.detail || 'No se pudo desbloquear la IP.');
     }
   }
 
@@ -161,52 +123,58 @@ export default function ActiveSessionsPage({ me }) {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error || errorMsg ? <div className="error-box">{error || errorMsg}</div> : null}
       {message ? <div className="info-box">{message}</div> : null}
 
-      {loading ? <ActiveSessionsLoadingState /> : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 5 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summaryCards.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summaryCards.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatDisplay(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid section-card">
+        {loading ? (
+          Array.from({ length: 5 }).map((_, index) => <SummarySkeleton key={`dash-${index}`} />)
+        ) : dashboard && !error ? (
+          <>
+            <div className="summary-tile">
+              <small>Colegio</small>
+              <strong>{dashboard.colegio || '-'}</strong>
+            </div>
+            <div className="summary-tile">
+              <small>Intentos fallidos 24h</small>
+              <strong>{dashboard.intentos_fallidos_24h ?? 0}</strong>
+            </div>
+            <div className="summary-tile">
+              <small>IPs bloqueadas</small>
+              <strong>{dashboard.ips_bloqueadas ?? 0}</strong>
+            </div>
+            <div className="summary-tile">
+              <small>Sesiones activas</small>
+              <strong>{dashboard.sesiones_activas ?? 0}</strong>
+            </div>
+            <div className="summary-tile">
+              <small>Accesos datos sensibles 24h</small>
+              <strong>{dashboard.accesos_datos_sensibles_24h ?? 0}</strong>
+            </div>
+          </>
+        ) : null}
+      </div>
 
-      {!loading && !error && dashboard ? (
-        <div className="summary-grid section-card">
-          <div className="summary-tile">
-            <small>Colegio</small>
-            <strong>{dashboard.colegio || '-'}</strong>
-          </div>
-          <div className="summary-tile">
-            <small>Intentos fallidos 24h</small>
-            <strong>{dashboard.intentos_fallidos_24h ?? 0}</strong>
-          </div>
-          <div className="summary-tile">
-            <small>IPs bloqueadas</small>
-            <strong>{dashboard.ips_bloqueadas ?? 0}</strong>
-          </div>
-          <div className="summary-tile">
-            <small>Sesiones activas</small>
-            <strong>{dashboard.sesiones_activas ?? 0}</strong>
-          </div>
-          <div className="summary-tile">
-            <small>Accesos datos sensibles 24h</small>
-            <strong>{dashboard.accesos_datos_sensibles_24h ?? 0}</strong>
-          </div>
-        </div>
-      ) : null}
-
-      {!loading && !error && dashboard && Array.isArray(dashboard.ips_bloqueadas_lista) ? (
-        <article className="card section-card">
-          <h3>IPs bloqueadas</h3>
-          {dashboard.ips_bloqueadas_lista.length ? (
+      <article className="card section-card">
+        <h3>IPs bloqueadas</h3>
+        {loading ? (
+          <TableLoadingState />
+        ) : !error && dashboard && Array.isArray(dashboard.ips_bloqueadas_lista) ? (
+          dashboard.ips_bloqueadas_lista.length ? (
             <ul>
               {dashboard.ips_bloqueadas_lista.map((ip) => (
                 <li key={ip} className="blocked-ip-item">
@@ -219,19 +187,21 @@ export default function ActiveSessionsPage({ me }) {
             </ul>
           ) : (
             <p>Sin IPs bloqueadas.</p>
-          )}
-        </article>
-      ) : null}
+          )
+        ) : null}
+      </article>
 
-      {!loading && !error ? (
-        <article className="card section-card">
-          <div className="section-card-head">
-            <div>
-              <h3>Tabla de sesiones</h3>
-              <p>Sesiones activas detectadas para el usuario y el colegio actual.</p>
-            </div>
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Tabla de sesiones</h3>
+            <p>Sesiones activas detectadas para el usuario y el colegio actual.</p>
           </div>
+        </div>
 
+        {loading ? (
+          <TableLoadingState />
+        ) : (
           <div className="table-wrap">
             <table>
               <thead>
@@ -271,8 +241,9 @@ export default function ActiveSessionsPage({ me }) {
               </tbody>
             </table>
           </div>
-        </article>
-      ) : null}
+        )}
+      </article>
     </section>
   );
 }
+

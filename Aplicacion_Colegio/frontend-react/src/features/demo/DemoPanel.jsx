@@ -26,7 +26,7 @@ export default function DemoPanel() {
   if (!data) return <div>No hay datos demo.</div>;
 
   return (
-    <article className="card section-card">
+    <div className="demo-panel">
       <h3>Contenido demo</h3>
       <div className="counts">
         <div>Tareas: {data.counts.tareas}</div>
@@ -59,6 +59,6 @@ export default function DemoPanel() {
           </ul>
         </div>
       ))}
-    </article>
+    </div>
   );
 }

@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
-import { useFetch } from '../../lib/hooks';
-import { hasCapability } from '../../lib/capabilities';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { asResults } from '../../lib/httpHelpers';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 const EMPTY_FORM = {
   clase: '',
@@ -14,58 +18,30 @@ const EMPTY_FORM = {
   observaciones: '',
 };
 
-function formatNumber(value) {
-  if (value === null || value === undefined || value === '') {
-    return '0';
-  }
 
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
-    return String(value);
-  }
 
-  return numericValue.toFixed(0);
-}
-
-function TeacherAttendanceLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '110px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '210px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '100px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 0 ? '72px' : '92px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="table-wrap" style={{ marginTop: '1.25rem' }}>
-        <div style={{ height: '18px', width: '180px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-        <div style={{ height: '220px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-      </div>
-    </article>
-  );
-}
-
-export default function TeacherAttendancePage({ me }) {
+export default function TeacherAttendancePage() {
+  const me = useAuthStore((state) => state.user);
+  const { can } = usePermissions(me);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const canTakeAttendance = hasCapability(me, 'CLASS_TAKE_ATTENDANCE');
+  const canTakeAttendance = can('CLASS_TAKE_ATTENDANCE');
 
   // Load classes and students in parallel
-  const { data: classesResp, loading: loadingClasses, error: classesError, refetch: refetchClasses } = useFetch('/api/v1/profesor/clases/');
-  const { data: studentsResp, loading: loadingStudents, error: studentsError } = useFetch('/api/v1/estudiantes/');
+  const { data: classesResp, isLoading: loadingClasses, error: classesErrorObj } = useQuery({
+    queryKey: ['profesor-clases'],
+    queryFn: () => apiClient.get('/api/v1/profesor/clases/')
+  });
+  const { data: studentsResp, isLoading: loadingStudents, error: studentsErrorObj } = useQuery({
+    queryKey: ['estudiantes'],
+    queryFn: () => apiClient.get('/api/v1/estudiantes/')
+  });
+  const classesError = classesErrorObj?.message;
+  const studentsError = studentsErrorObj?.message;
   
   const classes = asResults(classesResp) || [];
   const students = asResults(studentsResp) || [];
@@ -86,9 +62,12 @@ export default function TeacherAttendancePage({ me }) {
   const attendanceUrl = form.clase 
     ? `/api/v1/profesor/asistencias/?${attendanceParams.toString()}`
     : null;
-  const { data: attendanceResp, loading: loadingAttendance, error: attendanceError, refetch: refetchAttendance } = useFetch(attendanceUrl, {
-    skip: !form.clase,
+  const { data: attendanceResp, isLoading: loadingAttendance, error: attendanceErrorObj } = useQuery({
+    queryKey: ['profesor-asistencias', form.clase, form.fecha],
+    queryFn: () => apiClient.get(attendanceUrl),
+    enabled: !!form.clase
   });
+  const attendanceError = attendanceErrorObj?.message;
   const rows = asResults(attendanceResp) || [];
 
   const loading = loadingClasses || loadingStudents || loadingAttendance;
@@ -140,7 +119,7 @@ export default function TeacherAttendancePage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (!canTakeAttendance) {
-      setError('No tienes permisos para crear o editar asistencias.');
+      toast.error('No tienes permisos para crear o editar asistencias.');
       return;
     }
     if (!canSubmit) {
@@ -148,7 +127,6 @@ export default function TeacherAttendancePage({ me }) {
     }
 
     setSaving(true);
-    setError('');
     const payload = {
       clase: Number(form.clase),
       estudiante: Number(form.estudiante),
@@ -164,10 +142,11 @@ export default function TeacherAttendancePage({ me }) {
       } else {
         await apiClient.post('/api/v1/profesor/asistencias/', payload);
       }
-      await refetchAttendance();
+      await queryClient.invalidateQueries({ queryKey: ['profesor-asistencias'] });
       resetForm();
+      toast.success(editingId ? 'Asistencia actualizada exitosamente' : 'Asistencia creada exitosamente');
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar asistencia.');
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar asistencia.');
     } finally {
       setSaving(false);
     }
@@ -175,17 +154,18 @@ export default function TeacherAttendancePage({ me }) {
 
   async function onDelete(id) {
     if (!canTakeAttendance) {
-      setError('No tienes permisos para eliminar asistencias.');
+      toast.error('No tienes permisos para eliminar asistencias.');
       return;
     }
     if (!window.confirm('Eliminar este registro de asistencia?')) {
       return;
     }
     try {
-      await apiClient.del(`/api/v1/profesor/asistencias/${id}/`);
-      await refetchAttendance();
+      await apiClient.delete(`/api/v1/profesor/asistencias/${id}/`);
+      await queryClient.invalidateQueries({ queryKey: ['profesor-asistencias'] });
+      toast.success('Asistencia eliminada exitosamente');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo eliminar asistencia.');
+      toast.error(err.payload?.detail || 'No se pudo eliminar asistencia.');
     }
   }
 
@@ -198,25 +178,24 @@ export default function TeacherAttendancePage({ me }) {
         </div>
       </header>
 
-      {loading ? <TeacherAttendanceLoadingState /> : null}
       {apiError ? <div className="error-box">{apiError}</div> : null}
-      {error ? <div className="error-box">{error}</div> : null}
       {!canTakeAttendance ? <p>Modo solo lectura: falta capability `CLASS_TAKE_ATTENDANCE`.</p> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summary.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{formatNumber(item.value)}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summary.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{formatNumber(item.value)}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      {!loading && !error ? (
-        <form className="card section-card form-grid" onSubmit={onSubmit}>
+      <form className="card section-card form-grid" onSubmit={onSubmit}>
         <h3>{editingId ? `Editar #${editingId}` : 'Nueva Asistencia'}</h3>
 
         <label>
@@ -312,17 +291,18 @@ export default function TeacherAttendancePage({ me }) {
           ) : null}
         </div>
         </form>
-      ) : null}
 
-      {!loading && !error ? (
-        <article className="card section-card">
-          <div className="section-card-head">
-            <div>
-              <h3>Listado de Asistencias</h3>
-              <p>Revisa los registros cargados para la clase y fecha seleccionadas.</p>
-            </div>
+      <article className="card section-card">
+        <div className="section-card-head">
+          <div>
+            <h3>Listado de Asistencias</h3>
+            <p>Revisa los registros cargados para la clase y fecha seleccionadas.</p>
           </div>
+        </div>
 
+        {loading ? (
+          <TableLoadingState />
+        ) : (
           <div className="table-wrap">
             <table>
               <thead>
@@ -367,10 +347,11 @@ export default function TeacherAttendancePage({ me }) {
               </tbody>
             </table>
           </div>
+        )}
 
-          {rows.length === 0 ? <p className="section-muted">No hay asistencias para el filtro actual.</p> : null}
-        </article>
-      ) : null}
+        {!loading && rows.length === 0 ? <p className="section-muted">No hay asistencias para el filtro actual.</p> : null}
+      </article>
     </section>
   );
 }
+

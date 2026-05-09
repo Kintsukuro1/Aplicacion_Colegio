@@ -1,27 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 
-import { useFetch } from '../../lib/hooks';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
-
-function formatNumber(value) {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
-    return String(value);
-  }
-
-  return numericValue.toFixed(1).replace(/\.0$/, '');
-}
+import { SummarySkeleton } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
 function formatPercentage(value) {
   if (value === null || value === undefined || value === '') {
     return '-';
   }
 
-  return `${formatNumber(value)}%`;
+  return `${formatNumber(value, '-')}%`;
 }
 
 function buildAverage(items) {
@@ -37,62 +26,84 @@ function buildAverage(items) {
   return total / numericValues.length;
 }
 
-function StudentSelfLoadingState() {
+
+
+function SectionStatus({ title, description, loading = false }) {
   return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div style={{ height: '18px', width: '170px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-      <div style={{ height: '14px', width: '280px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginBottom: '1.25rem' }} />
+    <div
+      className="card section-card"
+      aria-busy={loading ? 'true' : 'false'}
+      aria-live="polite"
+      role={loading ? 'status' : undefined}
+      style={{ background: 'rgba(148, 163, 184, 0.06)' }}
+    >
+      <strong>{title}</strong>
+      <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>{description}</p>
+      {loading ? <div style={{ marginTop: '1rem', height: '12px', width: '60%', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.14)' }} /> : null}
+    </div>
+  );
+}
 
-      <div className="summary-grid" aria-hidden="true">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: 96, background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '24px', width: index === 0 ? '96px' : '72px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className="card section-card" style={{ minHeight: '180px', background: 'rgba(148, 163, 184, 0.06)' }} />
-        ))}
-      </div>
-    </article>
+function EmptySection({ title, description }) {
+  return (
+    <div className="card section-card" style={{ background: 'rgba(148, 163, 184, 0.04)' }}>
+      <strong>{title}</strong>
+      <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>{description}</p>
+    </div>
   );
 }
 
 export default function StudentSelfPage() {
   const [selectedCycle, setSelectedCycle] = useState('');
 
-  // Load main student data in parallel
-  const { data: profile, loading: loadingProfile } = useFetch('/api/v1/estudiante/mi-perfil/');
-  const { data: classesData = [], loading: loadingClasses } = useFetch('/api/v1/estudiante/mis-clases/');
-  const { data: gradesData = [], loading: loadingGrades } = useFetch('/api/v1/estudiante/mis-notas/');
-  const { data: attendanceData = [], loading: loadingAttendance } = useFetch('/api/v1/estudiante/mi-asistencia/');
+  const { data: profile, isLoading: loadingProfile, error: profileErrorObj } = useQuery({
+    queryKey: ['student-profile'],
+    queryFn: () => apiClient.get('/api/v1/estudiante/mi-perfil/')
+  });
+  const { data: classesData = [], isLoading: loadingClasses, error: classesErrorObj } = useQuery({
+    queryKey: ['student-classes'],
+    queryFn: () => apiClient.get('/api/v1/estudiante/mis-clases/')
+  });
+  const { data: gradesData = [], isLoading: loadingGrades, error: gradesErrorObj } = useQuery({
+    queryKey: ['student-grades'],
+    queryFn: () => apiClient.get('/api/v1/estudiante/mis-notas/')
+  });
+  const { data: attendanceData = [], isLoading: loadingAttendance, error: attendanceErrorObj } = useQuery({
+    queryKey: ['student-attendance'],
+    queryFn: () => apiClient.get('/api/v1/estudiante/mi-asistencia/')
+  });
+
+  const profileError = profileErrorObj?.message;
+  const classesError = classesErrorObj?.message;
+  const gradesError = gradesErrorObj?.message;
+  const attendanceError = attendanceErrorObj?.message;
   
   const classes = Array.isArray(classesData) ? classesData : [];
   const grades = Array.isArray(gradesData) ? gradesData : [];
   const attendance = Array.isArray(attendanceData) ? attendanceData : [];
-  
-  // Load academic history with optional cycle parameter
+
   const historyUrl = selectedCycle 
     ? `/api/v1/estudiante/historial-academico/?ciclo=${selectedCycle}`
     : '/api/v1/estudiante/historial-academico/';
   const { 
     data: history, 
-    loading: loadingHistory, 
-    error: historyError 
-  } = useFetch(historyUrl, {
-    onSuccess: (data) => {
-      if (!selectedCycle && data?.ciclo?.id) {
-        setSelectedCycle(String(data.ciclo.id));
-      }
-    }
+    isLoading: loadingHistory, 
+    error: historyErrorObj 
+  } = useQuery({
+    queryKey: ['student-history', selectedCycle],
+    queryFn: () => apiClient.get(historyUrl)
   });
+  const historyError = historyErrorObj?.message;
 
-  // Overall loading state: show loading if ANY endpoint is loading
-  const loading = loadingProfile || loadingClasses || loadingGrades || loadingAttendance || loadingHistory;
-  const error = '';
+  // We need an effect to sync selectedCycle based on the loaded history
+  useEffect(() => {
+    if (!selectedCycle && history?.ciclo?.id) {
+      setSelectedCycle(String(history.ciclo.id));
+    }
+  }, [history, selectedCycle]);
+
+  const summaryLoading = loadingProfile || loadingClasses || loadingGrades || loadingAttendance || loadingHistory;
+  const hasAnyError = profileError || classesError || gradesError || attendanceError || historyError;
 
   const quickLinks = [
     { id: 'student-profile', label: 'Mi Perfil' },
@@ -132,7 +143,7 @@ export default function StudentSelfPage() {
       },
       {
         title: 'Promedio general',
-        value: gradeAverage !== null ? formatNumber(gradeAverage) : '-',
+        value: gradeAverage !== null ? formatNumber(gradeAverage, '-') : '-',
         subtitle: gradeAverage !== null ? 'Promedio ponderado del historial' : 'Aún no hay notas suficientes',
       },
       {
@@ -175,24 +186,31 @@ export default function StudentSelfPage() {
         </div>
       </article>
 
-      {loading ? <StudentSelfLoadingState /> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {hasAnyError ? <div className="error-box">Hay secciones con errores de carga. Revisa cada bloque para más detalle.</div> : null}
 
-      {!loading && !error ? (
-        <div className="stack">
-          <div className="summary-grid">
-            {profileCards.map((card) => (
-              <article key={card.title} className="summary-tile">
-                <small>{card.title}</small>
-                <strong>{card.value}</strong>
-                <span>{card.subtitle}</span>
-              </article>
-            ))}
-          </div>
+      <div className="stack">
+        <div className="summary-grid">
+          {summaryLoading
+            ? Array.from({ length: 5 }).map((_, index) => (
+                <SummarySkeleton key={index} />
+              ))
+            : profileCards.map((card) => (
+                <article key={card.title} className="summary-tile">
+                  <small>{card.title}</small>
+                  <strong>{card.value}</strong>
+                  <span>{card.subtitle}</span>
+                </article>
+              ))}
+        </div>
 
-          <div className="grid-2">
-            <article id="student-profile" className="card section-card">
-              <h3>Mi Perfil</h3>
+        <div className="grid-2">
+          <article id="student-profile" className="card section-card">
+            <h3>Mi Perfil</h3>
+            {loadingProfile ? (
+              <SectionStatus title="Cargando perfil" description="Obteniendo los datos personales del estudiante." loading />
+            ) : profileError ? (
+              <div className="error-box">{profileError}</div>
+            ) : (
               <dl className="detail-list">
                 <div>
                   <dt>Nombre</dt>
@@ -211,137 +229,149 @@ export default function StudentSelfPage() {
                   <dd>{profile?.curso_actual || profile?.curso || 'Sin asignar'}</dd>
                 </div>
               </dl>
-            </article>
+            )}
+          </article>
 
-            <article id="student-classes" className="card section-card">
-              <h3>Mis Clases</h3>
-              {classes.length ? (
-                <ul className="compact-list">
-                  {classes.slice(0, 6).map((item) => (
-                    <li key={item.clase_id || item.id || `${item.curso}-${item.asignatura}`}>
-                      <strong>{item.asignatura || item.nombre || 'Asignatura'}</strong>
-                      <span>{item.curso || item.curso_nombre || 'Curso no disponible'}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No hay clases asignadas todavía.</p>
-              )}
-            </article>
+          <article id="student-classes" className="card section-card">
+            <h3>Mis Clases</h3>
+            {loadingClasses ? (
+              <SectionStatus title="Cargando clases" description="Preparando el listado de asignaturas activas." loading />
+            ) : classesError ? (
+              <div className="error-box">{classesError}</div>
+            ) : classes.length ? (
+              <ul className="compact-list">
+                {classes.slice(0, 6).map((item) => (
+                  <li key={item.clase_id || item.id || `${item.curso}-${item.asignatura}`}>
+                    <strong>{item.asignatura || item.nombre || 'Asignatura'}</strong>
+                    <span>{item.curso || item.curso_nombre || 'Curso no disponible'}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptySection title="Sin clases asignadas" description="Todavía no hay asignaturas registradas para este ciclo." />
+            )}
+          </article>
 
-            <article id="student-grades" className="card section-card">
-              <h3>Mis Notas</h3>
-              {grades.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Evaluación</th>
-                        <th>Curso</th>
-                        <th>Nota</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {grades.slice(0, 8).map((item, index) => (
-                        <tr key={item.evaluacion_id || item.id || `${item.nombre}-${index}`}>
-                          <td>{item.evaluacion || item.nombre || 'Evaluación'}</td>
-                          <td>{item.curso || item.clase || 'Curso'}</td>
-                          <td>{formatNumber(item.nota ?? item.promedio)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p>Sin notas registradas por ahora.</p>
-              )}
-            </article>
-
-            <article id="student-attendance" className="card section-card">
-              <h3>Mi Asistencia</h3>
-              {attendance.length ? (
-                <ul className="compact-list">
-                  {attendance.slice(0, 8).map((item, index) => (
-                    <li key={item.id || item.fecha || index}>
-                      <strong>{item.fecha || item.dia || 'Registro'}</strong>
-                      <span>{item.estado || item.porcentaje || 'Sin estado'}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>Sin registros de asistencia todavía.</p>
-              )}
-            </article>
-          </div>
-
-          <article id="student-history" className="card section-card grid-full">
-            <h3>Historial Académico</h3>
-
-            <div className="actions">
-              <label>
-                Ciclo académico
-                <select value={selectedCycle} onChange={(e) => setSelectedCycle(e.target.value)}>
-                  {(history?.ciclos_disponibles || []).map((ciclo) => (
-                    <option key={ciclo.id} value={ciclo.id}>
-                      {ciclo.nombre} ({ciclo.estado})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {loadingHistory ? <p>Cargando historial...</p> : null}
-            {historyError ? <div className="error-box">{historyError}</div> : null}
-
-            {!loadingHistory && !historyError && history?.ciclo ? (
-              <div className="summary-grid section-card">
-                <article className="summary-tile">
-                  <small>Ciclo activo</small>
-                  <strong>{history.ciclo.nombre}</strong>
-                  <span>{history.ciclo.estado || 'Activo'}</span>
-                </article>
-                <article className="summary-tile">
-                  <small>Asignaturas</small>
-                  <strong>{(history.asignaturas || []).length}</strong>
-                  <span>Consolidado del ciclo</span>
-                </article>
-                <article className="summary-tile">
-                  <small>Promedio general</small>
-                  <strong>{historyAverage !== null ? formatNumber(historyAverage) : '-'}</strong>
-                  <span>Promedio de asignaturas con nota</span>
-                </article>
-              </div>
-            ) : null}
-
-            {!loadingHistory && !historyError && Array.isArray(history?.asignaturas) && history.asignaturas.length ? (
+          <article id="student-grades" className="card section-card">
+            <h3>Mis Notas</h3>
+            {loadingGrades ? (
+              <SectionStatus title="Cargando notas" description="Consultando las evaluaciones y calificaciones disponibles." loading />
+            ) : gradesError ? (
+              <div className="error-box">{gradesError}</div>
+            ) : grades.length ? (
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Asignatura</th>
+                      <th>Evaluación</th>
                       <th>Curso</th>
-                      <th>Promedio</th>
-                      <th>Asistencia</th>
-                      <th>Notas</th>
+                      <th>Nota</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {history.asignaturas.map((item) => (
-                      <tr key={item.clase_id}>
-                        <td>{item.asignatura}</td>
-                        <td>{item.curso}</td>
-                        <td>{formatNumber(item.promedio)}</td>
-                        <td>{formatPercentage(item.porcentaje_asistencia)}</td>
-                        <td>{Array.isArray(item.notas) && item.notas.length ? item.notas.join(', ') : '-'}</td>
+                    {grades.slice(0, 8).map((item, index) => (
+                      <tr key={item.evaluacion_id || item.id || `${item.nombre}-${index}`}>
+                        <td>{item.evaluacion || item.nombre || 'Evaluación'}</td>
+                        <td>{item.curso || item.clase || 'Curso'}</td>
+                        <td>{formatNumber(item.nota ?? item.promedio, '-')}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            ) : null}
+            ) : (
+              <EmptySection title="Sin notas registradas" description="Cuando existan evaluaciones, aparecerán aquí con su detalle." />
+            )}
+          </article>
+
+          <article id="student-attendance" className="card section-card">
+            <h3>Mi Asistencia</h3>
+            {loadingAttendance ? (
+              <SectionStatus title="Cargando asistencia" description="Recuperando los registros de asistencia del estudiante." loading />
+            ) : attendanceError ? (
+              <div className="error-box">{attendanceError}</div>
+            ) : attendance.length ? (
+              <ul className="compact-list">
+                {attendance.slice(0, 8).map((item, index) => (
+                  <li key={item.id || item.fecha || index}>
+                    <strong>{item.fecha || item.dia || 'Registro'}</strong>
+                    <span>{item.estado || item.porcentaje || 'Sin estado'}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptySection title="Sin registros de asistencia" description="Aún no hay asistencia cargada para este periodo." />
+            )}
           </article>
         </div>
-      ) : null}
+
+        <article id="student-history" className="card section-card grid-full">
+          <h3>Historial Académico</h3>
+
+          <div className="actions">
+            <label>
+              Ciclo académico
+              <select value={selectedCycle} onChange={(e) => setSelectedCycle(e.target.value)}>
+                {(history?.ciclos_disponibles || []).map((ciclo) => (
+                  <option key={ciclo.id} value={ciclo.id}>
+                    {ciclo.nombre} ({ciclo.estado})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {loadingHistory ? <SectionStatus title="Cargando historial académico" description="Consolidando notas, promedio y asistencia del ciclo." loading /> : null}
+          {historyError ? <div className="error-box">{historyError}</div> : null}
+
+          {!loadingHistory && !historyError && history?.ciclo ? (
+            <div className="summary-grid section-card">
+              <article className="summary-tile">
+                <small>Ciclo activo</small>
+                <strong>{history.ciclo.nombre}</strong>
+                <span>{history.ciclo.estado || 'Activo'}</span>
+              </article>
+              <article className="summary-tile">
+                <small>Asignaturas</small>
+                <strong>{(history.asignaturas || []).length}</strong>
+                <span>Consolidado del ciclo</span>
+              </article>
+              <article className="summary-tile">
+                <small>Promedio general</small>
+                <strong>{historyAverage !== null ? formatNumber(historyAverage, '-') : '-'}</strong>
+                <span>Promedio de asignaturas con nota</span>
+              </article>
+            </div>
+          ) : null}
+
+          {!loadingHistory && !historyError && Array.isArray(history?.asignaturas) && history.asignaturas.length ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Asignatura</th>
+                    <th>Curso</th>
+                    <th>Promedio</th>
+                    <th>Asistencia</th>
+                    <th>Notas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.asignaturas.map((item) => (
+                    <tr key={item.clase_id}>
+                      <td>{item.asignatura}</td>
+                      <td>{item.curso}</td>
+                      <td>{formatNumber(item.promedio, '-')}</td>
+                      <td>{formatPercentage(item.porcentaje_asistencia)}</td>
+                      <td>{Array.isArray(item.notas) && item.notas.length ? item.notas.join(', ') : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </article>
+      </div>
     </section>
   );
 }

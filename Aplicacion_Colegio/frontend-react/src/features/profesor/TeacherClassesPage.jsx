@@ -1,58 +1,16 @@
 import { useMemo, useState } from 'react';
 
-import { useFetch } from '../../lib/hooks';
-
-function formatNumber(value) {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  const numericValue = Number(value);
-  if (Number.isNaN(numericValue)) {
-    return String(value);
-  }
-
-  return numericValue.toFixed(1).replace(/\.0$/, '');
-}
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../lib/apiClient';
+import { SummarySkeleton } from '../../components/TableLoadingState';
+import { formatNumber } from '../../lib/formatters';
 
 function formatPercentage(value) {
   if (value === null || value === undefined || value === '') {
     return '-';
   }
 
-  return `${formatNumber(value)}%`;
-}
-
-function TeacherClassesLoadingState() {
-  return (
-    <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-      <div className="section-card-head">
-        <div>
-          <div style={{ height: '12px', width: '110px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.75rem' }} />
-          <div style={{ height: '26px', width: '240px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          <div style={{ height: '14px', width: '300px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.12)', marginTop: '0.9rem' }} />
-        </div>
-      </div>
-
-      <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="summary-tile" style={{ minHeight: '108px', background: 'rgba(148, 163, 184, 0.08)' }}>
-            <div style={{ height: '12px', width: '84px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '0.85rem' }} />
-            <div style={{ height: '26px', width: index === 1 ? '72px' : '96px', borderRadius: '12px', background: 'rgba(148, 163, 184, 0.14)' }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid-2" style={{ marginTop: '1.25rem' }}>
-        {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className="card section-card" style={{ minHeight: '220px' }}>
-            <div style={{ height: '18px', width: '170px', borderRadius: '999px', background: 'rgba(148, 163, 184, 0.18)', marginBottom: '1rem' }} />
-            <div style={{ height: '150px', borderRadius: '16px', background: 'linear-gradient(90deg, rgba(148,163,184,0.08), rgba(148,163,184,0.14), rgba(148,163,184,0.08))' }} />
-          </div>
-        ))}
-      </div>
-    </article>
-  );
+  return `${formatNumber(value, '-')}%`;
 }
 
 export default function TeacherClassesPage() {
@@ -60,7 +18,11 @@ export default function TeacherClassesPage() {
   const [selectedClassId, setSelectedClassId] = useState('');
 
   // Load classes
-  const { data: classesResp, loading, error } = useFetch('/api/v1/profesor/clases/');
+  const { data: classesResp, isLoading: loading, error: errorObj } = useQuery({
+    queryKey: ['profesor-clases'],
+    queryFn: () => apiClient.get('/api/v1/profesor/clases/')
+  });
+  const error = errorObj?.message;
   const rows = (classesResp?.results || []);
 
   // Build trends URL with parameters
@@ -69,10 +31,18 @@ export default function TeacherClassesPage() {
     trendsParams.set('clase_id', selectedClassId);
   }
   const trendsUrl = `/api/v1/profesor/tendencias/?${trendsParams.toString()}`;
-  const { data: trends, loading: loadingTrends, error: trendsError } = useFetch(trendsUrl);
+  const { data: trends, isLoading: loadingTrends, error: trendsErrorObj } = useQuery({
+    queryKey: ['profesor-tendencias', periodo, selectedClassId],
+    queryFn: () => apiClient.get(trendsUrl)
+  });
+  const trendsError = trendsErrorObj?.message;
 
   // Load schedule
-  const { data: schedule, loading: loadingSchedule, error: scheduleError } = useFetch('/api/v1/profesor/mi-horario/');
+  const { data: schedule, isLoading: loadingSchedule, error: scheduleErrorObj } = useQuery({
+    queryKey: ['profesor-horario'],
+    queryFn: () => apiClient.get('/api/v1/profesor/mi-horario/')
+  });
+  const scheduleError = scheduleErrorObj?.message;
 
   // Validate selectedClassId against loaded classes
   if (selectedClassId && !rows.some((row) => String(row.id) === String(selectedClassId))) {
@@ -99,7 +69,7 @@ export default function TeacherClassesPage() {
       },
       {
         title: 'Promedio general',
-        value: averageGrade !== undefined && averageGrade !== null ? formatNumber(averageGrade) : '-',
+        value: averageGrade !== undefined && averageGrade !== null ? formatNumber(averageGrade, '-') : '-',
         subtitle: averageGrade ? 'Del periodo seleccionado' : 'Sin datos de promedio',
       },
       {
@@ -119,22 +89,23 @@ export default function TeacherClassesPage() {
         </div>
       </header>
 
-      {loading ? <TeacherClassesLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
 
-      {!loading && !error ? (
-        <div className="summary-grid">
-          {summary.map((item) => (
-            <article key={item.title} className="summary-tile">
-              <small>{item.title}</small>
-              <strong>{item.value}</strong>
-              <span>{item.subtitle}</span>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : summary.map((item) => (
+              <article key={item.title} className="summary-tile">
+                <small>{item.title}</small>
+                <strong>{item.value}</strong>
+                <span>{item.subtitle}</span>
+              </article>
+            ))}
+      </div>
 
-      {!loading && !error ? (
+      {!error ? (
         <div className="grid-2">
           <article className="card section-card">
             <div className="section-card-head">
@@ -173,7 +144,7 @@ export default function TeacherClassesPage() {
               <div className="summary-grid section-card">
                 <article className="summary-tile">
                   <small>Promedio general</small>
-                  <strong>{formatNumber(trends.tendencia_general.promedio_general)}</strong>
+                  <strong>{formatNumber(trends.tendencia_general.promedio_general, '-')}</strong>
                 </article>
                 <article className="summary-tile">
                   <small>Asistencia general</small>
@@ -298,46 +269,6 @@ export default function TeacherClassesPage() {
           ) : (
             <p>No tienes clases asignadas todavía.</p>
           )}
-        </article>
-      ) : null}
-
-      {!loadingTrends && !trendsError && Array.isArray(trends?.tendencias_por_clase) && trends.tendencias_por_clase.length ? (
-        <article className="card section-card">
-          <div className="section-card-head">
-            <div>
-              <h3>Tendencias por Clase</h3>
-              <p>Comparativa de rendimiento y asistencia por curso.</p>
-            </div>
-          </div>
-
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Curso</th>
-                  <th>Asignatura</th>
-                  <th>Promedio actual</th>
-                  <th>Promedio anterior</th>
-                  <th>Tendencia</th>
-                  <th>Aprobación</th>
-                  <th>Asistencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trends.tendencias_por_clase.map((row) => (
-                  <tr key={row.clase_id}>
-                    <td>{row.curso}</td>
-                    <td>{row.asignatura}</td>
-                    <td>{formatNumber(row.promedio_actual)}</td>
-                    <td>{formatNumber(row.promedio_anterior)}</td>
-                    <td>{row.tendencia || 'sin dato'}</td>
-                    <td>{formatPercentage(row.porcentaje_aprobacion)}</td>
-                    <td>{formatPercentage(row.porcentaje_asistencia)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </article>
       ) : null}
     </section>

@@ -1,51 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { renderWithProviders, paginated, getMock, postMock, patchMock, deleteMock } from '../../test/test-utils';
 
 import AdminGradesPage from './AdminGradesPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const deleteMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => deleteMock(...args),
-  },
-}));
-
-function renderPage(me, initialUrl = '/admin/calificaciones') {
-  return render(
-    <MemoryRouter initialEntries={[initialUrl]}>
-      <Routes>
-        <Route path="/admin/calificaciones" element={<AdminGradesPage me={me} />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
-
-function paginated(results) {
-  return {
-    count: results.length,
-    next: null,
-    previous: null,
-    results,
-  };
-}
-
 describe('AdminGradesPage', () => {
-  beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    deleteMock.mockReset();
-    vi.restoreAllMocks();
-  });
 
   it('creates grade with GRADE_CREATE capability', async () => {
     const user = userEvent.setup();
@@ -53,12 +13,18 @@ describe('AdminGradesPage', () => {
     getMock.mockResolvedValue(paginated([]));
     postMock.mockResolvedValue({ id_calificacion: 55 });
 
-    renderPage({ capabilities: ['GRADE_VIEW', 'GRADE_CREATE'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?page=1');
+    renderWithProviders(<AdminGradesPage me={{ capabilities: ['GRADE_VIEW', 'GRADE_CREATE'] }} />, {
+      route: '/admin/calificaciones',
+      path: '/admin/calificaciones'
     });
 
+    // Wait for data to load
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/profesor/calificaciones/'));
+    });
+
+    // Wait for loading to finish
+    await screen.findByText('Evaluacion ID');
     await user.type(screen.getByLabelText('Evaluacion ID'), '10');
     await user.type(screen.getByLabelText('Estudiante ID'), '21');
     await user.type(screen.getByLabelText('Nota'), '6.2');
@@ -90,11 +56,13 @@ describe('AdminGradesPage', () => {
 
     patchMock.mockResolvedValue({ id_calificacion: 55, nota: 6.0 });
 
-    renderPage({ capabilities: ['GRADE_VIEW', 'GRADE_EDIT'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?page=1');
+    renderWithProviders(<AdminGradesPage me={{ capabilities: ['GRADE_VIEW', 'GRADE_EDIT'] }} />, {
+      route: '/admin/calificaciones',
+      path: '/admin/calificaciones'
     });
+
+    // Wait for table data to render
+    expect(await screen.findByText('Alumno Test')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Editar' }));
 
@@ -130,11 +98,13 @@ describe('AdminGradesPage', () => {
 
     deleteMock.mockResolvedValue(null);
 
-    renderPage({ capabilities: ['GRADE_VIEW', 'GRADE_DELETE'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?page=1');
+    renderWithProviders(<AdminGradesPage me={{ capabilities: ['GRADE_VIEW', 'GRADE_DELETE'] }} />, {
+      route: '/admin/calificaciones',
+      path: '/admin/calificaciones'
     });
+
+    // Wait for table data to render
+    expect(await screen.findByText('Alumno Test')).toBeInTheDocument();
 
     const deleteButtons = screen.getAllByRole('button', { name: 'Eliminar' });
     await user.click(deleteButtons[0]);
@@ -147,13 +117,13 @@ describe('AdminGradesPage', () => {
   it('read-only user sees restrictions', async () => {
     getMock.mockResolvedValue(paginated([]));
 
-    renderPage({ capabilities: ['GRADE_VIEW'] });
-
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/calificaciones/?page=1');
+    renderWithProviders(<AdminGradesPage me={{ capabilities: ['GRADE_VIEW'] }} />, {
+      route: '/admin/calificaciones',
+      path: '/admin/calificaciones'
     });
 
-    expect(screen.getByText(/falta capability `GRADE_CREATE` para crear/)).toBeInTheDocument();
+    // Wait for data to load and table to render
+    expect(await screen.findByText(/falta capability `GRADE_CREATE` para crear/)).toBeInTheDocument();
     expect(screen.getByText(/falta capability `GRADE_DELETE` para eliminacion masiva/)).toBeInTheDocument();
   });
 });

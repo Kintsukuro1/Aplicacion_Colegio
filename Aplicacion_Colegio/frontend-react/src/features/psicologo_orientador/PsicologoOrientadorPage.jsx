@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
+import { useQuery } from '@tanstack/react-query';
 import { hasCapability } from '../../lib/capabilities';
+import { useToast } from '../../components/Toast';
+import { useAuthStore } from '../../store/auth';
 
 const EMPTY_FORM = {
   estudiante_id: '',
@@ -40,8 +43,9 @@ function PsicologoOrientadorLoadingState() {
   );
 }
 
-export default function PsicologoOrientadorPage({ me }) {
-  const [students, setStudents] = useState([]);
+export default function PsicologoOrientadorPage() {
+  const me = useAuthStore((state) => state.user);
+  const toast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [referralForm, setReferralForm] = useState({
     estudiante_id: '',
@@ -57,13 +61,17 @@ export default function PsicologoOrientadorPage({ me }) {
     fecha_retorno: '',
   });
   const [pieForm, setPieForm] = useState({ estudiante_id: '', requiere_pie: true });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [referralSaving, setReferralSaving] = useState(false);
   const [updateReferralSaving, setUpdateReferralSaving] = useState(false);
   const [pieSaving, setPieSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+
+  const { data: studentsData, isLoading: loading, error: errorObj } = useQuery({
+    queryKey: ['psicologo-estudiantes'],
+    queryFn: () => apiClient.get('/api/psicologo/estudiantes/')
+  });
+  const students = studentsData?.estudiantes || [];
+  const error = errorObj ? resolveError(errorObj, 'No se pudo cargar estudiantes.') : '';
 
   const canCreate = useMemo(() => hasCapability(me, 'COUNSELING_CREATE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
   const canCreateReferral = useMemo(
@@ -101,34 +109,6 @@ export default function PsicologoOrientadorPage({ me }) {
     [canCreate, canCreateReferral, canEditReferral, loading, students.length]
   );
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadStudents() {
-      setLoading(true);
-      setError('');
-      try {
-        const payload = await apiClient.get('/api/psicologo/estudiantes/');
-        if (active) {
-          setStudents(Array.isArray(payload?.estudiantes) ? payload.estudiantes : []);
-        }
-      } catch (err) {
-        if (active) {
-          setError(resolveError(err, 'No se pudo cargar estudiantes.'));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadStudents();
-    return () => {
-      active = false;
-    };
-  }, []);
-
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
@@ -136,13 +116,11 @@ export default function PsicologoOrientadorPage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
-      setError('No tienes permisos para crear entrevistas.');
+      toast.error('No tienes permisos para crear entrevistas.');
       return;
     }
 
     setSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/psicologo/entrevistas/crear/', {
         estudiante_id: Number(form.estudiante_id),
@@ -152,10 +130,10 @@ export default function PsicologoOrientadorPage({ me }) {
         acuerdos: form.acuerdos,
         seguimiento_requerido: Boolean(form.seguimiento_requerido),
       });
-      setMessage(payload?.message || 'Entrevista creada.');
+      toast.success(payload?.message || 'Entrevista creada.');
       setForm(EMPTY_FORM);
     } catch (err) {
-      setError(resolveError(err, 'No se pudo crear la entrevista.'));
+      toast.error(resolveError(err, 'No se pudo crear la entrevista.'));
     } finally {
       setSaving(false);
     }
@@ -164,13 +142,11 @@ export default function PsicologoOrientadorPage({ me }) {
   async function onReferralSubmit(event) {
     event.preventDefault();
     if (!canCreateReferral) {
-      setError('No tienes permisos para crear derivaciones.');
+      toast.error('No tienes permisos para crear derivaciones.');
       return;
     }
 
     setReferralSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post('/api/psicologo/derivaciones/crear/', {
         estudiante_id: Number(referralForm.estudiante_id),
@@ -179,10 +155,10 @@ export default function PsicologoOrientadorPage({ me }) {
         motivo: referralForm.motivo,
         fecha_derivacion: referralForm.fecha_derivacion || undefined,
       });
-      setMessage(payload?.message || 'Derivacion registrada.');
+      toast.success(payload?.message || 'Derivacion registrada.');
       setReferralForm({ estudiante_id: '', profesional_destino: '', especialidad: '', motivo: '', fecha_derivacion: '' });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo crear la derivacion.'));
+      toast.error(resolveError(err, 'No se pudo crear la derivacion.'));
     } finally {
       setReferralSaving(false);
     }
@@ -191,23 +167,21 @@ export default function PsicologoOrientadorPage({ me }) {
   async function onUpdateReferralSubmit(event) {
     event.preventDefault();
     if (!canEditReferral) {
-      setError('No tienes permisos para editar derivaciones.');
+      toast.error('No tienes permisos para editar derivaciones.');
       return;
     }
 
     setUpdateReferralSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/psicologo/derivaciones/${updateReferralForm.derivacion_id}/`, {
         estado: updateReferralForm.estado,
         informe_retorno: updateReferralForm.informe_retorno,
         fecha_retorno: updateReferralForm.fecha_retorno || undefined,
       });
-      setMessage(payload?.message || 'Derivacion actualizada.');
+      toast.success(payload?.message || 'Derivacion actualizada.');
       setUpdateReferralForm({ derivacion_id: '', estado: 'EN_PROCESO', informe_retorno: '', fecha_retorno: '' });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo actualizar la derivacion.'));
+      toast.error(resolveError(err, 'No se pudo actualizar la derivacion.'));
     } finally {
       setUpdateReferralSaving(false);
     }
@@ -216,21 +190,19 @@ export default function PsicologoOrientadorPage({ me }) {
   async function onPieSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
-      setError('No tienes permisos para gestionar estado PIE.');
+      toast.error('No tienes permisos para gestionar estado PIE.');
       return;
     }
 
     setPieSaving(true);
-    setError('');
-    setMessage('');
     try {
       const payload = await apiClient.post(`/api/psicologo/estudiantes/${pieForm.estudiante_id}/pie/`, {
         requiere_pie: Boolean(pieForm.requiere_pie),
       });
-      setMessage(payload?.message || 'Estado PIE actualizado.');
+      toast.success(payload?.message || 'Estado PIE actualizado.');
       setPieForm({ estudiante_id: '', requiere_pie: true });
     } catch (err) {
-      setError(resolveError(err, 'No se pudo actualizar estado PIE.'));
+      toast.error(resolveError(err, 'No se pudo actualizar estado PIE.'));
     } finally {
       setPieSaving(false);
     }
@@ -247,7 +219,6 @@ export default function PsicologoOrientadorPage({ me }) {
 
       {loading ? <PsicologoOrientadorLoadingState /> : null}
       {error ? <div className="error-box">{error}</div> : null}
-      {message ? <div className="card">{message}</div> : null}
 
       {!loading && !error ? (
         <div className="summary-grid">

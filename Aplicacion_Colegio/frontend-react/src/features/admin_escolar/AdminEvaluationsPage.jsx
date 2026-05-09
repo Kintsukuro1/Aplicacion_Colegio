@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { usePagination } from '../../lib/hooks';
+import { formatNumber } from '../../lib/formatters';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
-import { asPaginated } from '../../lib/httpHelpers';
 
 function isBatchEndpointUnavailable(error) {
   return error?.status === 404 || error?.status === 405;
@@ -22,101 +26,35 @@ function toBulkResult(payload, fallbackFailedIds = []) {
   return { success, failed, failedIds };
 }
 
-export default function AdminEvaluationsPage({ me }) {
+export default function AdminEvaluationsPage() {
+  const me = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const [rows, setRows] = useState([]);
-  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
+  const page = Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1;
   const [selectedIds, setSelectedIds] = useState([]);
   const [processingBulk, setProcessingBulk] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
   const [lastBulkTargetActive, setLastBulkTargetActive] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { canAny } = usePermissions(me);
 
-  const canView =
-    hasCapability(me, 'GRADE_VIEW') ||
-    hasCapability(me, 'GRADE_CREATE') ||
-    hasCapability(me, 'GRADE_EDIT') ||
-    hasCapability(me, 'GRADE_DELETE') ||
-    hasCapability(me, 'SYSTEM_ADMIN');
-  const canEdit = hasCapability(me, 'GRADE_EDIT') || hasCapability(me, 'SYSTEM_ADMIN');
+  const canView = canAny(['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE', 'SYSTEM_ADMIN']);
+  const canEdit = canAny(['GRADE_EDIT', 'SYSTEM_ADMIN']);
+  const toast = useToast();
+  const paginationUrl = '/api/v1/evaluaciones/';
+  const { items: rows, pagination, loading, error: apiError, refetch } = usePagination(paginationUrl, {
+    skip: !canView,
+  });
 
-  function formatDisplay(value) {
-    if (value === null || value === undefined || value === '') return '0';
-    if (typeof value === 'number') return String(value);
-    return String(value);
-  }
 
-  function AdminEvaluationsLoadingState() {
-    return (
-      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-        <div className="section-card-head">
-          <div>
-            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
-            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
-          </div>
-        </div>
-
-        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
-              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
-              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
-            </div>
-          ))}
-        </div>
-      </article>
-    );
-  }
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
-    setPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
     setSearchParams(nextParams, { replace: true });
+    setSelectedIds([]);
+    setBulkResult(null);
   }
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadEvaluations() {
-      setLoading(true);
-      setError('');
-      try {
-        if (!canView) {
-          return;
-        }
-        const payload = await apiClient.get(`/api/v1/profesor/evaluaciones/?page=${page}`);
-        const paginated = asPaginated(payload);
-        if (active) {
-          setRows(paginated.results);
-          setSelectedIds([]);
-          setBulkResult(null);
-          setCount(paginated.count);
-          setHasNext(Boolean(paginated.next));
-          setHasPrevious(Boolean(paginated.previous));
-        }
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar evaluaciones.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadEvaluations();
-    return () => {
-      active = false;
-    };
-  }, [canView, page]);
 
   function toggleSelect(evaluationId) {
     setSelectedIds((prev) => {
@@ -139,7 +77,6 @@ export default function AdminEvaluationsPage({ me }) {
 
   async function runBulkToggleActive(targetIds, targetActive) {
     setProcessingBulk(true);
-    setError('');
     setBulkResult(null);
     setLastBulkTargetActive(targetActive);
 
@@ -171,16 +108,11 @@ export default function AdminEvaluationsPage({ me }) {
       }
 
       setBulkResult(result);
-
-      const payload = await apiClient.get(`/api/v1/profesor/evaluaciones/?page=${page}`);
-      const paginated = asPaginated(payload);
-      setRows(paginated.results);
+      await refetch();
       setSelectedIds([]);
-      setCount(paginated.count);
-      setHasNext(Boolean(paginated.next));
-      setHasPrevious(Boolean(paginated.previous));
+      toast.success('Actualizacion masiva completada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo completar la actualizacion masiva.');
+      toast.error(err.payload?.detail || 'No se pudo completar la actualizacion masiva.');
     } finally {
       setProcessingBulk(false);
     }
@@ -188,12 +120,12 @@ export default function AdminEvaluationsPage({ me }) {
 
   async function onBulkToggleActive(targetActive) {
     if (!canEdit) {
-      setError('No tienes permisos para editar evaluaciones.');
+      toast.error('No tienes permisos para editar evaluaciones.');
       return;
     }
 
     if (selectedIds.length === 0) {
-      setError('Selecciona al menos una evaluacion para actualizar.');
+      toast.error('Selecciona al menos una evaluacion para actualizar.');
       return;
     }
 
@@ -234,127 +166,131 @@ export default function AdminEvaluationsPage({ me }) {
         </div>
       </header>
 
-      {loading ? <AdminEvaluationsLoadingState /> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {apiError ? <div className="error-box">{apiError}</div> : null}
       {!canEdit ? <p>Modo restringido: falta capability `GRADE_EDIT` para edicion masiva.</p> : null}
 
-      {!loading && !error ? (
-        <>
-          <div className="summary-grid">
-            {[
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : [
               { title: 'Evaluaciones visibles', value: rows.length },
-              { title: 'Total paginado', value: count },
-              { title: 'Siguiente pagina', value: hasNext ? 'Si' : 'No' },
-              { title: 'Pagina previa', value: hasPrevious ? 'Si' : 'No' },
+              { title: 'Total paginado', value: pagination.total },
+              { title: 'Siguiente pagina', value: pagination.hasNext ? 'Si' : 'No' },
+              { title: 'Pagina previa', value: pagination.hasPrevious ? 'Si' : 'No' },
             ].map((item) => (
               <article key={item.title} className="summary-tile">
                 <small>{item.title}</small>
-                <strong>{formatDisplay(item.value)}</strong>
+                <strong>{formatNumber(item.value)}</strong>
               </article>
             ))}
-          </div>
+      </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
+      {loading ? (
+        <TableLoadingState />
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id_evaluacion))}
+                    onChange={toggleSelectAllCurrentPage}
+                    disabled={!canEdit || rows.length === 0 || processingBulk}
+                  />
+                </th>
+                <th>ID</th>
+                <th>Clase</th>
+                <th>Nombre</th>
+                <th>Fecha</th>
+                <th>Ponderacion</th>
+                <th>Tipo</th>
+                <th>Activa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id_evaluacion}>
+                  <td>
                     <input
                       type="checkbox"
-                      checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id_evaluacion))}
-                      onChange={toggleSelectAllCurrentPage}
-                      disabled={!canEdit || rows.length === 0 || processingBulk}
+                      checked={selectedIds.includes(row.id_evaluacion)}
+                      onChange={() => toggleSelect(row.id_evaluacion)}
+                      disabled={!canEdit || processingBulk}
                     />
-                  </th>
-                  <th>ID</th>
-                  <th>Clase</th>
-                  <th>Nombre</th>
-                  <th>Fecha</th>
-                  <th>Ponderacion</th>
-                  <th>Tipo</th>
-                  <th>Activa</th>
+                  </td>
+                  <td>{row.id_evaluacion}</td>
+                  <td>{row.clase}</td>
+                  <td>{row.nombre}</td>
+                  <td>{row.fecha_evaluacion}</td>
+                  <td>{row.ponderacion}</td>
+                  <td>{row.tipo_evaluacion}</td>
+                  <td>{row.activa ? 'Si' : 'No'}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_evaluacion}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(row.id_evaluacion)}
-                        onChange={() => toggleSelect(row.id_evaluacion)}
-                        disabled={!canEdit || processingBulk}
-                      />
-                    </td>
-                    <td>{row.id_evaluacion}</td>
-                    <td>{row.clase}</td>
-                    <td>{row.nombre}</td>
-                    <td>{row.fecha_evaluacion}</td>
-                    <td>{row.ponderacion}</td>
-                    <td>{row.tipo_evaluacion}</td>
-                    <td>{row.activa ? 'Si' : 'No'}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="8">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+              ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan="8">Sin registros</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {canEdit ? (
+        <div className="card section-card">
+          <div className="bulk-actions-bar">
+            <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
+            <div className="bulk-actions-row">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => onBulkToggleActive(true)}
+                disabled={processingBulk || selectedIds.length === 0}
+              >
+                {processingBulk ? 'Procesando...' : 'Activar Seleccionadas'}
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => onBulkToggleActive(false)}
+                disabled={processingBulk || selectedIds.length === 0}
+              >
+                {processingBulk ? 'Procesando...' : 'Desactivar Seleccionadas'}
+              </button>
+            </div>
           </div>
 
-          {canEdit ? (
-            <div className="card section-card">
-              <div className="bulk-actions-bar">
-                <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-                <div className="bulk-actions-row">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => onBulkToggleActive(true)}
-                    disabled={processingBulk || selectedIds.length === 0}
-                  >
-                    {processingBulk ? 'Procesando...' : 'Activar Seleccionadas'}
-                  </button>
-                  <button
-                    type="button"
-                    className="danger"
-                    onClick={() => onBulkToggleActive(false)}
-                    disabled={processingBulk || selectedIds.length === 0}
-                  >
-                    {processingBulk ? 'Procesando...' : 'Desactivar Seleccionadas'}
-                  </button>
-                </div>
-              </div>
-
-              {bulkResult ? (
-                <p className="bulk-result-text">
-                  Actualizacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
-                  {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
-                </p>
-              ) : null}
-
-              {bulkResult && bulkResult.failed > 0 ? (
-                <div className="bulk-retry-actions">
-                  <button type="button" className="secondary" onClick={retryFailedBulkUpdate} disabled={processingBulk}>
-                    {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+          {bulkResult ? (
+            <p className="bulk-result-text">
+              Actualizacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
+              {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
+            </p>
           ) : null}
 
-          <PaginationControls
-            page={page}
-            count={count}
-            hasNext={hasNext}
-            hasPrevious={hasPrevious}
-            onPageChange={updatePage}
-            loading={loading}
-          />
-        </>
+          {bulkResult && bulkResult.failed > 0 ? (
+            <div className="bulk-retry-actions">
+              <button type="button" className="secondary" onClick={retryFailedBulkUpdate} disabled={processingBulk}>
+                {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
+
+      <PaginationControls
+        page={page}
+        count={pagination.total}
+        hasNext={pagination.hasNext}
+        hasPrevious={pagination.hasPrevious}
+        onPageChange={updatePage}
+        loading={loading}
+      />
     </section>
   );
 }
+

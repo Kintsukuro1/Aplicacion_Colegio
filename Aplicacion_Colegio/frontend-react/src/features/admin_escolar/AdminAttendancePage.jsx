@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { apiClient } from '../../lib/apiClient';
-import { hasCapability } from '../../lib/capabilities';
-import { asPaginated, asResults } from '../../lib/httpHelpers';
+import { useFetch, usePagination } from '../../lib/hooks';
+import { formatNumber } from '../../lib/formatters';
+import { usePermissions } from '../../lib/hooks/usePermissions';
+import { useToast } from '../../components/Toast';
 
 const ATTENDANCE_STATES = [
   { value: 'P', label: 'Presente' },
@@ -29,7 +33,8 @@ function toBulkResult(payload, fallbackFailedIds = []) {
   return { success, failed, failedIds };
 }
 
-export default function AdminAttendancePage({ me }) {
+export default function AdminAttendancePage() {
+  const me = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialClass = searchParams.get('clase_id') || '';
   const initialDate = searchParams.get('fecha') || '';
@@ -39,9 +44,6 @@ export default function AdminAttendancePage({ me }) {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
   const [rows, setRows] = useState([]);
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [form, setForm] = useState({
     clase: initialClass,
@@ -57,48 +59,20 @@ export default function AdminAttendancePage({ me }) {
   const [saving, setSaving] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
   const [lastBulkState, setLastBulkState] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const toast = useToast();
+  const { canAny } = usePermissions(me);
 
   const canView = useMemo(
     () =>
-      hasCapability(me, 'CLASS_VIEW_ATTENDANCE') ||
-      hasCapability(me, 'CLASS_TAKE_ATTENDANCE') ||
-      hasCapability(me, 'SYSTEM_ADMIN'),
-    [me]
+      canAny(['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE', 'SYSTEM_ADMIN']),
+    [canAny]
   );
-  const canEdit = useMemo(() => hasCapability(me, 'CLASS_TAKE_ATTENDANCE') || hasCapability(me, 'SYSTEM_ADMIN'), [me]);
+  const canEdit = useMemo(() => canAny(['CLASS_TAKE_ATTENDANCE', 'SYSTEM_ADMIN']), [canAny]);
   const canSubmit = useMemo(() => {
     return Boolean(form.clase && form.estudiante && form.fecha && form.estado);
   }, [form]);
 
-  function formatDisplay(value) {
-    if (value === null || value === undefined || value === '') return '0';
-    if (typeof value === 'number') return String(value);
-    return String(value);
-  }
 
-  function AdminAttendanceLoadingState() {
-    return (
-      <article className="card section-card" aria-busy="true" aria-live="polite" role="status">
-        <div className="section-card-head">
-          <div>
-            <div style={{ height: '12px', width: '120px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.75rem' }} />
-            <div style={{ height: '26px', width: '220px', borderRadius: '12px', background: 'rgba(148,163,184,0.14)' }} />
-          </div>
-        </div>
-
-        <div className="summary-grid" style={{ marginTop: '1.25rem' }}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="summary-tile" style={{ minHeight: '72px', background: 'rgba(148,163,184,0.06)' }}>
-              <div style={{ height: '12px', width: '88px', borderRadius: '999px', background: 'rgba(148,163,184,0.18)', marginBottom: '0.6rem' }} />
-              <div style={{ height: '20px', width: '72px', borderRadius: '8px', background: 'rgba(148,163,184,0.12)' }} />
-            </div>
-          ))}
-        </div>
-      </article>
-    );
-  }
 
   function updateFilters(nextClass, nextDate, nextPage = 1) {
     setSelectedClass(nextClass);
@@ -157,7 +131,7 @@ export default function AdminAttendancePage({ me }) {
 
   function startEdit(row) {
     if (!canEdit) {
-      setError('No tienes permisos para editar asistencias.');
+      toast.error('No tienes permisos para editar asistencias.');
       return;
     }
 
@@ -172,38 +146,37 @@ export default function AdminAttendancePage({ me }) {
     });
   }
 
-  async function loadClasses() {
-    const payload = await apiClient.get('/api/v1/profesor/clases/');
-    const classRows = asResults(payload);
+
+  const { data: classesResp, loading: classesLoading, error: classesError } = useFetch('/api/v1/profesor/clases/', { skip: !canView });
+  useEffect(() => {
+    const classRows = Array.isArray(classesResp?.results) ? classesResp.results : [];
     setClasses(classRows);
     if (!selectedClass && classRows.length) {
       updateFilters(String(classRows[0].id), selectedDate);
     }
-  }
+  }, [classesResp, classesError]);
 
-  async function loadAttendance(resetSelection = true, resetBulkResult = true) {
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    if (selectedClass) {
-      params.set('clase_id', selectedClass);
+  const paginationUrl = '/api/v1/profesor/asistencias/';
+  const paginationParams = { page };
+  if (selectedClass) paginationParams.clase_id = selectedClass;
+  if (selectedDate) paginationParams.fecha = selectedDate;
+  
+  const { items: attendanceRows, pagination, loading: attendanceLoading, error: attendanceError, refetch: refetchAttendance } = usePagination(paginationUrl, {
+    params: paginationParams,
+    pageMode: true,
+    skip: !canView || !selectedClass,
+  });
+
+  const hasNext = pagination.currentPage < Math.max(0, pagination.totalPages - 1);
+  const hasPrevious = pagination.currentPage > 0;
+
+  useEffect(() => {
+    if (Array.isArray(attendanceRows)) {
+      setRows(attendanceRows);
     }
-    if (selectedDate) {
-      params.set('fecha', selectedDate);
-    }
-    const query = params.toString();
-    const payload = await apiClient.get(`/api/v1/profesor/asistencias/${query ? `?${query}` : ''}`);
-    const paginated = asPaginated(payload);
-    setRows(paginated.results);
-    if (resetSelection) {
-      setSelectedIds([]);
-    }
-    if (resetBulkResult) {
-      setBulkResult(null);
-    }
-    setCount(paginated.count);
-    setHasNext(Boolean(paginated.next));
-    setHasPrevious(Boolean(paginated.previous));
-  }
+    // reset selection when page changes
+    setSelectedIds([]);
+  }, [attendanceRows, attendanceError]);
 
   function toggleSelect(attendanceId) {
     setSelectedIds((prev) => {
@@ -226,7 +199,6 @@ export default function AdminAttendancePage({ me }) {
 
   async function runBulkUpdateState(targetIds, targetState) {
     setProcessingBulk(true);
-    setError('');
     setBulkResult(null);
     setLastBulkState(targetState);
 
@@ -259,10 +231,10 @@ export default function AdminAttendancePage({ me }) {
       }
 
       setBulkResult(result);
-
-      await loadAttendance(true, false);
+      await refetchAttendance?.();
+      toast.success('Actualizacion masiva completada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo completar la actualizacion masiva.');
+      toast.error(err.payload?.detail || 'No se pudo completar la actualizacion masiva.');
     } finally {
       setProcessingBulk(false);
     }
@@ -270,12 +242,12 @@ export default function AdminAttendancePage({ me }) {
 
   async function onBulkUpdateState() {
     if (!canEdit) {
-      setError('No tienes permisos para editar asistencias.');
+      toast.error('No tienes permisos para editar asistencias.');
       return;
     }
 
     if (selectedIds.length === 0) {
-      setError('Selecciona al menos una asistencia para actualizar.');
+      toast.error('Selecciona al menos una asistencia para actualizar.');
       return;
     }
 
@@ -297,7 +269,7 @@ export default function AdminAttendancePage({ me }) {
   async function onSubmit(event) {
     event.preventDefault();
     if (!canEdit) {
-      setError(editingId ? 'No tienes permisos para editar asistencias.' : 'No tienes permisos para crear asistencias.');
+      toast.error(editingId ? 'No tienes permisos para editar asistencias.' : 'No tienes permisos para crear asistencias.');
       return;
     }
     if (!canSubmit) {
@@ -305,7 +277,6 @@ export default function AdminAttendancePage({ me }) {
     }
 
     setSaving(true);
-    setError('');
     try {
       const payload = toPayload();
       if (editingId) {
@@ -313,10 +284,11 @@ export default function AdminAttendancePage({ me }) {
       } else {
         await apiClient.post('/api/v1/profesor/asistencias/', payload);
       }
-      await loadAttendance();
+      await refetchAttendance?.();
       resetForm();
+      toast.success(editingId ? 'Asistencia actualizada' : 'Asistencia creada');
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar asistencia.');
+      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar asistencia.');
     } finally {
       setSaving(false);
     }
@@ -324,7 +296,7 @@ export default function AdminAttendancePage({ me }) {
 
   async function onDelete(attendanceId) {
     if (!canEdit) {
-      setError('No tienes permisos para eliminar asistencias.');
+      toast.error('No tienes permisos para eliminar asistencias.');
       return;
     }
     if (!window.confirm('Eliminar esta asistencia?')) {
@@ -333,39 +305,13 @@ export default function AdminAttendancePage({ me }) {
 
     try {
       await apiClient.del(`/api/v1/profesor/asistencias/${attendanceId}/`);
-      await loadAttendance();
+      await refetchAttendance?.();
+      toast.success('Asistencia eliminada');
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo eliminar asistencia.');
+      toast.error(err.payload?.detail || 'No se pudo eliminar asistencia.');
     }
   }
 
-  useEffect(() => {
-    let active = true;
-
-    async function bootstrap() {
-      setLoading(true);
-      setError('');
-      try {
-        if (!canView) {
-          return;
-        }
-        await loadClasses();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar clases.');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    bootstrap();
-    return () => {
-      active = false;
-    };
-  }, [canView]);
 
   useEffect(() => {
     setForm((prev) => ({
@@ -376,27 +322,13 @@ export default function AdminAttendancePage({ me }) {
   }, [selectedClass, selectedDate]);
 
   useEffect(() => {
-    let active = true;
+    // when filters change, pagination hook will refetch automatically due to params change
+    // ensure we clear selection and bulk results when class toggles
+    setSelectedIds([]);
+    setBulkResult(null);
+  }, [selectedClass, selectedDate, page]);
 
-    async function refreshAttendance() {
-      if (!canView || !selectedClass) {
-        setRows([]);
-        return;
-      }
-      try {
-        await loadAttendance();
-      } catch (err) {
-        if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar asistencias.');
-        }
-      }
-    }
-
-    refreshAttendance();
-    return () => {
-      active = false;
-    };
-  }, [canView, selectedClass, selectedDate, page]);
+  const loading = !!(classesLoading || attendanceLoading);
 
   if (!canView) {
     return (
@@ -420,7 +352,7 @@ export default function AdminAttendancePage({ me }) {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {classesError || attendanceError ? <div className="error-box">{classesError || attendanceError}</div> : null}
 
       {!canEdit ? <p>Modo restringido: falta capability `CLASS_TAKE_ATTENDANCE` para edicion masiva.</p> : null}
 
@@ -512,134 +444,137 @@ export default function AdminAttendancePage({ me }) {
         </form>
       ) : null}
 
-      {loading ? <AdminAttendanceLoadingState /> : null}
-
-      {!loading ? (
-        <>
-          <div className="summary-grid">
-            {[
+      <div className="summary-grid">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <SummarySkeleton key={index} />
+            ))
+          : [
               { title: 'Registros visibles', value: rows.length },
-              { title: 'Total paginado', value: count },
+              { title: 'Total paginado', value: pagination.total },
               { title: 'Siguiente pagina', value: hasNext ? 'Si' : 'No' },
               { title: 'Pagina previa', value: hasPrevious ? 'Si' : 'No' },
             ].map((item) => (
               <article key={item.title} className="summary-tile">
                 <small>{item.title}</small>
-                <strong>{formatDisplay(item.value)}</strong>
+                <strong>{formatNumber(item.value)}</strong>
               </article>
             ))}
-          </div>
+      </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
+      {loading ? (
+        <TableLoadingState />
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id_asistencia))}
+                    onChange={toggleSelectAllCurrentPage}
+                    disabled={!canEdit || rows.length === 0 || processingBulk}
+                  />
+                </th>
+                <th>ID</th>
+                <th>Clase</th>
+                <th>Estudiante</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id_asistencia}>
+                  <td>
                     <input
                       type="checkbox"
-                      checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id_asistencia))}
-                      onChange={toggleSelectAllCurrentPage}
-                      disabled={!canEdit || rows.length === 0 || processingBulk}
+                      checked={selectedIds.includes(row.id_asistencia)}
+                      onChange={() => toggleSelect(row.id_asistencia)}
+                      disabled={!canEdit || processingBulk}
                     />
-                  </th>
-                  <th>ID</th>
-                  <th>Clase</th>
-                  <th>Estudiante</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Tipo</th>
-                  <th>Acciones</th>
+                  </td>
+                  <td>{row.id_asistencia}</td>
+                  <td>{row.clase}</td>
+                  <td>{row.estudiante_nombre || row.estudiante}</td>
+                  <td>{row.fecha}</td>
+                  <td>{row.estado}</td>
+                  <td>{row.tipo_asistencia || '-'}</td>
+                  <td className="actions-cell">
+                    {canEdit ? (
+                      <button type="button" className="small" onClick={() => startEdit(row)}>
+                        Editar
+                      </button>
+                    ) : null}
+                    {canEdit ? (
+                      <button type="button" className="small danger" onClick={() => onDelete(row.id_asistencia)}>
+                        Eliminar
+                      </button>
+                    ) : null}
+                    {!canEdit ? <span>-</span> : null}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_asistencia}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(row.id_asistencia)}
-                        onChange={() => toggleSelect(row.id_asistencia)}
-                        disabled={!canEdit || processingBulk}
-                      />
-                    </td>
-                    <td>{row.id_asistencia}</td>
-                    <td>{row.clase}</td>
-                    <td>{row.estudiante_nombre || row.estudiante}</td>
-                    <td>{row.fecha}</td>
-                    <td>{row.estado}</td>
-                    <td>{row.tipo_asistencia || '-'}</td>
-                    <td className="actions-cell">
-                      {canEdit ? (
-                        <button type="button" className="small" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      ) : null}
-                      {canEdit ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_asistencia)}>
-                          Eliminar
-                        </button>
-                      ) : null}
-                      {!canEdit ? <span>-</span> : null}
-                    </td>
-                  </tr>
+              ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan="8">Sin registros</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {canEdit ? (
+        <div className="card section-card">
+          <div className="bulk-actions-bar">
+            <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
+            <div className="bulk-actions-row">
+              <select value={bulkState} onChange={(e) => setBulkState(e.target.value)} disabled={processingBulk}>
+                {ATTENDANCE_STATES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="8">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+              </select>
+              <button type="button" onClick={onBulkUpdateState} disabled={processingBulk || selectedIds.length === 0}>
+                {processingBulk ? 'Actualizando...' : 'Actualizar Estado Seleccionados'}
+              </button>
+            </div>
           </div>
 
-          {canEdit ? (
-            <div className="card section-card">
-              <div className="bulk-actions-bar">
-                <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-                <div className="bulk-actions-row">
-                  <select value={bulkState} onChange={(e) => setBulkState(e.target.value)} disabled={processingBulk}>
-                    {ATTENDANCE_STATES.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="button" onClick={onBulkUpdateState} disabled={processingBulk || selectedIds.length === 0}>
-                    {processingBulk ? 'Actualizando...' : 'Actualizar Estado Seleccionados'}
-                  </button>
-                </div>
-              </div>
-
-              {bulkResult ? (
-                <p className="bulk-result-text">
-                  Actualizacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
-                  {bulkResult.failed > 0
-                    ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})`
-                    : ''}
-                  .
-                </p>
-              ) : null}
-
-              {bulkResult && bulkResult.failed > 0 ? (
-                <div className="bulk-retry-actions">
-                  <button type="button" className="secondary" onClick={retryFailedBulkUpdate} disabled={processingBulk}>
-                    {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+          {bulkResult ? (
+            <p className="bulk-result-text">
+              Actualizacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
+              {bulkResult.failed > 0
+                ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})`
+                : ''}
+              .
+            </p>
           ) : null}
 
-          <PaginationControls
-            page={page}
-            count={count}
-            hasNext={hasNext}
-            hasPrevious={hasPrevious}
-            onPageChange={updatePage}
-            loading={loading}
-          />
-        </>
+          {bulkResult && bulkResult.failed > 0 ? (
+            <div className="bulk-retry-actions">
+              <button type="button" className="secondary" onClick={retryFailedBulkUpdate} disabled={processingBulk}>
+                {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
+
+      <PaginationControls
+        page={page}
+        count={pagination.total}
+        hasNext={hasNext}
+        hasPrevious={hasPrevious}
+        onPageChange={updatePage}
+        loading={loading}
+      />
     </section>
   );
 }
+

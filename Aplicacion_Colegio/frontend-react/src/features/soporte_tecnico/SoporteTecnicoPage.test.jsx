@@ -1,24 +1,25 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { renderWithProviders, postMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import SoporteTecnicoPage from './SoporteTecnicoPage';
 
-const postMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    post: (...args) => postMock(...args),
-  },
-}));
-
 describe('SoporteTecnicoPage', () => {
   beforeEach(() => {
-    postMock.mockReset();
+    vi.restoreAllMocks();
+    useAuthStore.getState().setUser({ capabilities: ['SUPPORT_CREATE_TICKET'] });
+  });
+
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
   });
 
   it('disables create ticket action without SUPPORT_CREATE_TICKET', () => {
-    render(<SoporteTecnicoPage me={{ capabilities: [] }} />);
+    useAuthStore.getState().setUser({ capabilities: [] });
+
+    renderWithProviders(<SoporteTecnicoPage />);
 
     expect(screen.getByText('Crear tickets')).toBeInTheDocument();
     expect(screen.getAllByText('Bloqueado').length).toBeGreaterThanOrEqual(1);
@@ -31,7 +32,7 @@ describe('SoporteTecnicoPage', () => {
     const user = userEvent.setup();
     postMock.mockResolvedValueOnce({ message: 'Ticket creado correctamente.', id: 55 });
 
-    render(<SoporteTecnicoPage me={{ capabilities: ['SUPPORT_CREATE_TICKET'] }} />);
+    renderWithProviders(<SoporteTecnicoPage />);
 
     await user.type(screen.getByLabelText('Titulo'), 'Error login');
     await user.type(screen.getByLabelText('Descripcion'), 'No me deja entrar');
@@ -51,7 +52,7 @@ describe('SoporteTecnicoPage', () => {
   });
 
   it('disables reset flow without reset capabilities', () => {
-    render(<SoporteTecnicoPage me={{ capabilities: ['SUPPORT_CREATE_TICKET'] }} />);
+    renderWithProviders(<SoporteTecnicoPage />);
 
     const submitButton = screen.getByRole('button', { name: 'Ejecutar flujo reset' });
 

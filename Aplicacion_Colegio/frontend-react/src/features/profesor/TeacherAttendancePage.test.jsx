@@ -1,29 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import TeacherAttendancePage from './TeacherAttendancePage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-const patchMock = vi.fn();
-const delMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-    patch: (...args) => patchMock(...args),
-    del: (...args) => delMock(...args),
-  },
-}));
-
 describe('TeacherAttendancePage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    patchMock.mockReset();
-    delMock.mockReset();
+    useAuthStore.getState().setUser({ capabilities: ['CLASS_TAKE_ATTENDANCE'] });
 
     getMock.mockImplementation(async (path) => {
       if (path === '/api/v1/profesor/clases/') {
@@ -89,14 +74,14 @@ describe('TeacherAttendancePage', () => {
     });
   });
 
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
+  });
+
   it('renders summaries and reloads attendance when class changes', async () => {
     const user = userEvent.setup();
 
-    render(
-      <TeacherAttendancePage
-        me={{ capabilities: ['CLASS_TAKE_ATTENDANCE'] }}
-      />
-    );
+    renderWithProviders(<TeacherAttendancePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Profesor: Asistencias')).toBeInTheDocument();
@@ -123,13 +108,12 @@ describe('TeacherAttendancePage', () => {
   it('shows a loading state before attendance data is ready', () => {
     getMock.mockImplementation(() => new Promise(() => {}));
 
-    render(
-      <TeacherAttendancePage
-        me={{ capabilities: ['CLASS_TAKE_ATTENDANCE'] }}
-      />
-    );
+    renderWithProviders(<TeacherAttendancePage />);
 
+    // Section header should always be visible
+    expect(screen.getByText('Listado de Asistencias')).toBeInTheDocument();
+    
+    // Summary skeletons should be visible
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText('Listado de Asistencias')).not.toBeInTheDocument();
   });
 });

@@ -1,36 +1,26 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock, postMock } from '../../test/test-utils';
 
 import CoordinadorAcademicoPage from './CoordinadorAcademicoPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-  },
-}));
-
 describe('CoordinadorAcademicoPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
+    vi.restoreAllMocks();
     getMock.mockResolvedValue({ planificaciones: [] });
   });
 
   it('shows loading state while plans are loading', () => {
     getMock.mockReturnValueOnce(new Promise(() => {}));
 
-    render(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
+    renderWithProviders(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('disables update button without PLANNING_APPROVE', async () => {
-    render(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
+    renderWithProviders(<CoordinadorAcademicoPage me={{ capabilities: [] }} />);
 
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -44,7 +34,7 @@ describe('CoordinadorAcademicoPage', () => {
     const user = userEvent.setup();
     postMock.mockResolvedValueOnce({ message: 'Planificacion aprobada correctamente' });
 
-    render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
+    renderWithProviders(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
 
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -66,7 +56,7 @@ describe('CoordinadorAcademicoPage', () => {
     const user = userEvent.setup();
     postMock.mockRejectedValueOnce({ payload: { detail: 'No se pudo actualizar' } });
 
-    render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
+    renderWithProviders(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
 
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -84,7 +74,7 @@ describe('CoordinadorAcademicoPage', () => {
     const user = userEvent.setup();
     postMock.mockReturnValueOnce(new Promise(() => {}));
 
-    render(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
+    renderWithProviders(<CoordinadorAcademicoPage me={{ capabilities: ['PLANNING_APPROVE'] }} />);
 
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();

@@ -1,20 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock } from '../../test/test-utils';
 
 import PasswordHistoryPage from './PasswordHistoryPage';
 
-const getMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-  },
-}));
-
 describe('PasswordHistoryPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
+    vi.restoreAllMocks();
 
     getMock.mockImplementation((path) => {
       if (path === '/api/v1/seguridad/password-history/') {
@@ -58,13 +51,13 @@ describe('PasswordHistoryPage', () => {
     });
   });
 
-  it('shows access denied without capabilities', () => {
-    render(<PasswordHistoryPage me={{ capabilities: [] }} />);
-    expect(screen.getByText('No tienes permisos para ver esta pagina.')).toBeInTheDocument();
+  it('shows access denied without capabilities', async () => {
+    renderWithProviders(<PasswordHistoryPage me={{ capabilities: [] }} />);
+    expect(await screen.findByText('No tienes permisos para ver esta pagina.')).toBeInTheDocument();
   });
 
   it('loads password history and sensitive audit on mount', async () => {
-    render(<PasswordHistoryPage me={{ capabilities: ['AUDIT_VIEW'] }} />);
+    renderWithProviders(<PasswordHistoryPage me={{ capabilities: ['AUDIT_VIEW'] }} />);
 
     await waitFor(() => {
       expect(getMock).toHaveBeenCalledWith('/api/v1/seguridad/password-history/');
@@ -79,7 +72,7 @@ describe('PasswordHistoryPage', () => {
 
   it('applies audit filters and requests filtered endpoint', async () => {
     const user = userEvent.setup();
-    render(<PasswordHistoryPage me={{ capabilities: ['SYSTEM_ADMIN'] }} />);
+    renderWithProviders(<PasswordHistoryPage me={{ capabilities: ['SYSTEM_ADMIN'] }} />);
 
     const diasInput = await screen.findByLabelText('Dias');
     await user.clear(diasInput);

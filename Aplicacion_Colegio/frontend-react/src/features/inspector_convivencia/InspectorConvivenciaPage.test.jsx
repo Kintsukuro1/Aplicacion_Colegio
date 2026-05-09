@@ -1,54 +1,60 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, getMock, postMock } from '../../test/test-utils';
+import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import InspectorConvivenciaPage from './InspectorConvivenciaPage';
 
-const getMock = vi.fn();
-const postMock = vi.fn();
-
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: {
-    get: (...args) => getMock(...args),
-    post: (...args) => postMock(...args),
-  },
-}));
-
 describe('InspectorConvivenciaPage', () => {
   beforeEach(() => {
-    getMock.mockReset();
-    postMock.mockReset();
-    getMock.mockImplementation((path) => {
+    vi.restoreAllMocks();
+    useAuthStore.getState().setUser({ capabilities: ['DISCIPLINE_CREATE'] });
+    getMock.mockImplementation(async (path) => {
+      if (path === '/api/inspector/incidentes/') {
+        return { incidentes: [] };
+      }
       if (path === '/api/inspector/estudiantes/') {
-        return Promise.resolve({ estudiantes: [{ id: 7, nombre_completo: 'Ana Perez' }] });
+        return { estudiantes: [{ id: 7, nombre_completo: 'Ana Perez' }] };
       }
       if (path === '/api/v1/profesor/clases/') {
-        return Promise.resolve({ results: [{ id: 5, nombre: 'Matematica 7A' }] });
+        return { results: [{ id: 5, nombre: 'Matematica 7A' }] };
       }
-      return Promise.resolve({});
+      if (path === '/api/inspector/justificativos/') {
+        return { justificativos: [] };
+      }
+      return {};
     });
   });
 
+  afterEach(() => {
+    useAuthStore.getState().setUser(null);
+  });
+
   it('loads students on mount', async () => {
-    render(<InspectorConvivenciaPage me={{ capabilities: ['DISCIPLINE_CREATE'] }} />);
+    renderWithProviders(<InspectorConvivenciaPage />);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(getMock).toHaveBeenCalledWith('/api/inspector/estudiantes/');
-      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/');
-    });
+    await screen.findAllByText('Ana Perez');
+    expect(getMock).toHaveBeenCalledWith('/api/inspector/estudiantes/');
+    expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/');
 
-    expect(screen.getAllByText('Ana Perez').length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText('Ana Perez').length).toBeGreaterThan(0);
+    });
   });
 
   it('submits annotation when capability exists', async () => {
     const user = userEvent.setup();
     postMock.mockResolvedValueOnce({ message: 'Anotacion registrada.' });
 
-    render(<InspectorConvivenciaPage me={{ capabilities: ['DISCIPLINE_CREATE'] }} />);
+    renderWithProviders(<InspectorConvivenciaPage />);
 
-    const studentSelects = await screen.findAllByLabelText('Estudiante');
+    // Wait for students to load before interacting with the select
+    await screen.findAllByText('Ana Perez');
+
+    const studentSelects = screen.getAllByLabelText('Estudiante');
     await user.selectOptions(studentSelects[0], '7');
     await user.type(screen.getByLabelText('Descripcion'), 'Conducta destacada');
     await user.click(screen.getByRole('button', { name: 'Registrar anotacion' }));
@@ -65,7 +71,7 @@ describe('InspectorConvivenciaPage', () => {
   });
 
   it('disables justificativo review action without capability', async () => {
-    render(<InspectorConvivenciaPage me={{ capabilities: ['DISCIPLINE_CREATE'] }} />);
+    renderWithProviders(<InspectorConvivenciaPage />);
 
     const options = await screen.findAllByText('Ana Perez');
     expect(options.length).toBeGreaterThan(0);
