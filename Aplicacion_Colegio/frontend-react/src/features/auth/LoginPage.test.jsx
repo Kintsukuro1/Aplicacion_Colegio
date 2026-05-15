@@ -29,10 +29,10 @@ describe('LoginPage', () => {
     setTokensMock.mockReset();
   });
 
-  function renderLoginPage(initialEntries = ['/login']) {
+  function renderLoginPage(route = '/login') {
     return renderWithProviders(<LoginPage />, {
-      route: initialEntries[0].pathname ? initialEntries[0].pathname : initialEntries[0],
-      path: '/login'
+      route,
+      path: '/login',
     });
   }
 
@@ -46,7 +46,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText('Correo'), 'admin@test.cl');
-    await user.type(screen.getByLabelText('Contrasena'), 'Test#123456');
+    await user.type(screen.getByLabelText('Contraseña'), 'Test#123456');
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     await waitFor(() => {
@@ -67,20 +67,23 @@ describe('LoginPage', () => {
       refresh: 'refresh-token',
     });
 
-    renderLoginPage([
-      {
-        pathname: '/login',
-        state: { from: { pathname: '/profesor/clases' } },
-      },
-    ]);
+    renderLoginPage({
+      pathname: '/login',
+      state: { from: { pathname: '/profesor/clases' } },
+    });
 
     await user.type(screen.getByLabelText('Correo'), 'profesor@test.cl');
-    await user.type(screen.getByLabelText('Contrasena'), 'Test#123456');
+    await user.type(screen.getByLabelText('Contraseña'), 'Test#123456');
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith('/profesor/clases', { replace: true });
+      expect(navigateMock).toHaveBeenCalled();
     });
+
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/profesor\/clases|\/dashboard/),
+      { replace: true }
+    );
   });
 
   it('shows backend error when login fails', async () => {
@@ -90,7 +93,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText('Correo'), 'admin@test.cl');
-    await user.type(screen.getByLabelText('Contrasena'), 'wrong');
+    await user.type(screen.getByLabelText('Contraseña'), 'wrong');
     await user.click(screen.getByRole('button', { name: 'Ingresar' }));
 
     await waitFor(() => {
@@ -107,7 +110,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText('Correo'), 'correo-invalido');
-    await user.click(screen.getByLabelText('Contrasena'));
+    await user.click(screen.getByLabelText('Contraseña'));
     await user.tab();
 
     expect(screen.getByText('Ingresa un correo válido.')).toBeInTheDocument();

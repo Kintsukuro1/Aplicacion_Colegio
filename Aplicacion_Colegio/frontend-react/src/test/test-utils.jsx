@@ -22,7 +22,12 @@ function createTestQueryClient() {
   const client = new QueryClient({
     defaultOptions: {
       queries: {
-        retry: false, // Turn off retries for tests
+        retry: false,
+        gcTime: 0,
+        staleTime: 0,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
       },
     },
   });
@@ -30,7 +35,9 @@ function createTestQueryClient() {
   return client;
 }
 
-export function clearQueryClients() {
+export async function clearQueryClients() {
+  await Promise.all(queryClients.map((client) => client.cancelQueries()));
+  queryClients.forEach((client) => client.unmount());
   queryClients.forEach((client) => client.clear());
   queryClients.length = 0;
 }
@@ -46,6 +53,7 @@ export function clearQueryClients() {
 export function renderWithProviders(ui, { route = '/', path = '/' } = {}) {
   const queryClient = createTestQueryClient();
   const testUser = ui?.props?.me;
+  const initialEntries = Array.isArray(route) ? route : [route];
 
   if (testUser !== undefined) {
     useAuthStore.setState({
@@ -57,7 +65,7 @@ export function renderWithProviders(ui, { route = '/', path = '/' } = {}) {
   const rendered = render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <MemoryRouter initialEntries={[route]}>
+        <MemoryRouter initialEntries={initialEntries}>
           <Routes>
             <Route path={path} element={ui} />
           </Routes>

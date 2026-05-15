@@ -7,6 +7,27 @@ import AdminAttendancePage from './AdminAttendancePage';
 
 describe('AdminAttendancePage', () => {
 
+  it('renders and loads initial data without interaction', async () => {
+    getMock
+      .mockResolvedValueOnce({ results: [{ id: 31, curso_nombre: '6A', asignatura_nombre: 'Historia' }] })
+      .mockResolvedValue(paginated([]));
+
+    renderWithProviders(<AdminAttendancePage me={{ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }} />, {
+      route: '/admin/asistencias',
+      path: '/admin/asistencias'
+    });
+
+    // Wait for classes to load
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith('/api/v1/profesor/clases/');
+    }, { timeout: 5000 });
+
+    // Just wait a moment for any effects to settle
+    await waitFor(() => {
+      expect(screen.getByText(/Admin Escolar: Asistencias/)).toBeInTheDocument();
+    }, { timeout: 5000 });
+  });
+
   it('creates attendance with CLASS_TAKE_ATTENDANCE capability', async () => {
     const user = userEvent.setup();
 
@@ -113,5 +134,36 @@ describe('AdminAttendancePage', () => {
     // Wait for the restricted mode message to render
     expect(await screen.findByText(/falta capability `CLASS_TAKE_ATTENDANCE`/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Crear' })).not.toBeInTheDocument();
+  });
+
+  it('keeps pagination controls aligned with the current page', async () => {
+    getMock
+      .mockResolvedValueOnce({ results: [{ id: 31, curso_nombre: '6A', asignatura_nombre: 'Historia' }] })
+      .mockResolvedValue({
+        count: 60,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id_asistencia: 88,
+            clase: 31,
+            estudiante: 55,
+            estudiante_nombre: 'Alumno Dos',
+            fecha: '2026-03-08',
+            estado: 'P',
+            tipo_asistencia: 'Presencial',
+            observaciones: '',
+          },
+        ],
+      });
+
+    renderWithProviders(<AdminAttendancePage me={{ capabilities: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'] }} />, {
+      route: '/admin/asistencias?clase_id=31&page=2',
+      path: '/admin/asistencias'
+    });
+
+    expect(await screen.findByText('Pagina 2 de 2 (Total: 60)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Anterior' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
   });
 });

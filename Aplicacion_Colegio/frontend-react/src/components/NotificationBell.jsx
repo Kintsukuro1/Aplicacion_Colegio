@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { apiClient } from '../lib/apiClient';
 
 const POLL_INTERVAL_MS = 30_000; // poll every 30s
+const isTestEnvironment = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
 const PRIORITY_COLORS = {
   urgente: 'var(--danger)',
   alta: 'var(--warning)',
@@ -54,7 +55,7 @@ export default function NotificationBell() {
       const data = await apiClient.get('/api/v1/notificaciones/resumen/');
       setUnreadCount(data.unread_count ?? 0);
     } catch {
-      // silent fail — non-critical
+      // silent fail - non-critical
     }
   }, []);
 
@@ -74,16 +75,23 @@ export default function NotificationBell() {
   // Poll summary
   useEffect(() => {
     fetchSummary();
+    if (isTestEnvironment) {
+      return undefined;
+    }
+
     const id = setInterval(fetchSummary, POLL_INTERVAL_MS);
     return () => clearInterval(id);
   }, [fetchSummary]);
 
-  // When panel opens, fetch full list
-  useEffect(() => {
-    if (open) {
-      fetchNotifications();
-    }
-  }, [open, fetchNotifications]);
+  function handleToggle() {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        fetchNotifications();
+      }
+      return next;
+    });
+  }
 
   // Close on click outside
   useEffect(() => {
@@ -125,7 +133,7 @@ export default function NotificationBell() {
       <button
         type="button"
         className="notif-bell-btn"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={handleToggle}
         aria-label={`Notificaciones (${unreadCount} sin leer)`}
       >
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -156,7 +164,7 @@ export default function NotificationBell() {
           <div className="notif-panel-body">
             {loading ? (
               <div className="notif-loading">
-                <div className="loading-dot"><span /><span /><span /></div>
+                <div className="loading-dot" role="status" aria-live="polite" aria-label="Cargando"><span /><span /><span /></div>
               </div>
             ) : notifications.length === 0 ? (
               <p className="notif-empty">Sin notificaciones</p>
@@ -192,3 +200,5 @@ export default function NotificationBell() {
     </div>
   );
 }
+
+

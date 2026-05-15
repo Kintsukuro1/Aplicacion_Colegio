@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
@@ -130,7 +130,7 @@ export default function AdminOverviewPage() {
         </label>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -163,7 +163,7 @@ export default function AdminOverviewPage() {
               </label>
             </div>
 
-            {cycleStatsError ? <div className="error-box">{cycleStatsError}</div> : null}
+            {cycleStatsError ? <div className="error-box" role="alert" aria-live="assertive">{cycleStatsError}</div> : null}
             {transitionMessage ? <div className="info-box">{transitionMessage}</div> : null}
 
             {cycleStats ? (
@@ -221,3 +221,4 @@ export default function AdminOverviewPage() {
     </section>
   );
 }
+

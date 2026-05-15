@@ -1,4 +1,4 @@
-# Fase 5: UI/UX Nivel Producto — Guía Completa
+﻿# Fase 5: UI/UX Nivel Producto - Guía Completa
 
 ## 📦 Componentes Creados
 
@@ -417,4 +417,5 @@ npm run build
 ---
 
 **Estado:** ✅ Componentes base completados
-**Siguiente:** Fase 5.2 — Componentes especializados (Input, Form, Select)
+**Siguiente:** Fase 5.2 - Componentes especializados (Input, Form, Select)
+

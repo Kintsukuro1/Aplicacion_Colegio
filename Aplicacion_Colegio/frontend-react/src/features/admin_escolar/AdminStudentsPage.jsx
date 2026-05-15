@@ -1,31 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
 import PaginationControls from '../../components/PaginationControls';
 import SearchBar from '../../components/SearchBar';
 import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
-import { useToast } from '../../components/Toast';
-import { apiClient } from '../../lib/apiClient';
 import { formatNumber } from '../../lib/formatters';
 import { usePagination } from '../../lib/hooks';
-import { usePermissions } from '../../lib/hooks/usePermissions';
+import { usePermissionChecks } from '../../lib/hooks/usePermissionChecks';
+import { useFormCRUD } from '../../lib/hooks/useFormCRUD';
+import { useBulkDeactivate } from '../../lib/hooks/useBulkDeactivate';
 
-function isBatchEndpointUnavailable(error) {
-  return error?.status === 404 || error?.status === 405;
-}
-
-function toBulkResult(payload, fallbackFailedIds = []) {
-  const failedIds = Array.isArray(payload?.failed_ids)
-    ? payload.failed_ids
-    : Array.isArray(payload?.failedIds)
-      ? payload.failedIds
-      : fallbackFailedIds;
-
-  const success = Number.isFinite(payload?.success) ? payload.success : 0;
-  const failed = Number.isFinite(payload?.failed) ? payload.failed : failedIds.length;
-  return { success, failed, failedIds };
-}
+import { AdminStudentsForm } from './AdminStudentsForm';
+import { AdminStudentsTable } from './AdminStudentsTable';
+import { AdminStudentsBulkActions } from './AdminStudentsBulkActions';
 
 const EMPTY_FORM = {
   email: '',
@@ -35,76 +23,60 @@ const EMPTY_FORM = {
   apellido_materno: '',
   is_active: true,
 };
-
-
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function AdminStudentsPage() {
   const me = useAuthStore((state) => state.user);
-  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
   const [search, setSearch] = useState(searchParams.get('q') || '');
+  const searchDebounceRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkResult, setBulkResult] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [editingId, setEditingId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const { canAny } = usePermissions(me);
 
-  // Build pagination URL with search params
-  const paginationUrl = `/api/v1/estudiantes/?search=${encodeURIComponent(search)}`;
-  const { 
-    items: rows, 
-    loading, 
-    error: paginationError,
-    pagination,
-    goToPage,
-    refetch
-  } = usePagination(paginationUrl, {
-    skip: !me,
-    onSuccess: () => {
-      setSelectedIds([]);
-      setBulkResult(null);
-    }
+  useEffect(() => {
+    return () => {
+      clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
+  const { canView, canCreate, canUpdate, canDelete } = usePermissionChecks({
+    viewCapabilities: ['STUDENT_VIEW', 'SYSTEM_ADMIN'],
+    createCapabilities: ['STUDENT_EDIT', 'SYSTEM_ADMIN'],
+    updateCapabilities: ['STUDENT_EDIT', 'SYSTEM_ADMIN'],
+    deleteCapabilities: ['STUDENT_EDIT', 'SYSTEM_ADMIN'],
   });
 
-  const canView = useMemo(() => canAny(['STUDENT_VIEW', 'SYSTEM_ADMIN']), [canAny]);
-  const canCreate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
-  const canUpdate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
-  const canDeactivate = useMemo(() => canAny(['STUDENT_EDIT', 'SYSTEM_ADMIN']), [canAny]);
-  const formLocked = editingId ? !canUpdate : !canCreate;
-  
+  const { form, setForm, editingId, startEdit, resetForm, saving, create, update, delete: deleteRecord, error: formError } = useFormCRUD({
+    initialForm: EMPTY_FORM,
+    endpoint: '/api/v1/estudiantes/',
+    onSuccess: () => { refetch(); setSelectedIds([]); },
+  });
+
+  const { deactivate: doBulkDeactivate, saving: bulkSaving, bulkResult, retry: retryBulkDeactivate } = useBulkDeactivate({
+    bulkEndpoint: '/api/v1/estudiantes/bulk-deactivate/',
+    singleEndpoint: '/api/v1/estudiantes/',
+    onSuccess: () => { refetch(); setSelectedIds([]); },
+  });
+
+  const { items: rows, loading, error: paginationError, pagination, goToPage, refetch } = usePagination('/api/v1/estudiantes/', {
+    params: search ? { search } : {},
+    skip: !me,
+  });
+
   const summaryCards = useMemo(() => {
     const total = rows.length;
     const activeCount = rows.filter((row) => row.is_active).length;
     const inactiveCount = total - activeCount;
-
     return [
-      {
-        title: 'Estudiantes visibles',
-        value: total,
-        subtitle: total > 0 ? 'Resultados de la página actual' : 'Sin registros cargados',
-      },
-      {
-        title: 'Activos',
-        value: activeCount,
-        subtitle: 'Cuentas habilitadas para usar la plataforma',
-      },
-      {
-        title: 'Inactivos',
-        value: inactiveCount,
-        subtitle: 'Cuentas desactivadas en esta página',
-      },
-      {
-        title: 'Selección',
-        value: selectedIds.length,
-        subtitle: 'Marcados para desactivación masiva',
-      },
+      { title: 'Estudiantes visibles', value: total, subtitle: total > 0 ? 'Resultados de la página actual' : 'Sin registros cargados' },
+      { title: 'Activos', value: activeCount, subtitle: 'Cuentas habilitadas para usar la plataforma' },
+      { title: 'Inactivos', value: inactiveCount, subtitle: 'Cuentas desactivadas en esta página' },
+      { title: 'Selección', value: selectedIds.length, subtitle: 'Marcados para desactivación masiva' },
     ];
   }, [rows, selectedIds.length]);
 
-  const canSubmit = useMemo(() => {
-    return Boolean(form.email && form.rut && form.nombre && form.apellido_paterno);
-  }, [form]);
+  const canSubmit = useMemo(() => Boolean(form.email && form.rut && form.nombre && form.apellido_paterno), [form]);
+  const formLocked = editingId ? !canUpdate : !canCreate;
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
@@ -117,171 +89,51 @@ export default function AdminStudentsPage() {
   }
 
   function handleSearch(value) {
-    setSearch(value);
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('page', '1');
-    if (value) nextParams.set('q', value);
-    else nextParams.delete('q');
-    setSearchParams(nextParams, { replace: true });
+    setSearchInput(value);
+    clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch(value);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('page', '1');
+      if (value) nextParams.set('q', value);
+      else nextParams.delete('q');
+      setSearchParams(nextParams, { replace: true });
+    }, SEARCH_DEBOUNCE_MS);
   }
 
   function toggleSelect(studentId) {
-    setSelectedIds((prev) => {
-      if (prev.includes(studentId)) {
-        return prev.filter((id) => id !== studentId);
-      }
-      return [...prev, studentId];
-    });
+    setSelectedIds((prev) => prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]);
   }
 
   function toggleSelectAllCurrentPage() {
     const currentIds = rows.map((row) => row.id);
-    const allSelected = currentIds.length > 0 && currentIds.every((id) => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds([]);
-      return;
-    }
-    setSelectedIds(currentIds);
+    setSelectedIds((currentIds.length > 0 && currentIds.every((id) => selectedIds.includes(id))) ? [] : currentIds);
   }
 
-  function onChange(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function startEdit(row) {
-    if (!canUpdate) {
-      toast.error('No tienes permisos para editar estudiantes.');
-      return;
-    }
-    setEditingId(row.id);
-    setForm({
-      email: row.email || '',
-      rut: row.rut || '',
-      nombre: row.nombre || '',
-      apellido_paterno: row.apellido_paterno || '',
-      apellido_materno: row.apellido_materno || '',
-      is_active: Boolean(row.is_active),
-    });
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-  }
+  function onChange(name, value) { setForm((prev) => ({ ...prev, [name]: value })); }
 
   async function onSubmit(event) {
     event.preventDefault();
-    if (formLocked) {
-      toast.error(editingId ? 'No tienes permisos para editar estudiantes.' : 'No tienes permisos para crear estudiantes.');
-      return;
-    }
-    if (!canSubmit) {
-      return;
-    }
-
-    setSaving(true);
-
+    if (formLocked || !canSubmit) return;
     try {
-      if (editingId) {
-        await apiClient.patch(`/api/v1/estudiantes/${editingId}/`, form);
-      } else {
-        await apiClient.post('/api/v1/estudiantes/', form);
-      }
-      await refetch();
-      resetForm();
-      toast.success(editingId ? 'Estudiante actualizado' : 'Estudiante creado');
-    } catch (err) {
-      const msg = err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar estudiante.';
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
+      if (editingId) await update();
+      else await create();
+    } catch {}
   }
 
   async function onDelete(studentId) {
-    if (!canDeactivate) {
-      toast.error('No tienes permisos para desactivar estudiantes.');
-      return;
-    }
-
-    if (!window.confirm('Desactivar este estudiante?')) {
-      return;
-    }
-
-    try {
-      await apiClient.del(`/api/v1/estudiantes/${studentId}/`);
-      await refetch();
-      toast.success('Estudiante desactivado');
-    } catch (err) {
-      const msg = err.payload?.detail || 'No se pudo desactivar estudiante.';
-      toast.error(msg);
-    }
-  }
-
-  async function runBulkDeactivate(targetIds) {
-    setSaving(true);
-    setBulkResult(null);
-
-    try {
-      let result;
-
-      try {
-        const payload = await apiClient.post('/api/v1/estudiantes/bulk-deactivate/', {
-          ids: targetIds,
-        });
-        result = toBulkResult(payload);
-      } catch (batchError) {
-        if (!isBatchEndpointUnavailable(batchError)) {
-          throw batchError;
-        }
-
-        let success = 0;
-        const failedIds = [];
-        for (const studentId of targetIds) {
-          try {
-            await apiClient.del(`/api/v1/estudiantes/${studentId}/`);
-            success += 1;
-          } catch (_) {
-            failedIds.push(studentId);
-          }
-        }
-        result = toBulkResult({ success, failed: failedIds.length }, failedIds);
-      }
-
-      setBulkResult(result);
-
-      await refetch();
-      toast.success('Desactivacion masiva completada');
-    } catch (err) {
-      toast.error(err.payload?.detail || 'No se pudo completar la desactivacion masiva.');
-    } finally {
-      setSaving(false);
-    }
+    if (!canDelete || !window.confirm('Desactivar este estudiante?')) return;
+    try { await deleteRecord(studentId); } catch {}
   }
 
   async function onBulkDeactivate() {
-    if (!canDeactivate) {
-      toast.error('No tienes permisos para desactivar estudiantes.');
-      return;
-    }
-
-    if (selectedIds.length === 0) {
-      toast.error('Selecciona al menos un estudiante para desactivar.');
-      return;
-    }
-
-    if (!window.confirm(`Desactivar ${selectedIds.length} estudiante(s) seleccionados?`)) {
-      return;
-    }
-
-    await runBulkDeactivate(selectedIds);
+    if (!canDelete || selectedIds.length === 0 || !window.confirm(`Desactivar ${selectedIds.length} estudiante(s)?`)) return;
+    await doBulkDeactivate(selectedIds);
   }
 
-  async function retryFailedBulkDeactivate() {
-    if (!bulkResult || bulkResult.failed === 0) {
-      return;
-    }
-    await runBulkDeactivate(bulkResult.failedIds);
+  async function onRetryFailedBulkDeactivate() {
+    if (!bulkResult || bulkResult.failed === 0) return;
+    await retryBulkDeactivate(bulkResult.failedIds);
   }
 
   if (!canView) {
@@ -307,12 +159,13 @@ export default function AdminStudentsPage() {
       </header>
 
       <SearchBar
-        value={search}
+        value={searchInput}
         onChange={handleSearch}
         placeholder="Buscar por nombre, email, RUT..."
+        label="Buscar estudiantes"
       />
 
-      {paginationError ? <div className="error-box">{paginationError}</div> : null}
+      {paginationError ? <div className="error-box" role="alert" aria-live="assertive">{paginationError}</div> : null}
 
       {!canCreate ? <p>Modo restringido: falta capability `STUDENT_EDIT` para crear.</p> : null}
 
@@ -331,66 +184,17 @@ export default function AdminStudentsPage() {
       </div>
 
       {canCreate || canUpdate ? (
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3>{editingId ? `Editar #${editingId}` : 'Nuevo Estudiante'}</h3>
-
-          <label>
-            Email
-            <input value={form.email} onChange={(e) => onChange('email', e.target.value)} required disabled={formLocked} />
-          </label>
-
-          <label>
-            RUT
-            <input value={form.rut} onChange={(e) => onChange('rut', e.target.value)} required disabled={formLocked} />
-          </label>
-
-          <label>
-            Nombre
-            <input value={form.nombre} onChange={(e) => onChange('nombre', e.target.value)} required disabled={formLocked} />
-          </label>
-
-          <label>
-            Apellido Paterno
-            <input
-              value={form.apellido_paterno}
-              onChange={(e) => onChange('apellido_paterno', e.target.value)}
-              required
-              disabled={formLocked}
-            />
-          </label>
-
-          <label>
-            Apellido Materno
-            <input
-              value={form.apellido_materno}
-              onChange={(e) => onChange('apellido_materno', e.target.value)}
-              disabled={formLocked}
-            />
-          </label>
-
-          <label>
-            Activo
-            <select
-              value={form.is_active ? '1' : '0'}
-              onChange={(e) => onChange('is_active', e.target.value === '1')}
-              disabled={formLocked}
-            >
-              <option value="1">Si</option>
-              <option value="0">No</option>
-            </select>
-          </label>
-
-          <div className="actions full">
-            <button type="submit" disabled={!canSubmit || saving || formLocked}>
-              {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-            </button>
-            {editingId ? (
-              <button type="button" className="secondary" onClick={resetForm}>
-                Cancelar Edicion
-              </button>
-            ) : null}
-          </div>
-        </form>
+        <AdminStudentsForm
+          form={form}
+          editingId={editingId}
+          formLocked={formLocked}
+          saving={saving}
+          formError={formError}
+          canSubmit={canSubmit}
+          onChange={onChange}
+          resetForm={resetForm}
+          onSubmit={onSubmit}
+        />
       ) : (
         <div className="card">
           <p>Tienes permisos de lectura, pero no de edición (`STUDENT_EDIT`).</p>
@@ -400,98 +204,26 @@ export default function AdminStudentsPage() {
       {loading ? (
         <TableLoadingState />
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))}
-                    onChange={toggleSelectAllCurrentPage}
-                    disabled={!canDeactivate || rows.length === 0}
-                  />
-                </th>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>RUT</th>
-                <th>Activo</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(row.id)}
-                      onChange={() => toggleSelect(row.id)}
-                      disabled={!canDeactivate}
-                    />
-                  </td>
-                  <td>{row.id}</td>
-                  <td>{`${row.nombre} ${row.apellido_paterno || ''}`.trim()}</td>
-                  <td>{row.email}</td>
-                  <td>{row.rut}</td>
-                  <td>{row.is_active ? <span className="badge badge-active">Activo</span> : <span className="badge badge-inactive">Inactivo</span>}</td>
-                  <td className="actions-cell">
-                    {canUpdate ? (
-                      <>
-                        <button type="button" className="small" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      </>
-                    ) : null}
-                    {canDeactivate ? (
-                      <button type="button" className="small danger" onClick={() => onDelete(row.id)}>
-                        Desactivar
-                      </button>
-                    ) : null}
-                    {!canUpdate && !canDeactivate ? <span>-</span> : null}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan="7">Sin registros</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <AdminStudentsTable
+          rows={rows}
+          selectedIds={selectedIds}
+          canUpdate={canUpdate}
+          canDelete={canDelete}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAllCurrentPage}
+          onStartEdit={startEdit}
+          onDelete={onDelete}
+        />
       )}
 
-      {canDeactivate ? (
-        <div className="card section-card">
-          <div className="bulk-actions-bar">
-            <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-            <button
-              type="button"
-              className="danger"
-              onClick={onBulkDeactivate}
-              disabled={saving || selectedIds.length === 0}
-            >
-              {saving ? 'Procesando...' : 'Desactivar Seleccionados'}
-            </button>
-          </div>
-
-          {bulkResult ? (
-            <p className="bulk-result-text">
-              Desactivacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
-              {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
-            </p>
-          ) : null}
-
-          {bulkResult && bulkResult.failed > 0 ? (
-            <div className="bulk-retry-actions">
-              <button type="button" className="secondary" onClick={retryFailedBulkDeactivate} disabled={saving}>
-                {saving ? 'Reintentando...' : 'Reintentar Fallidos'}
-              </button>
-            </div>
-          ) : null}
-        </div>
+      {canDelete ? (
+        <AdminStudentsBulkActions
+          selectedCount={selectedIds.length}
+          bulkSaving={bulkSaving}
+          bulkResult={bulkResult}
+          onBulkDeactivate={onBulkDeactivate}
+          onRetryFailed={onRetryFailedBulkDeactivate}
+        />
       ) : null}
 
       <PaginationControls
@@ -505,4 +237,3 @@ export default function AdminStudentsPage() {
     </section>
   );
 }
-

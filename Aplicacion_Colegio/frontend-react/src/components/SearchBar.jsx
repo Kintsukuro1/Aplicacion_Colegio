@@ -1,49 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
- * Barra de búsqueda reutilizable con debounce, clear, y shortcut Ctrl+K.
+ * Barra de búsqueda reutilizable con clear y shortcut Ctrl+K.
  *
  * Props:
- *   value       — valor controlado
- *   onChange     — callback(string)
- *   placeholder  — placeholder text
- *   debounceMs   — ms antes de emitir cambio (default 300)
+ *   value       - valor controlado
+ *   onChange     - callback(string)
+ *   placeholder  - placeholder text
+ *   label        - aria-label for input
  */
 export default function SearchBar({
   value = '',
   onChange,
   placeholder = 'Buscar por nombre, email, RUT...',
-  debounceMs = 300,
+  label = 'Buscar',
 }) {
-  const [local, setLocal] = useState(value);
-  const timerRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Sync external value → local
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  const emit = useCallback(
-    (v) => {
-      if (onChange) {
-        onChange(v);
-      }
-    },
-    [onChange],
-  );
-
-  function handleChange(e) {
-    const v = e.target.value;
-    setLocal(v);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => emit(v), debounceMs);
+  function updateSearchQuery(e) {
+    onChange?.(e.target.value);
   }
 
   function handleClear() {
-    setLocal('');
-    clearTimeout(timerRef.current);
-    emit('');
+    onChange?.('');
     inputRef.current?.focus();
   }
 
@@ -57,7 +36,9 @@ export default function SearchBar({
       }
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   return (
@@ -73,20 +54,21 @@ export default function SearchBar({
         ref={inputRef}
         id="searchbar-input"
         type="text"
-        value={local}
-        onChange={handleChange}
+        value={value}
+        onChange={updateSearchQuery}
         placeholder={placeholder}
+        aria-label={label}
         autoComplete="off"
         spellCheck={false}
       />
-      {local ? (
+      {value ? (
         <button
           type="button"
           className="search-bar-clear"
           onClick={handleClear}
           aria-label="Limpiar búsqueda"
         >
-          ✕
+          X
         </button>
       ) : (
         <kbd className="search-bar-shortcut">Ctrl+K</kbd>
@@ -94,3 +76,4 @@ export default function SearchBar({
     </div>
   );
 }
+

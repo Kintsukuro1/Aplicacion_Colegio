@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { vi, afterEach } from 'vitest';
 import { getMock, postMock, patchMock, deleteMock, clearQueryClients } from './test-utils';
+import { useAuthStore } from '../lib/store/useAuthStore';
 
 // Global mock for API client
 vi.mock('../lib/apiClient', () => ({
@@ -13,11 +14,15 @@ vi.mock('../lib/apiClient', () => ({
 }));
 
 // Global teardown for all tests
-afterEach(() => {
+afterEach(async () => {
   getMock.mockReset();
   postMock.mockReset();
   patchMock.mockReset();
   deleteMock.mockReset();
   vi.clearAllMocks();
-  clearQueryClients();
+  await clearQueryClients();
+  useAuthStore.setState({
+    user: null,
+    isAuthenticated: false,
+  });
 });

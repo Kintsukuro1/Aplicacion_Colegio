@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
@@ -34,7 +34,6 @@ export default function CoordinadorAcademicoPage() {
     observaciones: '',
   });
   const [saving, setSaving] = useState(false);
-  const [plans, setPlans] = useState([]);
 
   const { canAny } = usePermissions(me);
   const canApprove = canAny(['PLANNING_APPROVE', 'SYSTEM_ADMIN']);
@@ -45,11 +44,8 @@ export default function CoordinadorAcademicoPage() {
   });
   const error = plansErrorObj?.message;
 
-  useEffect(() => {
-    if (plansData) {
-      setPlans(Array.isArray(plansData.planificaciones) ? plansData.planificaciones : []);
-    }
-  }, [plansData]);
+  // Derive plans inline from query results (no useEffect sync needed)
+  const plans = Array.isArray(plansData?.planificaciones) ? plansData.planificaciones : [];
 
   const summaryCards = useMemo(
     () => [
@@ -94,7 +90,6 @@ export default function CoordinadorAcademicoPage() {
         observaciones: form.observaciones,
       });
       toast.success(payload?.message || 'Estado de planificacion actualizado.');
-      setPlans((prev) => prev.filter((item) => String(item.id) !== String(form.planificacion_id)));
       setForm({ planificacion_id: '', estado: 'APROBADA', observaciones: '' });
       await queryClient.invalidateQueries({ queryKey: ['coordinador-planificaciones'] });
     } catch (err) {
@@ -116,7 +111,6 @@ export default function CoordinadorAcademicoPage() {
         observaciones: '',
       });
       toast.success(payload?.message || 'Estado de planificacion actualizado.');
-      setPlans((prev) => prev.filter((item) => String(item.id) !== String(planId)));
       await queryClient.invalidateQueries({ queryKey: ['coordinador-planificaciones'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo actualizar la planificacion.'));
@@ -134,7 +128,7 @@ export default function CoordinadorAcademicoPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -223,4 +217,5 @@ export default function CoordinadorAcademicoPage() {
     </section>
   );
 }
+
 

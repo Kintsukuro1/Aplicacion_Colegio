@@ -10,6 +10,9 @@ import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadin
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
 
+import { TeacherEvaluationsForm } from './TeacherEvaluationsForm';
+import { TeacherEvaluationsTable } from './TeacherEvaluationsTable';
+
 const EMPTY_FORM = {
   clase: '',
   nombre: '',
@@ -226,7 +229,7 @@ export default function TeacherEvaluationsPage() {
         ) : null}
       </header>
 
-      {apiError ? <div className="error-box">{apiError?.message || 'Error en la petición'}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError?.message || 'Error en la petición'}</div> : null}
       {!canCreate && !canEdit && !canDelete ? <p>Modo lectura.</p> : null}
 
       <div className="summary-grid">
@@ -269,49 +272,14 @@ export default function TeacherEvaluationsPage() {
         {loading ? (
           <TableLoadingState />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nombre</th>
-                  <th>Fecha</th>
-                  <th>Ponderación</th>
-                  <th>Tipo</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_evaluacion}>
-                    <td>{row.id_evaluacion}</td>
-                    <td>{row.nombre}</td>
-                    <td>{row.fecha_evaluacion}</td>
-                    <td>{formatNumber(row.ponderacion)}%</td>
-                    <td>{row.tipo_evaluacion}</td>
-                    <td className="actions-cell">
-                      {canEdit ? (
-                        <button type="button" className="small" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      ) : null}
-                      {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_evaluacion)} disabled={deleteMutation.isPending}>
-                          Eliminar
-                        </button>
-                      ) : null}
-                      {!canEdit && !canDelete ? <span>Solo lectura</span> : null}
-                    </td>
-                  </tr>
-                ))}
-                {!loadingEvaluations && rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="6">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <TeacherEvaluationsTable
+            rows={rows}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            isDeleting={deleteMutation.isPending}
+            onStartEdit={startEdit}
+            onDelete={onDelete}
+          />
         )}
 
         {!loading && rows.length === 0 ? <p className="section-muted">No hay evaluaciones para la clase seleccionada.</p> : null}
@@ -322,67 +290,18 @@ export default function TeacherEvaluationsPage() {
         onClose={handleCloseModal}
         title={editingId ? `Editar Evaluación #${editingId}` : 'Nueva Evaluación'}
       >
-        <form className="form-grid" onSubmit={onSubmit} style={{ marginTop: '0', padding: '0', background: 'transparent', boxShadow: 'none' }}>
-          
-          <label style={{ gridColumn: '1 / -1' }}>
-            Clase
-            <select value={form.clase} onChange={(e) => onChange('clase', e.target.value)} required disabled={formLocked || isSaving}>
-              <option value="">Seleccionar</option>
-              {classes.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.curso_nombre} - {row.asignatura_nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={{ gridColumn: '1 / -1' }}>
-            Nombre
-            <input value={form.nombre} onChange={(e) => onChange('nombre', e.target.value)} required disabled={formLocked || isSaving} />
-          </label>
-
-          <label>
-            Fecha Evaluación
-            <input
-              type="date"
-              value={form.fecha_evaluacion}
-              onChange={(e) => onChange('fecha_evaluacion', e.target.value)}
-              required
-              disabled={formLocked || isSaving}
-            />
-          </label>
-
-          <label>
-            Ponderación (%)
-            <input type="number" step="0.1" value={form.ponderacion} onChange={(e) => onChange('ponderacion', e.target.value)} disabled={formLocked || isSaving} />
-          </label>
-
-          <label>
-            Tipo
-            <select value={form.tipo_evaluacion} onChange={(e) => onChange('tipo_evaluacion', e.target.value)} disabled={formLocked || isSaving}>
-              <option value="sumativa">Sumativa</option>
-              <option value="formativa">Formativa</option>
-              <option value="diagnostica">Diagnostica</option>
-              <option value="acumulativa">Acumulativa</option>
-            </select>
-          </label>
-
-          <label>
-            Periodo
-            <input value={form.periodo} onChange={(e) => onChange('periodo', e.target.value)} disabled={formLocked || isSaving} />
-          </label>
-
-          <div className="actions full" style={{ marginTop: '1rem' }}>
-            <button type="submit" disabled={!canSubmit || isSaving}>
-              {isSaving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-            </button>
-            <button type="button" className="secondary" onClick={handleCloseModal} disabled={isSaving}>
-              Cancelar
-            </button>
-          </div>
-        </form>
+        <TeacherEvaluationsForm
+          form={form}
+          classes={classes}
+          editingId={editingId}
+          formLocked={formLocked}
+          isSaving={isSaving}
+          canSubmit={canSubmit}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          onClose={handleCloseModal}
+        />
       </FormOverlay>
     </section>
   );
 }
-

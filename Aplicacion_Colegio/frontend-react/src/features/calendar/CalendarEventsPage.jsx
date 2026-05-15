@@ -1,28 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 
-import PaginationControls from '../../components/PaginationControls';
-import { useFetch } from '../../lib/hooks';
 import { apiClient } from '../../lib/apiClient';
-import { asPaginated } from '../../lib/httpHelpers';
+import PaginationControls from '../../components/PaginationControls';
 import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
-import { usePermissions } from '../../lib/hooks/usePermissions';
+import { usePagination } from '../../lib/hooks';
+import { usePermissionChecks } from '../../lib/hooks/usePermissionChecks';
+import { useFormCRUD } from '../../lib/hooks/useFormCRUD';
+import { useEventFilters } from '../../lib/hooks/useEventFilters';
 import { useToast } from '../../components/Toast';
-
-const EVENT_TYPES = [
-  'feriado',
-  'vacaciones',
-  'evaluacion',
-  'reunion',
-  'actividad',
-  'ceremonia',
-  'administrativo',
-  'otro',
-];
-
-const VISIBILITY = ['todos', 'profesores', 'estudiantes', 'apoderados', 'administrativos'];
+import { CalendarFilterForm } from './CalendarFilterForm';
+import { CalendarEventForm } from './CalendarEventForm';
+import { CalendarEventsTable } from './CalendarEventsTable';
+import { CalendarGrid } from './CalendarGrid';
 
 const EMPTY_FORM = {
   titulo: '',
@@ -39,8 +31,6 @@ const EMPTY_FORM = {
   color: '#3B82F6',
 };
 
-
-
 function normalizeFormForApi(form) {
   return {
     ...form,
@@ -53,22 +43,26 @@ function normalizeFormForApi(form) {
 }
 
 export default function CalendarEventsPage() {
-  const me = useAuthStore((state) => state.user);
-  const { canAny, isSystemAdmin } = usePermissions(me);
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1);
-  const [rows, setRows] = useState([]);
-  const [count, setCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [fetchError, setFetchError] = useState('');
-  const toast = useToast();
-  const [filters, setFilters] = useState({
+  const [initialized, setInitialized] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState({});
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+
+  const { canView, canCreate, canUpdate, canDelete } = usePermissionChecks({
+    viewCapabilities: ['ANNOUNCEMENT_VIEW', 'SYSTEM_ADMIN'],
+    createCapabilities: ['ANNOUNCEMENT_CREATE', 'SYSTEM_ADMIN'],
+    updateCapabilities: ['ANNOUNCEMENT_EDIT', 'SYSTEM_ADMIN'],
+    deleteCapabilities: ['ANNOUNCEMENT_DELETE', 'SYSTEM_ADMIN'],
+  });
+
+  const {
+    filters,
+    updateFilter,
+    clearFilters,
+    activeFilters,
+  } = useEventFilters({
     tipo: '',
     mes: '',
     anio: '',
@@ -76,11 +70,65 @@ export default function CalendarEventsPage() {
     hasta: '',
   });
 
-  const canView = isSystemAdmin || canAny(['ANNOUNCEMENT_VIEW']);
-  const canCreate = isSystemAdmin || canAny(['ANNOUNCEMENT_CREATE']);
-  const canEdit = isSystemAdmin || canAny(['ANNOUNCEMENT_EDIT']);
-  const canDelete = isSystemAdmin || canAny(['ANNOUNCEMENT_DELETE']);
-  const activeFilters = useMemo(() => Object.values(filters).filter(Boolean).length, [filters]);
+  const {
+    form,
+    setForm,
+    editingId,
+    startEdit,
+    resetForm,
+    saving,
+    create,
+    update,
+    delete: deleteRecord,
+  } = useFormCRUD({
+    initialForm: EMPTY_FORM,
+    endpoint: '/api/v1/calendario/',
+    getId: (record) => record.id_evento,
+    mapRecordToForm: (record) => ({
+      titulo: record.titulo || '',
+      descripcion: record.descripcion || '',
+      tipo: record.tipo || 'actividad',
+      fecha_inicio: record.fecha_inicio || '',
+      fecha_fin: record.fecha_fin || '',
+      hora_inicio: record.hora_inicio || '',
+      hora_fin: record.hora_fin || '',
+      todo_el_dia: Boolean(record.todo_el_dia),
+      lugar: record.lugar || '',
+      visibilidad: record.visibilidad || 'todos',
+      es_feriado_nacional: Boolean(record.es_feriado_nacional),
+      color: record.color || '#3B82F6',
+    }),
+    mapFormToPayload: normalizeFormForApi,
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
+  const {
+    items: rows,
+    loading,
+    error: paginationError,
+    pagination,
+    goToPage,
+    refetch,
+  } = usePagination('/api/v1/calendario/', {
+    pageMode: true,
+    params: appliedFilters,
+    skip: !canView || !initialized,
+  });
+
+  const { data: scheduleData } = useQuery({
+    queryKey: ['profesor-horario', 'calendar'],
+    queryFn: () => apiClient.get('/api/v1/profesor/mi-horario/'),
+    retry: false, // If it fails (e.g., admin), don't retry
+    enabled: canView && initialized,
+  });
+
+  const activeFiltersCount = useMemo(
+    () => Object.keys(appliedFilters).length,
+    [appliedFilters]
+  );
+
   const summaryCards = useMemo(() => ([
     {
       title: 'Eventos visibles',
@@ -88,98 +136,54 @@ export default function CalendarEventsPage() {
       subtitle: 'Registros en la página actual',
     },
     {
-      title: 'Total filtrado',
-      value: count,
-      subtitle: 'Resultados para el conjunto actual',
+      title: 'Clases Semanales',
+      value: scheduleData?.total_bloques || 0,
+      subtitle: scheduleData ? 'Tu horario cargado' : 'No disponible para tu rol',
     },
     {
       title: 'Filtros activos',
-      value: activeFilters,
+      value: activeFiltersCount,
       subtitle: 'Campos usados para acotar la búsqueda',
     },
     {
       title: 'Estado',
       value: loading ? 'Cargando' : 'Listo',
-      subtitle: canCreate || canEdit || canDelete ? 'Con permisos de operación' : 'Solo lectura',
+      subtitle: canCreate || canUpdate || canDelete ? 'Con permisos de operación' : 'Solo lectura',
     },
-  ]), [activeFilters, canCreate, canDelete, canEdit, count, loading, rows.length]);
+  ]), [activeFiltersCount, canCreate, canDelete, canUpdate, loading, rows.length, scheduleData]);
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
-    setPage(safePage);
+    goToPage(safePage);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
     setSearchParams(nextParams, { replace: true });
   }
 
-  function buildQuery(targetPage) {
-    const params = new URLSearchParams();
-    params.set('page', String(targetPage));
-    if (filters.tipo) params.set('tipo', filters.tipo);
-    if (filters.mes) params.set('mes', filters.mes);
-    if (filters.anio) params.set('anio', filters.anio);
-    if (filters.desde) params.set('desde', filters.desde);
-    if (filters.hasta) params.set('hasta', filters.hasta);
-    return params.toString();
-  }
-
-  async function loadEvents(targetPage = page) {
-    setLoading(true);
-    setFetchError('');
-    try {
-      const payload = await apiClient.get(`/api/v1/calendario/?${buildQuery(targetPage)}`);
-      const paginated = asPaginated(payload);
-      setRows(paginated.results);
-      setCount(paginated.count);
-      setHasNext(Boolean(paginated.next));
-      setHasPrevious(Boolean(paginated.previous));
-    } catch (err) {
-      setFetchError(err.payload?.detail || 'No se pudo cargar el calendario.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    if (!canView) return;
-    loadEvents(page);
-  }, [canView, page]);
+    if (!canView) {
+      return;
+    }
+    const safePage = Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1;
+    goToPage(safePage);
+    setInitialized(true);
+  }, [canView, goToPage, initialPage]);
 
   function onChange(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function resetForm() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-  }
-
-  function startEdit(row) {
-    if (!canEdit) {
+  function onStartEdit(row) {
+    if (!canUpdate) {
       toast.error('No tienes permisos para editar eventos.');
       return;
     }
-
-    setEditingId(row.id_evento);
-    setForm({
-      titulo: row.titulo || '',
-      descripcion: row.descripcion || '',
-      tipo: row.tipo || 'actividad',
-      fecha_inicio: row.fecha_inicio || '',
-      fecha_fin: row.fecha_fin || '',
-      hora_inicio: row.hora_inicio || '',
-      hora_fin: row.hora_fin || '',
-      todo_el_dia: Boolean(row.todo_el_dia),
-      lugar: row.lugar || '',
-      visibilidad: row.visibilidad || 'todos',
-      es_feriado_nacional: Boolean(row.es_feriado_nacional),
-      color: row.color || '#3B82F6',
-    });
+    startEdit(row);
   }
 
   async function onSubmit(event) {
     event.preventDefault();
-    if (editingId && !canEdit) {
+    if (editingId && !canUpdate) {
       toast.error('No tienes permisos para editar eventos.');
       return;
     }
@@ -192,22 +196,15 @@ export default function CalendarEventsPage() {
       return;
     }
 
-    setSaving(true);
-    const body = normalizeFormForApi(form);
-
     try {
       if (editingId) {
-        await apiClient.patch(`/api/v1/calendario/${editingId}/`, body);
+        await update();
       } else {
-        await apiClient.post('/api/v1/calendario/', body);
+        await create();
       }
-      await loadEvents(page);
       resetForm();
-      toast.success(editingId ? 'Evento actualizado' : 'Evento creado');
     } catch (err) {
-      toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar el evento.');
-    } finally {
-      setSaving(false);
+      // Errors are handled by useFormCRUD.
     }
   }
 
@@ -220,22 +217,23 @@ export default function CalendarEventsPage() {
       return;
     }
 
-    setSaving(true);
     try {
-      await apiClient.del(`/api/v1/calendario/${row.id_evento}/`);
-      await loadEvents(page);
-      toast.success('Evento eliminado');
+      await deleteRecord(row.id_evento);
     } catch (err) {
-      toast.error(err.payload?.detail || 'No se pudo eliminar el evento.');
-    } finally {
-      setSaving(false);
+      // Errors are handled by useFormCRUD.
     }
   }
 
   async function onApplyFilters(event) {
     event.preventDefault();
+    setAppliedFilters(activeFilters);
     updatePage(1);
-    await loadEvents(1);
+  }
+
+  function onClearFilters() {
+    clearFilters();
+    setAppliedFilters({});
+    updatePage(1);
   }
 
   if (!canView) {
@@ -256,11 +254,11 @@ export default function CalendarEventsPage() {
       <header className="page-header">
         <div>
           <h2>Calendario Escolar</h2>
-          <p>CRUD de eventos académicos con filtros por tipo, mes y rango de fechas.</p>
+          <p>Visualiza y administra los eventos académicos y feriados del colegio.</p>
         </div>
       </header>
 
-      {fetchError ? <div className="error-box">{fetchError}</div> : null}
+      {paginationError ? <div className="error-box" role="alert" aria-live="assertive">{paginationError}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -276,198 +274,87 @@ export default function CalendarEventsPage() {
             ))}
       </div>
 
-      <form className="card form-grid" onSubmit={onApplyFilters}>
-        <h3 className="full">Filtros</h3>
-        <label>
-          Tipo
-          <select value={filters.tipo} onChange={(e) => setFilters((prev) => ({ ...prev, tipo: e.target.value }))}>
-            <option value="">Todos</option>
-            {EVENT_TYPES.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Mes
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={filters.mes}
-            onChange={(e) => setFilters((prev) => ({ ...prev, mes: e.target.value }))}
-          />
-        </label>
-        <label>
-          Anio
-          <input
-            type="number"
-            min="2020"
-            max="2100"
-            value={filters.anio}
-            onChange={(e) => setFilters((prev) => ({ ...prev, anio: e.target.value }))}
-          />
-        </label>
-        <label>
-          Desde
-          <input type="date" value={filters.desde} onChange={(e) => setFilters((prev) => ({ ...prev, desde: e.target.value }))} />
-        </label>
-        <label>
-          Hasta
-          <input type="date" value={filters.hasta} onChange={(e) => setFilters((prev) => ({ ...prev, hasta: e.target.value }))} />
-        </label>
-        <div className="actions full">
-          <button type="submit" className="secondary" disabled={loading}>Aplicar Filtros</button>
-          <button
-            type="button"
-            onClick={() => setFilters({ tipo: '', mes: '', anio: '', desde: '', hasta: '' })}
-            disabled={loading}
-          >
-            Limpiar
-          </button>
-        </div>
-      </form>
+      <CalendarFilterForm
+        filters={filters}
+        loading={loading}
+        updateFilter={updateFilter}
+        onApplyFilters={onApplyFilters}
+        onClearFilters={onClearFilters}
+      />
 
-      {(canCreate || canEdit) ? (
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3 className="full">{editingId ? `Editar #${editingId}` : 'Nuevo Evento'}</h3>
-          <label>
-            Titulo
-            <input value={form.titulo} onChange={(e) => onChange('titulo', e.target.value)} required disabled={saving} />
-          </label>
-          <label>
-            Tipo
-            <select value={form.tipo} onChange={(e) => onChange('tipo', e.target.value)} disabled={saving}>
-              {EVENT_TYPES.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Visibilidad
-            <select value={form.visibilidad} onChange={(e) => onChange('visibilidad', e.target.value)} disabled={saving}>
-              {VISIBILITY.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Fecha Inicio
-            <input type="date" value={form.fecha_inicio} onChange={(e) => onChange('fecha_inicio', e.target.value)} required disabled={saving} />
-          </label>
-          <label>
-            Fecha Fin
-            <input type="date" value={form.fecha_fin} onChange={(e) => onChange('fecha_fin', e.target.value)} disabled={saving} />
-          </label>
-          <label>
-            Hora Inicio
-            <input type="time" value={form.hora_inicio} onChange={(e) => onChange('hora_inicio', e.target.value)} disabled={saving || form.todo_el_dia} />
-          </label>
-          <label>
-            Hora Fin
-            <input type="time" value={form.hora_fin} onChange={(e) => onChange('hora_fin', e.target.value)} disabled={saving || form.todo_el_dia} />
-          </label>
-          <label>
-            Lugar
-            <input value={form.lugar} onChange={(e) => onChange('lugar', e.target.value)} disabled={saving} />
-          </label>
-          <label>
-            Color
-            <input type="color" value={form.color} onChange={(e) => onChange('color', e.target.value)} disabled={saving} />
-          </label>
-          <label>
-            Todo el dia
-            <input type="checkbox" checked={form.todo_el_dia} onChange={(e) => onChange('todo_el_dia', e.target.checked)} disabled={saving} />
-          </label>
-          <label>
-            Feriado nacional
-            <input
-              type="checkbox"
-              checked={form.es_feriado_nacional}
-              onChange={(e) => onChange('es_feriado_nacional', e.target.checked)}
-              disabled={saving}
-            />
-          </label>
-          <label className="full">
-            Descripcion
-            <input value={form.descripcion} onChange={(e) => onChange('descripcion', e.target.value)} disabled={saving} />
-          </label>
-
-          <div className="actions full">
-            <button type="submit" disabled={saving}>{editingId ? 'Guardar Cambios' : 'Crear Evento'}</button>
-            <button type="button" className="secondary" onClick={resetForm} disabled={saving}>Cancelar</button>
-          </div>
-        </form>
+      {(canCreate || canUpdate) ? (
+        <CalendarEventForm
+          form={form}
+          editingId={editingId}
+          saving={saving}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          onReset={resetForm}
+        />
       ) : null}
 
       <article className="card section-card">
-        <div className="section-card-head">
+        <div className="section-card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h3>Listado de Eventos</h3>
+            <h3>Eventos</h3>
             <p>Eventos académicos y administrativos cargados para la consulta actual.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'var(--color-bg-inset, #f3f4f6)', padding: '0.25rem', borderRadius: '8px' }}>
+            <button 
+              type="button" 
+              className={viewMode === 'grid' ? 'primary' : 'secondary'} 
+              onClick={() => setViewMode('grid')}
+              style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none' }}
+            >
+              Vista Calendario
+            </button>
+            <button 
+              type="button" 
+              className={viewMode === 'list' ? 'primary' : 'secondary'} 
+              onClick={() => setViewMode('list')}
+              style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none' }}
+            >
+              Vista Lista
+            </button>
           </div>
         </div>
 
         {loading ? (
           <TableLoadingState />
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Titulo</th>
-                  <th>Tipo</th>
-                  <th>Inicio</th>
-                  <th>Fin</th>
-                  <th>Visibilidad</th>
-                  <th>Color</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_evento}>
-                    <td>{row.titulo}</td>
-                    <td>{row.tipo_display || row.tipo}</td>
-                    <td>{row.fecha_inicio}</td>
-                    <td>{row.fecha_fin || '-'}</td>
-                    <td>{row.visibilidad}</td>
-                    <td>
-                      <span className="calendar-color-chip" style={{ background: row.color || '#3B82F6' }} />
-                    </td>
-                    <td className="actions-cell">
-                      {canEdit ? (
-                        <button type="button" className="small secondary" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      ) : null}
-                      {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row)}>
-                          Eliminar
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>Sin eventos para los filtros seleccionados.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+        ) : viewMode === 'grid' ? (
+          <div style={{ marginTop: '1.5rem' }}>
+            <CalendarGrid 
+              events={rows}
+              schedule={scheduleData?.horario}
+              canEdit={canUpdate || canDelete}
+              onEdit={onStartEdit}
+              currentMonth={appliedFilters.mes}
+              currentYear={appliedFilters.anio}
+            />
           </div>
+        ) : (
+          <CalendarEventsTable
+            events={rows}
+            canEdit={canUpdate || canDelete}
+            savingId={null}
+            onEdit={onStartEdit}
+            onDelete={onDelete}
+          />
         )}
       </article>
 
-      <PaginationControls
-        page={page}
-        count={count}
-        hasPrevious={hasPrevious}
-        hasNext={hasNext}
-        onPageChange={updatePage}
-        loading={loading}
-      />
+      {viewMode === 'list' && (
+        <PaginationControls
+          page={pagination.currentPage}
+          count={pagination.total}
+          hasPrevious={pagination.currentPage > 1}
+          hasNext={pagination.currentPage < pagination.totalPages}
+          onPageChange={updatePage}
+          loading={loading}
+        />
+      )}
     </section>
   );
 }
+
 

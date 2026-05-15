@@ -1,8 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation, m } from 'framer-motion';
 
 /**
- * Card — Componente de tarjeta reutilizable
+ * Card - Componente de tarjeta reutilizable
  * 
  * Características:
  * - Elevación visual con sombra hover
@@ -21,28 +21,30 @@ export function Card({
   animate = true,
 }) {
   const variants = {
-    default: 'bg-white rounded-lg shadow border border-gray-200',
-    hover_lift: 'bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer transition-all',
-    interactive: 'bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md active:shadow-none cursor-pointer transition-all',
+    default: 'bg-white rounded-lg shadow border border-zinc-200',
+    hover_lift: 'bg-white rounded-lg shadow border border-zinc-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer transition-all',
+    interactive: 'bg-white rounded-lg shadow-sm border border-zinc-200 hover:shadow-md active:shadow-none cursor-pointer transition-all',
   };
 
   const baseClass = variants[variant] || variants.default;
 
   return (
-    <motion.div
-      initial={animate ? { opacity: 0, y: 10 } : false}
-      animate={animate ? { opacity: 1, y: 0 } : false}
-      whileHover={variant === 'hover_lift' ? { y: -2 } : {}}
-      onClick={onClick}
-      className={`${baseClass} p-4 ${className}`}
-    >
-      {children}
-    </motion.div>
+    <LazyMotion features={domAnimation}>
+      <m.div
+        initial={animate ? { opacity: 0, y: 10 } : false}
+        animate={animate ? { opacity: 1, y: 0 } : false}
+        whileHover={variant === 'hover_lift' ? { y: -2 } : {}}
+        onClick={onClick}
+        className={`${baseClass} p-4 ${className}`}
+      >
+        {children}
+      </m.div>
+    </LazyMotion>
   );
 }
 
 /**
- * CardHeader — Header de tarjeta
+ * CardHeader - Header de tarjeta
  */
 export function CardHeader({ title = '', subtitle = '', icon = null }) {
   return (
@@ -50,8 +52,8 @@ export function CardHeader({ title = '', subtitle = '', icon = null }) {
       <div className="flex items-center gap-2">
         {icon && <span className="text-2xl">{icon}</span>}
         <div>
-          {title && <h3 className="font-bold text-gray-900">{title}</h3>}
-          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+          {title && <h3 className="font-semibold text-zinc-900">{title}</h3>}
+          {subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
         </div>
       </div>
     </div>
@@ -59,21 +61,9 @@ export function CardHeader({ title = '', subtitle = '', icon = null }) {
 }
 
 /**
- * CardBody — Cuerpo de tarjeta
+ * CardBody - Cuerpo de tarjeta
  */
 export function CardBody({ children = null }) {
-  return <div className="text-gray-700 text-sm">{children}</div>;
+  return <div className="text-zinc-700 text-sm">{children}</div>;
 }
 
-/**
- * CardFooter — Footer de tarjeta
- */
-export function CardFooter({ children = null }) {
-  return (
-    <div className="mt-4 pt-3 border-t border-gray-200 flex justify-end gap-2">
-      {children}
-    </div>
-  );
-}
-
-export default Card;

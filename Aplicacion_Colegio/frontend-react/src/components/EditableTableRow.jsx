@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function EditableTableRow({ renderView, renderEdit, onSave, onCancel, defaultEditing = false }) {
+export default function EditableTableRow({ ViewComponent, EditComponent, onSave, onCancel, defaultEditing = false }) {
   const [isEditing, setIsEditing] = useState(defaultEditing);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -21,17 +21,13 @@ export default function EditableTableRow({ renderView, renderEdit, onSave, onCan
     if (onCancel) onCancel();
   }
 
-  if (isEditing) {
-    return (
-      <tr className="editable-row-editing">
-        {renderEdit({ onSave: handleSave, onCancel: handleCancel, isSaving })}
-      </tr>
-    );
-  }
-
-  return (
+  return isEditing ? (
+    <tr className="editable-row-editing">
+      <EditComponent onSave={handleSave} onCancel={handleCancel} isSaving={isSaving} />
+    </tr>
+  ) : (
     <tr className="editable-row-view">
-      {renderView({ onEdit: () => setIsEditing(true) })}
+      <ViewComponent onEdit={() => setIsEditing(true)} />
     </tr>
   );
 }

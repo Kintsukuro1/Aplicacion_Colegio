@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
+
+const CLP_FORMATTER = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+});
 
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
@@ -11,20 +17,14 @@ function resolveError(err, fallback) {
 
 function formatCurrency(value) {
   const numeric = Number(value || 0);
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
-  }).format(numeric);
+  return CLP_FORMATTER.format(numeric);
 }
 
 
 
 export default function AsesorFinancieroPage() {
-  const [anio, setAnio] = useState(new Date().getFullYear());
+  const [anio, setAnio] = useState(() => new Date().getFullYear());
   const [mes, setMes] = useState('');
-  const [dashboard, setDashboard] = useState(null);
-  const [morosos, setMorosos] = useState([]);
 
   const dashboardUrl = `/api/v1/finanzas/dashboard/?anio=${anio}${mes ? `&mes=${mes}` : ''}`;
   const { data: dashboardData, isLoading: dashboardLoading, error: dashboardErrorObj } = useQuery({
@@ -38,17 +38,9 @@ export default function AsesorFinancieroPage() {
   const dashboardError = dashboardErrorObj?.message;
   const morososError = morososErrorObj?.message;
 
-  useEffect(() => {
-    if (dashboardData) {
-      setDashboard(dashboardData);
-    }
-  }, [dashboardData]);
-
-  useEffect(() => {
-    if (morososData) {
-      setMorosos(Array.isArray(morososData.morosos) ? morososData.morosos.slice(0, 8) : []);
-    }
-  }, [morososData]);
+  // Derive data inline from query results (no useEffect sync needed)
+  const dashboard = dashboardData || null;
+  const morosos = Array.isArray(morososData?.morosos) ? morososData.morosos.slice(0, 8) : [];
 
   const loading = dashboardLoading || morososLoading;
   const error = dashboardError || morososError;
@@ -96,7 +88,7 @@ export default function AsesorFinancieroPage() {
               min="2020"
               max="2100"
               value={anio}
-              onChange={(e) => setAnio(Number(e.target.value) || new Date().getFullYear())}
+              onChange={(e) => setAnio(Number(e.target.value) || 2024)}
             />
           </label>
           <label>
@@ -116,7 +108,7 @@ export default function AsesorFinancieroPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div>
         <div className="summary-grid">
@@ -251,3 +243,4 @@ export default function AsesorFinancieroPage() {
     </section>
   );
 }
+

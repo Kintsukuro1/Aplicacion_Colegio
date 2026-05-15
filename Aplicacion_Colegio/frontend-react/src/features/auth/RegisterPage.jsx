@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import OnboardingWizard from '../../components/OnboardingWizard';
@@ -7,13 +7,12 @@ import { setTokens } from '../../lib/authStore';
 
 const STEPS = ['Admin', 'Colegio', 'Configuración', 'Confirmar'];
 
-export default function RegisterPage() {
-  const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [available, setAvailable] = useState(null);
-  const [form, setForm] = useState({
+const initialState = {
+  currentStep: 0,
+  loading: false,
+  error: '',
+  available: null,
+  form: {
     admin_name: '',
     admin_last_name: '',
     admin_email: '',
@@ -34,7 +33,30 @@ export default function RegisterPage() {
     umbral_inasistencia_alerta: 3,
     umbral_notas_alerta: 4.0,
     generate_demo_data: false,
-  });
+  },
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_STEP':
+      return { ...state, currentStep: action.payload };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload, error: action.payload ? '' : state.error };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'SET_AVAILABLE':
+      return { ...state, available: action.payload };
+    case 'UPDATE_FORM':
+      return { ...state, form: { ...state.form, [action.payload.field]: action.payload.value }, error: '' };
+    default:
+      return state;
+  }
+}
+
+export default function RegisterPage() {
+  const navigate = useNavigate();
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { currentStep, loading, error, available, form } = state;
 
   const stepSummary = useMemo(() => ({
     admin: form.admin_name && form.admin_email,
@@ -43,23 +65,21 @@ export default function RegisterPage() {
   }), [form]);
 
   function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setError('');
+    dispatch({ type: 'UPDATE_FORM', payload: { field, value } });
   }
 
   async function checkSlug() {
     if (!form.slug) return;
     try {
       const response = await apiClient.get(`/api/v1/onboarding/check-slug/?slug=${encodeURIComponent(form.slug)}`);
-      setAvailable(response.available);
+      dispatch({ type: 'SET_AVAILABLE', payload: response.available });
     } catch {
-      setAvailable(null);
+      dispatch({ type: 'SET_AVAILABLE', payload: null });
     }
   }
 
   async function submit() {
-    setLoading(true);
-    setError('');
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const response = await apiClient.post('/api/v1/onboarding/register/', form);
       try {
@@ -88,9 +108,9 @@ export default function RegisterPage() {
         });
       }
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo completar el registro.');
+      dispatch({ type: 'SET_ERROR', payload: err.payload?.detail || 'No se pudo completar el registro.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }
 
@@ -188,16 +208,16 @@ export default function RegisterPage() {
           </article>
         ) : null}
 
-        {error ? <div className="error-box">{error}</div> : null}
+        {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
         <div className="subscription-status-actions">
           {currentStep > 0 ? (
-            <button type="button" className="pricing-cta" onClick={() => setCurrentStep((value) => Math.max(0, value - 1))}>
+            <button type="button" className="pricing-cta" onClick={() => dispatch({ type: 'SET_STEP', payload: Math.max(0, currentStep - 1) })}>
               Atrás
             </button>
           ) : null}
           {currentStep < STEPS.length - 1 ? (
-            <button type="button" className="pricing-cta" onClick={() => setCurrentStep((value) => value + 1)}>
+            <button type="button" className="pricing-cta" onClick={() => dispatch({ type: 'SET_STEP', payload: currentStep + 1 })}>
               Siguiente
             </button>
           ) : (
@@ -210,3 +230,4 @@ export default function RegisterPage() {
     </section>
   );
 }
+

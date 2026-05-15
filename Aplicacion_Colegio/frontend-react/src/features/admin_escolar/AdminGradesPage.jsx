@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
@@ -9,6 +9,10 @@ import { usePagination } from '../../lib/hooks';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
+
+import { AdminGradesForm } from './AdminGradesForm';
+import { AdminGradesTable } from './AdminGradesTable';
+import { AdminGradesBulkActions } from './AdminGradesBulkActions';
 
 function isBatchEndpointUnavailable(error) {
   return error?.status === 404 || error?.status === 405;
@@ -26,62 +30,101 @@ function toBulkResult(payload, fallbackFailedIds = []) {
   return { success, failed, failedIds };
 }
 
+const EMPTY_FORM = {
+  evaluacion: '',
+  estudiante: '',
+  nota: '',
+};
+
+function createInitialState(searchParams) {
+  const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
+  return {
+    page: Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1,
+    selectedIds: [],
+    form: EMPTY_FORM,
+    editingId: null,
+    processingBulk: false,
+    saving: false,
+    bulkResult: null,
+  };
+}
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_PAGE':
+      return { ...state, page: action.page, selectedIds: [], bulkResult: null };
+    case 'SET_FORM_FIELD':
+      return { ...state, form: { ...state.form, [action.name]: action.value } };
+    case 'START_EDIT':
+      return {
+        ...state,
+        editingId: action.row.id_calificacion,
+        form: {
+          evaluacion: String(action.row.evaluacion),
+          estudiante: String(action.row.estudiante),
+          nota: String(action.row.nota),
+        },
+      };
+    case 'RESET_FORM':
+      return { ...state, editingId: null, form: EMPTY_FORM };
+    case 'TOGGLE_SELECT': {
+      const id = action.id;
+      const prev = state.selectedIds;
+      return {
+        ...state,
+        selectedIds: prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      };
+    }
+    case 'TOGGLE_SELECT_ALL': {
+      const currentIds = action.rows.map((row) => row.id_calificacion);
+      const allSelected = currentIds.length > 0 && currentIds.every((id) => state.selectedIds.includes(id));
+      return { ...state, selectedIds: allSelected ? [] : currentIds };
+    }
+    case 'CLEAR_SELECTION':
+      return { ...state, selectedIds: [] };
+    case 'SET_PROCESSING_BULK':
+      return { ...state, processingBulk: action.value };
+    case 'SET_SAVING':
+      return { ...state, saving: action.value };
+    case 'SET_BULK_RESULT':
+      return { ...state, bulkResult: action.value };
+    default:
+      return state;
+  }
+}
+
 export default function AdminGradesPage() {
   const me = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialPage = Number.parseInt(searchParams.get('page') || '1', 10);
-  const page = Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1;
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [form, setForm] = useState({
-    evaluacion: '',
-    estudiante: '',
-    nota: '',
-  });
-  const [editingId, setEditingId] = useState(null);
-  const [processingBulk, setProcessingBulk] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [bulkResult, setBulkResult] = useState(null);
+  const [state, dispatch] = useReducer(reducer, searchParams, createInitialState);
   const toast = useToast();
   const { canAny } = usePermissions(me);
 
   const canView = useMemo(
-    () =>
-      canAny(['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE', 'SYSTEM_ADMIN']),
+    () => canAny(['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE', 'SYSTEM_ADMIN']),
     [canAny]
   );
   const canCreate = useMemo(() => canAny(['GRADE_CREATE', 'SYSTEM_ADMIN']), [canAny]);
   const canEdit = useMemo(() => canAny(['GRADE_EDIT', 'SYSTEM_ADMIN']), [canAny]);
   const canDelete = useMemo(() => canAny(['GRADE_DELETE', 'SYSTEM_ADMIN']), [canAny]);
+  
   const paginationUrl = '/api/v1/profesor/calificaciones/';
   const { items: rows, pagination, loading, error: apiError, refetch: refetchGrades } = usePagination(paginationUrl, {
-    params: { page },
+    params: { page: state.page },
     pageMode: true,
     skip: !canView,
   });
 
-  const formLocked = editingId ? !canEdit : !canCreate;
+  const formLocked = state.editingId ? !canEdit : !canCreate;
   const canSubmit = useMemo(() => {
-    return Boolean(form.evaluacion && form.estudiante && form.nota !== '');
-  }, [form]);
-
-  function onChange(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setForm({
-      evaluacion: '',
-      estudiante: '',
-      nota: '',
-    });
-  }
+    return Boolean(state.form.evaluacion && state.form.estudiante && state.form.nota !== '');
+  }, [state.form]);
 
   function toPayload() {
     return {
-      evaluacion: Number.parseInt(form.evaluacion, 10),
-      estudiante: Number.parseInt(form.estudiante, 10),
-      nota: Number.parseFloat(form.nota),
+      evaluacion: Number.parseInt(state.form.evaluacion, 10),
+      estudiante: Number.parseInt(state.form.estudiante, 10),
+      nota: Number.parseFloat(state.form.nota),
     };
   }
 
@@ -90,22 +133,15 @@ export default function AdminGradesPage() {
       toast.error('No tienes permisos para editar calificaciones.');
       return;
     }
-
-    setEditingId(row.id_calificacion);
-    setForm({
-      evaluacion: String(row.evaluacion),
-      estudiante: String(row.estudiante),
-      nota: String(row.nota),
-    });
+    dispatch({ type: 'START_EDIT', row });
   }
 
   function updatePage(nextPage) {
     const safePage = nextPage > 0 ? nextPage : 1;
+    dispatch({ type: 'SET_PAGE', page: safePage });
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('page', String(safePage));
     setSearchParams(nextParams, { replace: true });
-    setSelectedIds([]);
-    setBulkResult(null);
   }
 
   const summaryCards = useMemo(() => {
@@ -137,28 +173,28 @@ export default function AdminGradesPage() {
     event.preventDefault();
 
     if (formLocked) {
-      toast.error(editingId ? 'No tienes permisos para editar calificaciones.' : 'No tienes permisos para crear calificaciones.');
+      toast.error(state.editingId ? 'No tienes permisos para editar calificaciones.' : 'No tienes permisos para crear calificaciones.');
       return;
     }
     if (!canSubmit) {
       return;
     }
 
-    setSaving(true);
+    dispatch({ type: 'SET_SAVING', value: true });
     try {
       const payload = toPayload();
-      if (editingId) {
-        await apiClient.patch(`/api/v1/profesor/calificaciones/${editingId}/`, payload);
+      if (state.editingId) {
+        await apiClient.patch(`/api/v1/profesor/calificaciones/${state.editingId}/`, payload);
       } else {
         await apiClient.post('/api/v1/profesor/calificaciones/', payload);
       }
       await refetchGrades();
-      resetForm();
-      toast.success(editingId ? 'Calificacion actualizada' : 'Calificacion creada');
+      dispatch({ type: 'RESET_FORM' });
+      toast.success(state.editingId ? 'Calificacion actualizada' : 'Calificacion creada');
     } catch (err) {
       toast.error(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo guardar calificacion.');
     } finally {
-      setSaving(false);
+      dispatch({ type: 'SET_SAVING', value: false });
     }
   }
 
@@ -181,28 +217,9 @@ export default function AdminGradesPage() {
     }
   }
 
-  function toggleSelect(gradeId) {
-    setSelectedIds((prev) => {
-      if (prev.includes(gradeId)) {
-        return prev.filter((id) => id !== gradeId);
-      }
-      return [...prev, gradeId];
-    });
-  }
-
-  function toggleSelectAllCurrentPage() {
-    const currentIds = rows.map((row) => row.id_calificacion);
-    const allSelected = currentIds.length > 0 && currentIds.every((id) => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds([]);
-      return;
-    }
-    setSelectedIds(currentIds);
-  }
-
   async function runBulkDelete(targetIds) {
-    setProcessingBulk(true);
-    setBulkResult(null);
+    dispatch({ type: 'SET_PROCESSING_BULK', value: true });
+    dispatch({ type: 'SET_BULK_RESULT', value: null });
 
     try {
       let result;
@@ -217,28 +234,34 @@ export default function AdminGradesPage() {
           throw batchError;
         }
 
-        let success = 0;
-        const failedIds = [];
-        for (const gradeId of targetIds) {
-          try {
-            await apiClient.del(`/api/v1/profesor/calificaciones/${gradeId}/`);
-            success += 1;
-          } catch (_) {
-            failedIds.push(gradeId);
+        const results = await Promise.all(
+          targetIds.map(async (gradeId) => {
+            try {
+              await apiClient.del(`/api/v1/profesor/calificaciones/${gradeId}/`);
+              return { ok: true, id: gradeId };
+            } catch (_) {
+              return { ok: false, id: gradeId };
+            }
+          })
+        );
+        const failedIds = results.reduce((acc, item) => {
+          if (!item.ok) {
+            acc.push(item.id);
           }
-        }
+          return acc;
+        }, []);
+        const success = results.length - failedIds.length;
         result = toBulkResult({ success, failed: failedIds.length }, failedIds);
       }
 
-      setBulkResult(result);
-
+      dispatch({ type: 'SET_BULK_RESULT', value: result });
       await refetchGrades();
-      setSelectedIds([]);
+      dispatch({ type: 'CLEAR_SELECTION' });
       toast.success('Eliminacion masiva completada');
     } catch (err) {
       toast.error(err.payload?.detail || 'No se pudo completar la eliminacion masiva.');
     } finally {
-      setProcessingBulk(false);
+      dispatch({ type: 'SET_PROCESSING_BULK', value: false });
     }
   }
 
@@ -248,23 +271,23 @@ export default function AdminGradesPage() {
       return;
     }
 
-    if (selectedIds.length === 0) {
+    if (state.selectedIds.length === 0) {
       toast.error('Selecciona al menos una calificacion para eliminar.');
       return;
     }
 
-    if (!window.confirm(`Eliminar ${selectedIds.length} calificacion(es) seleccionada(s)?`)) {
+    if (!window.confirm(`Eliminar ${state.selectedIds.length} calificacion(es) seleccionada(s)?`)) {
       return;
     }
 
-    await runBulkDelete(selectedIds);
+    await runBulkDelete(state.selectedIds);
   }
 
   async function retryFailedBulkDelete() {
-    if (!bulkResult || bulkResult.failed === 0) {
+    if (!state.bulkResult || state.bulkResult.failed === 0) {
       return;
     }
-    await runBulkDelete(bulkResult.failedIds);
+    await runBulkDelete(state.bulkResult.failedIds);
   }
 
   if (!canView) {
@@ -285,67 +308,25 @@ export default function AdminGradesPage() {
       <header className="page-header">
         <div>
           <h2>Admin Escolar: Calificaciones</h2>
-          <p>Lectura desde `GET /api/v1/profesor/calificaciones/`.</p>
+          <p>Lectura desde `/api/v1/profesor/calificaciones/`.</p>
         </div>
       </header>
 
-      {apiError ? <div className="error-box">{apiError}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
       {!canDelete ? <p>Modo restringido: falta capability `GRADE_DELETE` para eliminacion masiva.</p> : null}
 
       {canCreate || canEdit ? (
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3>{editingId ? `Editar calificacion #${editingId}` : 'Nueva Calificacion'}</h3>
-
-          <label>
-            Evaluacion ID
-            <input
-              type="number"
-              value={form.evaluacion}
-              onChange={(e) => onChange('evaluacion', e.target.value)}
-              required
-              disabled={formLocked}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Estudiante ID
-            <input
-              type="number"
-              value={form.estudiante}
-              onChange={(e) => onChange('estudiante', e.target.value)}
-              required
-              disabled={formLocked}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Nota
-            <input
-              type="number"
-              step="0.1"
-              value={form.nota}
-              onChange={(e) => onChange('nota', e.target.value)}
-              required
-              disabled={formLocked}
-              min="1"
-              max="7"
-            />
-          </label>
-
-          <div className="actions full">
-            <button type="submit" disabled={!canSubmit || formLocked || saving}>
-              {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-            </button>
-            {editingId ? (
-              <button type="button" className="secondary" onClick={resetForm}>
-                Cancelar Edicion
-              </button>
-            ) : null}
-          </div>
-        </form>
+        <AdminGradesForm
+          form={state.form}
+          editingId={state.editingId}
+          formLocked={formLocked}
+          saving={state.saving}
+          canSubmit={canSubmit}
+          onChange={(name, value) => dispatch({ type: 'SET_FORM_FIELD', name, value })}
+          onCancel={() => dispatch({ type: 'RESET_FORM' })}
+          onSubmit={onSubmit}
+        />
       ) : null}
 
       <div className="summary-grid">
@@ -373,101 +354,32 @@ export default function AdminGradesPage() {
         {loading ? (
           <TableLoadingState />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id_calificacion))}
-                      onChange={toggleSelectAllCurrentPage}
-                      disabled={!canDelete || rows.length === 0 || processingBulk}
-                    />
-                  </th>
-                  <th>ID</th>
-                  <th>Evaluacion</th>
-                  <th>Estudiante</th>
-                  <th>Nota</th>
-                  <th>Fecha Creacion</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_calificacion}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(row.id_calificacion)}
-                        onChange={() => toggleSelect(row.id_calificacion)}
-                        disabled={!canDelete || processingBulk}
-                      />
-                    </td>
-                    <td>{row.id_calificacion}</td>
-                    <td>{row.evaluacion}</td>
-                    <td>{row.estudiante_nombre || row.estudiante}</td>
-                    <td>{row.nota}</td>
-                    <td>{row.fecha_creacion || '-'}</td>
-                    <td className="actions-cell">
-                      {canEdit ? (
-                        <button type="button" className="small" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      ) : null}
-                      {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_calificacion)}>
-                          Eliminar
-                        </button>
-                      ) : null}
-                      {!canEdit && !canDelete ? <span>-</span> : null}
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="7">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <AdminGradesTable
+            rows={rows}
+            selectedIds={state.selectedIds}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            processingBulk={state.processingBulk}
+            onToggleSelect={(id) => dispatch({ type: 'TOGGLE_SELECT', id })}
+            onToggleSelectAll={() => dispatch({ type: 'TOGGLE_SELECT_ALL', rows })}
+            onStartEdit={startEdit}
+            onDelete={onDelete}
+          />
         )}
       </article>
 
       {canDelete ? (
-        <div className="card section-card">
-          <div className="bulk-actions-bar">
-            <span>{selectedIds.length} seleccionado(s) en la pagina actual.</span>
-            <button
-              type="button"
-              className="danger"
-              onClick={onBulkDelete}
-              disabled={processingBulk || selectedIds.length === 0}
-            >
-              {processingBulk ? 'Eliminando...' : 'Eliminar Seleccionadas'}
-            </button>
-          </div>
-
-          {bulkResult ? (
-            <p className="bulk-result-text">
-              Eliminacion masiva completada: {bulkResult.success} ok, {bulkResult.failed} con error
-              {bulkResult.failed > 0 ? ` (IDs: ${bulkResult.failedIds.slice(0, 5).join(', ')}${bulkResult.failed > 5 ? ', ...' : ''})` : ''}.
-            </p>
-          ) : null}
-
-          {bulkResult && bulkResult.failed > 0 ? (
-            <div className="bulk-retry-actions">
-              <button type="button" className="secondary" onClick={retryFailedBulkDelete} disabled={processingBulk}>
-                {processingBulk ? 'Reintentando...' : 'Reintentar Fallidos'}
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <AdminGradesBulkActions
+          selectedCount={state.selectedIds.length}
+          processingBulk={state.processingBulk}
+          bulkResult={state.bulkResult}
+          onBulkDelete={onBulkDelete}
+          onRetryFailed={retryFailedBulkDelete}
+        />
       ) : null}
 
       <PaginationControls
-        page={page}
+        page={state.page}
         count={pagination.total}
         hasNext={pagination.hasNext}
         hasPrevious={pagination.hasPrevious}
@@ -477,4 +389,3 @@ export default function AdminGradesPage() {
     </section>
   );
 }
-

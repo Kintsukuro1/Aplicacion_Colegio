@@ -10,8 +10,9 @@ const BOTTOM_NAV_ITEMS = [
   { to: '/calendario/eventos', icon: 'CA', label: 'Calendario' },
   { to: '/admin-escolar/calificaciones', icon: 'NO', label: 'Notas' },
 ];
+const EMPTY_ROUTES = [];
 
-export default function MobileBottomNav({ visibleRoutes = [] }) {
+export default function MobileBottomNav({ visibleRoutes = EMPTY_ROUTES }) {
   const visiblePaths = new Set(visibleRoutes.map((route) => route.to));
   const items = BOTTOM_NAV_ITEMS.filter((item) => visiblePaths.has(item.to));
 

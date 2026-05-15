@@ -1,19 +1,44 @@
-import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useMemo, useReducer } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
 import { setTokens } from '../../lib/authStore';
 import { useTenant } from '../../lib/tenantContext';
 
+const initialState = {
+  email: '',
+  password: '',
+  loading: false,
+  error: '',
+  touched: { email: false, password: false },
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.payload.name]: action.payload.value, error: '' };
+    case 'SET_TOUCHED':
+      return { ...state, touched: { ...state.touched, [action.payload]: true } };
+    case 'TOUCH_ALL':
+      return { ...state, touched: { email: true, password: true } };
+    case 'START_SUBMIT':
+      return { ...state, loading: true, error: '' };
+    case 'SET_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    case 'FINISH_SUBMIT':
+      return { ...state, loading: false };
+    default:
+      return state;
+  }
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { tenant } = useTenant();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [touched, setTouched] = useState({ email: false, password: false });
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { email, password, loading, error, touched } = state;
 
   const emailError = useMemo(() => {
     if (!touched.email) {
@@ -53,9 +78,9 @@ export default function LoginPage() {
 
   async function onSubmit(event) {
     event.preventDefault();
-    setError('');
+    dispatch({ type: 'SET_ERROR', payload: '' });
 
-    setTouched({ email: true, password: true });
+    dispatch({ type: 'TOUCH_ALL' });
 
     if (!email.trim() || !password.trim()) {
       return;
@@ -65,16 +90,16 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    dispatch({ type: 'START_SUBMIT' });
 
     try {
       const payload = await apiClient.post('/api/v1/auth/token/', { email: email.trim().toLowerCase(), password });
       setTokens({ access: payload.access, refresh: payload.refresh });
       navigate(getRedirectTarget(), { replace: true });
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudo iniciar sesion.');
+      dispatch({ type: 'SET_ERROR', payload: err.payload?.detail || 'No se pudo iniciar sesion.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_SUBMIT' });
     }
   }
 
@@ -95,7 +120,7 @@ export default function LoginPage() {
           <span className="brand-text">{tenant?.nombre || 'Colegio SaaS'}</span>
         </div>
 
-        <h1>Acceso Plataforma</h1>
+        <h1>Acceso a la plataforma</h1>
         <p>Ingresa tus credenciales para acceder al sistema de gestión.</p>
 
         <label>
@@ -103,11 +128,8 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError('');
-            }}
-            onBlur={() => setTouched((current) => ({ ...current, email: true }))}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { name: 'email', value: e.target.value } })}
+            onBlur={() => dispatch({ type: 'SET_TOUCHED', payload: 'email' })}
             required
             autoComplete="username"
             placeholder="correo@ejemplo.cl"
@@ -118,15 +140,12 @@ export default function LoginPage() {
         </label>
 
         <label>
-          Contrasena
+          Contraseña
           <input
             type="password"
             value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError('');
-            }}
-            onBlur={() => setTouched((current) => ({ ...current, password: true }))}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { name: 'password', value: e.target.value } })}
+            onBlur={() => dispatch({ type: 'SET_TOUCHED', payload: 'password' })}
             required
             autoComplete="current-password"
             placeholder="••••••••"
@@ -136,7 +155,7 @@ export default function LoginPage() {
           {passwordError ? <small id="login-password-error" className="field-error">{passwordError}</small> : null}
         </label>
 
-        {error ? <div className="error-box">{error}</div> : null}
+        {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
         <button type="submit" disabled={!canSubmit} aria-busy={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
@@ -144,9 +163,10 @@ export default function LoginPage() {
 
         <div className="register-link">
           ¿Eres un colegio nuevo?{' '}
-          <a href="/register">Registra tu institución</a>
+          <Link to="/register">Registra tu institución</Link>
         </div>
       </form>
     </div>
   );
 }
+

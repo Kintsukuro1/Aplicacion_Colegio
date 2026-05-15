@@ -1,45 +1,14 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardHeader, CardBody, Badge, Button } from '@/components/ui';
-import { apiClient } from '@/lib/apiClient';
-
-const EXECUTIVE_SCOPES = new Set(['school', 'analytics', 'global']);
-
-function buildDashboardPath(basePath, scope, schoolId) {
-  const params = new URLSearchParams({ scope });
-  if (schoolId) params.set('colegio_id', schoolId);
-  return `${basePath}?${params.toString()}`;
-}
-
-function fetchDashboardResumen(scope, schoolId) {
-  return apiClient.get(buildDashboardPath('/api/v1/dashboard/resumen/', scope, schoolId));
-}
-
-function fetchDashboardExecutive(scope, schoolId) {
-  return apiClient.get(buildDashboardPath('/api/v1/dashboard/executive/', scope, schoolId));
-}
-
-function fetchDashboardSchools() {
-  return apiClient.get('/api/v1/dashboard/colegios/');
-}
-
-function formatValue(value, suffix = '') {
-  if (value === null || value === undefined || value === '') return '-';
-  if (typeof value === 'number') return `${new Intl.NumberFormat('es-CL').format(value)}${suffix}`;
-  return `${value}${suffix}`;
-}
-
-function formatDateTime(value) {
-  if (!value) return '';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toLocaleString('es-CL');
-}
+import { useTenant } from '@/lib/tenantContext';
+import { EXECUTIVE_SCOPES, fetchDashboardExecutive, fetchDashboardResumen, fetchDashboardSchools, formatDateTime, formatValue } from './dashboardHelpers';
 
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { setTenantOverride, clearTenantOverride } = useTenant();
   const scope = searchParams.get('scope') || 'auto';
   const selectedSchoolId = searchParams.get('colegio_id') || '';
 
@@ -68,6 +37,20 @@ export default function DashboardPage() {
 
   const isLoading = loadingResumen || (shouldLoadExecutive && loadingExec);
 
+  useEffect(() => {
+    if (actualScope !== 'school') {
+      clearTenantOverride();
+      return;
+    }
+
+    if (isGlobalContext && selectedSchoolId) {
+      setTenantOverride(selectedSchoolId);
+      return;
+    }
+
+    clearTenantOverride();
+  }, [actualScope, clearTenantOverride, isGlobalContext, selectedSchoolId, setTenantOverride]);
+
   if (errorResumen) {
     const msg = errorResumen.payload?.detail || errorResumen.message || 'Error al cargar';
     return <div className="p-6 text-red-600">{msg}</div>;
@@ -76,12 +59,12 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="p-6" role="status" aria-busy="true">
-        <div className="animate-pulse flex space-x-4">
+        <div className="animate-pulse flex gap-x-4">
           <div className="flex-1 space-y-4 py-1">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-zinc-200 rounded w-3/4"></div>
             <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              <div className="h-4 bg-zinc-200 rounded"></div>
+              <div className="h-4 bg-zinc-200 rounded w-5/6"></div>
             </div>
           </div>
         </div>
@@ -118,6 +101,12 @@ export default function DashboardPage() {
     global: 'Global',
     auto: 'Automatico',
   };
+  const scopeOptions = availableScopes.reduce((acc, scopeOption) => {
+    if (scopeOption !== 'auto') {
+      acc.push(scopeOption);
+    }
+    return acc;
+  }, []);
 
   const title =
     actualScope === 'analytics'
@@ -132,16 +121,16 @@ export default function DashboardPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-3xl font-semibold text-zinc-900">{title}</h1>
+          <p className="text-zinc-500 text-sm mt-1">
             Contrato {resumen.contract_version}
             {isGlobalContext ? ' - Administrador general' : ''}
           </p>
         </div>
 
         {availableScopes.length > 1 && (
-          <div className="flex flex-wrap gap-2 bg-gray-100 p-1 rounded-lg">
-            {availableScopes.filter((s) => s !== 'auto').map((s) => (
+          <div className="flex flex-wrap gap-2 bg-zinc-100 p-1 rounded-lg">
+            {scopeOptions.map((s) => (
               <Button
                 key={s}
                 variant={actualScope === s ? 'primary' : 'ghost'}
@@ -180,7 +169,7 @@ export default function DashboardPage() {
 
 function MetricCard({ title, value, suffix = '', detail = '', tone = 'gray' }) {
   const tones = {
-    gray: 'text-gray-900',
+    gray: 'text-zinc-900',
     blue: 'text-blue-600',
     green: 'text-green-600',
     red: 'text-red-600',
@@ -192,9 +181,9 @@ function MetricCard({ title, value, suffix = '', detail = '', tone = 'gray' }) {
     <Card variant="hover_lift">
       <CardBody>
         <div className="text-center p-2">
-          <p className="text-gray-500">{title}</p>
+          <p className="text-zinc-500">{title}</p>
           <p className={`text-4xl font-bold mt-2 ${tones[tone] || tones.gray}`}>{formatValue(value, suffix)}</p>
-          {detail ? <p className="text-xs text-gray-400 mt-1">{detail}</p> : null}
+          {detail ? <p className="text-xs text-zinc-400 mt-1">{detail}</p> : null}
         </div>
       </CardBody>
     </Card>
@@ -224,7 +213,7 @@ function SchoolDashboard({ resumen, executive, isGlobalContext, schools, selecte
               value={selectedSchoolId}
               onChange={(event) => onSchoolChange(event.target.value)}
               disabled={loadingSchools}
-              className="rounded-md border border-blue-200 bg-white px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="rounded-md border border-blue-200 bg-white px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
               <option value="">{loadingSchools ? 'Cargando colegios...' : 'Todos los colegios'}</option>
               {schools.map((school) => (
@@ -309,13 +298,13 @@ function ExecutiveDetails({ executive }) {
         {subscriptionAlert ? (
           <div className="bg-blue-50 text-blue-800 p-4 rounded-lg border border-blue-200">{subscriptionAlert.message}</div>
         ) : null}
-        {usageWarnings.map((warning, i) => (
-          <div key={`usage-${i}`} className="bg-red-50 text-red-800 p-4 rounded-lg border border-red-200">
+        {usageWarnings.map((warning) => (
+          <div key={`usage-${warning.message}`} className="bg-red-50 text-red-800 p-4 rounded-lg border border-red-200">
             {warning.message}
           </div>
         ))}
-        {alerts.map((alert, i) => (
-          <div key={`alert-${i}`} className="bg-yellow-50 text-yellow-800 p-4 rounded-lg border border-yellow-200 flex items-center gap-2">
+        {alerts.map((alert) => (
+          <div key={`alert-${alert.message}`} className="bg-yellow-50 text-yellow-800 p-4 rounded-lg border border-yellow-200 flex items-center gap-2">
             {alert.icon ? <span>{alert.icon}</span> : null}
             {alert.message}
           </div>
@@ -332,7 +321,7 @@ function ExecutiveDetails({ executive }) {
                   <div className="bg-blue-600 rounded-t" style={{ height: `${Math.max(item.rate || 0, 4)}%` }}></div>
                 </div>
               ))}
-              {trend.length === 0 ? <p className="text-gray-500 text-sm py-4">No hay tendencia de asistencia disponible.</p> : null}
+              {trend.length === 0 ? <p className="text-zinc-500 text-sm py-4">No hay tendencia de asistencia disponible.</p> : null}
             </div>
           </CardBody>
         </Card>
@@ -341,14 +330,14 @@ function ExecutiveDetails({ executive }) {
           <CardHeader title="Asistencia por curso" subtitle="Mes actual" />
           <CardBody>
             <div className="space-y-3 mt-2">
-              {(charts.attendance_by_course || []).slice(0, 6).map((course, idx) => (
-                <div key={`${course.course}-${idx}`} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <span className="font-medium text-gray-800 text-sm">{course.course}</span>
+              {(charts.attendance_by_course || []).slice(0, 6).map((course) => (
+                <div key={course.course} className="flex justify-between items-center p-3 bg-zinc-50 rounded-lg border border-zinc-100">
+                  <span className="font-medium text-zinc-800 text-sm">{course.course}</span>
                   <Badge variant={course.rate >= 85 ? 'success' : course.rate >= 70 ? 'warning' : 'error'}>{course.rate}%</Badge>
                 </div>
               ))}
               {(!charts.attendance_by_course || charts.attendance_by_course.length === 0) ? (
-                <p className="text-gray-500 text-sm text-center py-4">No hay datos de asistencia suficientes.</p>
+                <p className="text-zinc-500 text-sm text-center py-4">No hay datos de asistencia suficientes.</p>
               ) : null}
             </div>
           </CardBody>
@@ -360,19 +349,19 @@ function ExecutiveDetails({ executive }) {
           <CardHeader title="Distribucion de notas" subtitle="Rendimiento general" />
           <CardBody>
             <div className="space-y-4 mt-2">
-              {(charts.grade_distribution || []).map((item, idx) => (
-                <div key={`${item.label}-${idx}`}>
+              {(charts.grade_distribution || []).map((item) => (
+                <div key={item.label}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600 font-medium">{item.label}</span>
-                    <span className="text-gray-900">{item.count} registros</span>
+                    <span className="text-zinc-600 font-medium">{item.label}</span>
+                    <span className="text-zinc-900">{item.count} registros</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="w-full bg-zinc-100 rounded-full h-2">
                     <div className="h-2 rounded-full" style={{ width: `${Math.min((item.count || 0) * 8, 100)}%`, backgroundColor: item.color }}></div>
                   </div>
                 </div>
               ))}
               {(!charts.grade_distribution || charts.grade_distribution.length === 0) ? (
-                <p className="text-gray-500 text-sm py-4">No hay calificaciones suficientes.</p>
+                <p className="text-zinc-500 text-sm py-4">No hay calificaciones suficientes.</p>
               ) : null}
             </div>
           </CardBody>
@@ -382,16 +371,16 @@ function ExecutiveDetails({ executive }) {
           <CardHeader title="Actividad reciente" />
           <CardBody>
             {activity.length === 0 ? (
-              <p className="text-gray-500 py-4">No hay actividad reciente.</p>
+              <p className="text-zinc-500 py-4">No hay actividad reciente.</p>
             ) : (
               <div className="space-y-4">
-                {activity.map((act, i) => (
-                  <div key={`${act.type}-${i}`} className="flex gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                {activity.map((act) => (
+                  <div key={`${act.type}-${act.title}-${act.timestamp}`} className="flex gap-4 border-b border-zinc-100 pb-4 last:border-0 last:pb-0">
                     <div className="text-2xl pt-1">{act.icon}</div>
                     <div>
-                      <p className="font-medium text-gray-900">{act.title}</p>
-                      <p className="text-sm text-gray-600">{[act.subject, act.course].filter(Boolean).join(' - ')}</p>
-                      <p className="text-sm text-gray-500 exec-activity-time">{[act.detail, formatDateTime(act.timestamp)].filter(Boolean).join(' - ')}</p>
+                      <p className="font-medium text-zinc-900">{act.title}</p>
+                      <p className="text-sm text-zinc-600">{[act.subject, act.course].filter(Boolean).join(' - ')}</p>
+                      <p className="text-sm text-zinc-500 exec-activity-time">{[act.detail, formatDateTime(act.timestamp)].filter(Boolean).join(' - ')}</p>
                     </div>
                   </div>
                 ))}
@@ -444,11 +433,11 @@ function SelfDashboard({ resumen }) {
         <CardHeader title="Mis evaluaciones proximas" />
         <CardBody>
           {evalList.length === 0 ? (
-            <p className="text-gray-500 py-4">No tienes evaluaciones proximas registradas.</p>
+            <p className="text-zinc-500 py-4">No tienes evaluaciones proximas registradas.</p>
           ) : (
             <ul className="space-y-2">
-              {evalList.map((ev, i) => (
-                <li key={`${ev.nombre || ev.title}-${i}`} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+              {evalList.map((ev) => (
+                <li key={`${ev.nombre || ev.title}-${ev.fecha || ''}`} className="bg-zinc-50 p-3 rounded-lg border border-zinc-100">
                   {ev.nombre || ev.title}
                 </li>
               ))}

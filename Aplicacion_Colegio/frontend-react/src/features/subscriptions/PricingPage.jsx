@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 
 import SubscriptionStatusCard from '../../components/SubscriptionStatusCard';
 import { apiClient } from '../../lib/apiClient';
@@ -96,24 +96,82 @@ function PlanCard({ plan, onContract, currentPlan }) {
   );
 }
 
+const initialState = {
+  plans: [],
+  providers: [],
+  selectedProvider: 'bank_transfer_bancoestado',
+  status: null,
+  loading: true,
+  error: '',
+  checkoutMessage: '',
+  checkoutDetails: null,
+  transferForm: { reference: '', amount: '', bank_name: '', account_holder: '', notes: '' },
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, loading: true, error: '' };
+    case 'FETCH_SUCCESS': {
+      const { plans, status, providers } = action.payload;
+      const initialProvider = providers.find((p) => p.active) || providers[0];
+      return {
+        ...state,
+        loading: false,
+        plans,
+        status,
+        providers,
+        selectedProvider: initialProvider?.codigo || state.selectedProvider,
+      };
+    }
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    case 'SET_PROVIDER':
+      return { ...state, selectedProvider: action.payload };
+    case 'CHECKOUT_START':
+      return { ...state, checkoutMessage: '', checkoutDetails: null };
+    case 'CHECKOUT_SUCCESS':
+      return {
+        ...state,
+        checkoutDetails: action.payload.instructions,
+        transferForm: {
+          ...state.transferForm,
+          amount: action.payload.instructions?.amount || state.transferForm.amount,
+          reference: action.payload.instructions?.reference || state.transferForm.reference,
+          bank_name: action.payload.instructions?.bank_name || state.transferForm.bank_name,
+          account_holder: action.payload.instructions?.account_holder || state.transferForm.account_holder,
+        },
+      };
+    case 'CHECKOUT_MESSAGE':
+      return { ...state, checkoutMessage: action.payload };
+    case 'UPDATE_TRANSFER_FORM':
+      return { ...state, transferForm: { ...state.transferForm, ...action.payload } };
+    default:
+      return state;
+  }
+}
+
 export default function PricingPage() {
-  const [plans, setPlans] = useState([]);
-  const [providers, setProviders] = useState([]);
-  const [selectedProvider, setSelectedProvider] = useState('bank_transfer_bancoestado');
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [checkoutMessage, setCheckoutMessage] = useState('');
-  const [checkoutDetails, setCheckoutDetails] = useState(null);
-  const [lastPaymentId, setLastPaymentId] = useState(null);
-  const [transferForm, setTransferForm] = useState({ reference: '', amount: '', bank_name: '', account_holder: '', notes: '' });
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const lastPaymentIdRef = useRef(null);
+
+  const {
+    plans,
+    providers,
+    selectedProvider,
+    status,
+    loading,
+    error,
+    checkoutMessage,
+    checkoutDetails,
+    transferForm,
+  } = state;
 
   useEffect(() => {
     let active = true;
 
     async function loadData() {
-      setLoading(true);
-      setError('');
+      dispatch({ type: 'FETCH_START' });
       try {
         const [plansResponse, dashboardResponse, providersResponse] = await Promise.all([
           apiClient.get('/api/v1/plans/'),
@@ -121,20 +179,18 @@ export default function PricingPage() {
           apiClient.get('/api/v1/payments/providers/').catch(() => ({ providers: [] })),
         ]);
         if (!active) return;
-        setPlans(plansResponse.plans || []);
-        setStatus(dashboardResponse);
-        const loadedProviders = providersResponse.providers || [];
-        setProviders(loadedProviders);
-        const initialProvider = loadedProviders.find((provider) => provider.active) || loadedProviders[0];
-        if (initialProvider?.codigo) {
-          setSelectedProvider(initialProvider.codigo);
-        }
+        dispatch({
+          type: 'FETCH_SUCCESS',
+          payload: {
+            plans: plansResponse.plans || [],
+            status: dashboardResponse,
+            providers: providersResponse.providers || [],
+          },
+        });
       } catch (err) {
         if (active) {
-          setError(err.payload?.detail || 'No se pudieron cargar los planes.');
+          dispatch({ type: 'FETCH_ERROR', payload: err.payload?.detail || 'No se pudieron cargar los planes.' });
         }
-      } finally {
-        if (active) setLoading(false);
       }
     }
 
@@ -145,57 +201,45 @@ export default function PricingPage() {
   }, []);
 
   async function handleContract(plan) {
-    setCheckoutMessage('');
-    setCheckoutDetails(null);
-    setLastPaymentId(null);
+    dispatch({ type: 'CHECKOUT_START' });
+    lastPaymentIdRef.current = null;
     try {
       const response = await apiClient.post('/api/v1/payments/create-checkout/', {
         plan_codigo: plan.codigo,
         provider: selectedProvider,
       });
-      if (response?.payment_id) {
-        setLastPaymentId(response.payment_id);
-      }
+      lastPaymentIdRef.current = response?.payment_id || null;
       if (response?.instructions) {
-        setCheckoutDetails(response.instructions);
-        setTransferForm((current) => ({
-          ...current,
-          amount: response.instructions.amount || current.amount,
-          reference: response.instructions.reference || current.reference,
-          bank_name: response.instructions.bank_name || current.bank_name,
-          account_holder: response.instructions.account_holder || current.account_holder,
-        }));
+        dispatch({ type: 'CHECKOUT_SUCCESS', payload: { instructions: response.instructions } });
       }
       if (response?.checkout_url && response.provider === 'webpay') {
         window.location.assign(response.checkout_url);
         return;
       }
       if (response?.checkout_url && response.provider === 'bank_transfer_bancoestado') {
-        setCheckoutMessage('Se generaron las instrucciones de transferencia. Revisa los datos debajo y valida el pago desde el historial.');
+        dispatch({ type: 'CHECKOUT_MESSAGE', payload: 'Se generaron las instrucciones de transferencia. Revisa los datos debajo y valida el pago desde el historial.' });
         return;
       }
-      setCheckoutMessage(
-        response?.detail || 'Checkout no disponible. Modo demo activo.',
-      );
+      dispatch({ type: 'CHECKOUT_MESSAGE', payload: response?.detail || 'Checkout no disponible. Modo demo activo.' });
     } catch (err) {
-      setCheckoutMessage(err.payload?.detail || 'No fue posible iniciar el checkout.');
+      dispatch({ type: 'CHECKOUT_MESSAGE', payload: err.payload?.detail || 'No fue posible iniciar el checkout.' });
     }
   }
 
   async function handleTransferNotice() {
-    if (!lastPaymentId) {
-      setCheckoutMessage('Primero crea el checkout para generar el pago asociado.');
+    if (!lastPaymentIdRef.current) {
+      dispatch({ type: 'CHECKOUT_MESSAGE', payload: 'Primero crea el checkout para generar el pago asociado.' });
       return;
     }
 
     try {
       const response = await apiClient.post('/api/v1/payments/notify-transfer/', {
-        payment_id: lastPaymentId,
+        payment_id: lastPaymentIdRef.current,
         ...transferForm,
       });
-      setCheckoutMessage(response?.detail || 'Aviso de transferencia registrado.');
+      dispatch({ type: 'CHECKOUT_MESSAGE', payload: response?.detail || 'Aviso de transferencia registrado.' });
     } catch (err) {
-      setCheckoutMessage(err.payload?.detail || 'No fue posible registrar el aviso de transferencia.');
+      dispatch({ type: 'CHECKOUT_MESSAGE', payload: err.payload?.detail || 'No fue posible registrar el aviso de transferencia.' });
     }
   }
 
@@ -222,9 +266,9 @@ export default function PricingPage() {
         />
       ) : null}
 
-      {loading ? <div className="loading-dot"><span /><span /><span /></div> : null}
-      {error ? <div className="error-box">{error}</div> : null}
-      {checkoutMessage ? <div className="error-box">{checkoutMessage}</div> : null}
+      {loading ? <div className="loading-dot" role="status" aria-live="polite" aria-label="Cargando"><span /><span /><span /></div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
+      {checkoutMessage ? <div className="error-box" role="alert" aria-live="assertive">{checkoutMessage}</div> : null}
 
       {!loading && providers.length > 0 ? (
         <section className="subscription-section">
@@ -235,7 +279,7 @@ export default function PricingPage() {
                 key={provider.codigo}
                 type="button"
                 className={`provider-chip ${selectedProvider === provider.codigo ? 'active' : ''} ${provider.active ? '' : 'disabled'}`}
-                onClick={() => provider.active && setSelectedProvider(provider.codigo)}
+                onClick={() => provider.active && dispatch({ type: 'SET_PROVIDER', payload: provider.codigo })}
                 disabled={!provider.active}
               >
                 <strong>{provider.nombre}</strong>
@@ -267,23 +311,23 @@ export default function PricingPage() {
               <div className="transfer-notice-form">
                 <label>
                   Referencia
-                  <input value={transferForm.reference} onChange={(event) => setTransferForm((current) => ({ ...current, reference: event.target.value }))} placeholder="Referencia del comprobante" />
+                  <input value={transferForm.reference} onChange={(event) => dispatch({ type: 'UPDATE_TRANSFER_FORM', payload: { reference: event.target.value } })} placeholder="Referencia del comprobante" />
                 </label>
                 <label>
                   Monto
-                  <input value={transferForm.amount} onChange={(event) => setTransferForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Monto transferido" />
+                  <input value={transferForm.amount} onChange={(event) => dispatch({ type: 'UPDATE_TRANSFER_FORM', payload: { amount: event.target.value } })} placeholder="Monto transferido" />
                 </label>
                 <label>
                   Banco
-                  <input value={transferForm.bank_name} onChange={(event) => setTransferForm((current) => ({ ...current, bank_name: event.target.value }))} placeholder="Banco emisior" />
+                  <input value={transferForm.bank_name} onChange={(event) => dispatch({ type: 'UPDATE_TRANSFER_FORM', payload: { bank_name: event.target.value } })} placeholder="Banco emisior" />
                 </label>
                 <label>
                   Titular
-                  <input value={transferForm.account_holder} onChange={(event) => setTransferForm((current) => ({ ...current, account_holder: event.target.value }))} placeholder="Titular de la cuenta" />
+                  <input value={transferForm.account_holder} onChange={(event) => dispatch({ type: 'UPDATE_TRANSFER_FORM', payload: { account_holder: event.target.value } })} placeholder="Titular de la cuenta" />
                 </label>
                 <label>
                   Observaciones
-                  <textarea value={transferForm.notes} onChange={(event) => setTransferForm((current) => ({ ...current, notes: event.target.value }))} rows="3" placeholder="Nombre del apoderado, fecha, sucursal, etc." />
+                  <textarea value={transferForm.notes} onChange={(event) => dispatch({ type: 'UPDATE_TRANSFER_FORM', payload: { notes: event.target.value } })} rows="3" placeholder="Nombre del apoderado, fecha, sucursal, etc." />
                 </label>
                 <button type="button" onClick={handleTransferNotice} className="pricing-cta pricing-cta-primary">
                   Registrar aviso de transferencia

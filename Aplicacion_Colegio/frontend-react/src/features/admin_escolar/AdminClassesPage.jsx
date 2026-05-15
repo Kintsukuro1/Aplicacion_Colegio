@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
@@ -80,7 +80,7 @@ function AdminClassesPage() {
         </div>
       </header>
 
-      {apiError ? <div className="error-box">{apiError}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -154,4 +154,5 @@ function AdminClassesPage() {
 }
 
 export default AdminClassesPage;
+
 

@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { SummarySkeleton } from '../../components/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
+
+import { AnotacionForm } from './AnotacionForm';
+import { ReviewForm } from './ReviewForm';
+import { JustificativosList } from './JustificativosList';
+import { DelayForm } from './DelayForm';
 
 const EMPTY_FORM = {
   estudiante_id: '',
@@ -16,29 +21,85 @@ const EMPTY_FORM = {
   gravedad: 1,
 };
 
+const EMPTY_REVIEW_FORM = {
+  justificativo_id: '',
+  estado: 'APROBADO',
+  observaciones: '',
+};
+
+const EMPTY_DELAY_FORM = {
+  estudiante_id: '',
+  clase_id: '',
+  fecha: '',
+  observaciones: '',
+};
+
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
 }
 
+const initialState = {
+  form: EMPTY_FORM,
+  reviewForm: EMPTY_REVIEW_FORM,
+  delayForm: EMPTY_DELAY_FORM,
+  saving: false,
+  reviewSaving: false,
+  delaySaving: false,
+};
 
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_FORM_FIELD':
+      return { ...state, form: { ...state.form, [action.name]: action.value } };
+    case 'SET_REVIEW_FORM_FIELD':
+      return { ...state, reviewForm: { ...state.reviewForm, [action.name]: action.value } };
+    case 'SET_DELAY_FORM_FIELD':
+      return { ...state, delayForm: { ...state.delayForm, [action.name]: action.value } };
+    case 'RESET_FORM':
+      return { ...state, form: EMPTY_FORM };
+    case 'RESET_REVIEW_FORM':
+      return { ...state, reviewForm: EMPTY_REVIEW_FORM };
+    case 'RESET_DELAY_FORM':
+      return { ...state, delayForm: EMPTY_DELAY_FORM };
+    case 'SET_SAVING':
+      return { ...state, [action.field]: action.value };
+    default:
+      return state;
+  }
+}
 
 export default function InspectorConvivenciaPage() {
   const me = useAuthStore((state) => state.user);
   const { canAny, isSystemAdmin } = usePermissions(me);
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [justifications, setJustifications] = useState([]);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [reviewForm, setReviewForm] = useState({ justificativo_id: '', estado: 'APROBADO', observaciones: '' });
-  const [delayForm, setDelayForm] = useState({ estudiante_id: '', clase_id: '', fecha: '', observaciones: '' });
-  const [saving, setSaving] = useState(false);
-  const [reviewSaving, setReviewSaving] = useState(false);
-  const [delaySaving, setDelaySaving] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
   const toast = useToast();
   const queryClient = useQueryClient();
 
   const canCreate = isSystemAdmin || canAny(['DISCIPLINE_CREATE']);
   const canReview = isSystemAdmin || canAny(['JUSTIFICATION_APPROVE']);
+
+  const { data: studentsData, isLoading: loadingStudents, error: errorStudentsObj } = useQuery({
+    queryKey: ['inspector-estudiantes'],
+    queryFn: () => apiClient.get('/api/inspector/estudiantes/')
+  });
+  const { data: classesData, isLoading: loadingClasses } = useQuery({
+    queryKey: ['inspector-clases'],
+    queryFn: () => apiClient.get('/api/v1/profesor/clases/')
+  });
+  const { data: justificationsData, isLoading: loadingJustifications } = useQuery({
+    queryKey: ['inspector-justificativos'],
+    queryFn: () => apiClient.get('/api/inspector/justificativos/')
+  });
+
+  const loading = loadingStudents || loadingClasses || loadingJustifications;
+  const error = errorStudentsObj?.message;
+
+  const students = Array.isArray(studentsData?.estudiantes) ? studentsData.estudiantes : [];
+  const classes = (() => {
+    if (!classesData) return [];
+    return Array.isArray(classesData?.results) ? classesData.results : Array.isArray(classesData) ? classesData : [];
+  })();
+  const justifications = Array.isArray(justificationsData?.justificativos) ? justificationsData.justificativos : [];
 
   const summaryCards = useMemo(
     () => [
@@ -61,49 +122,6 @@ export default function InspectorConvivenciaPage() {
     [classes.length, justifications.length, students.length]
   );
 
-  const { data: studentsData, isLoading: loadingStudents, error: errorStudentsObj } = useQuery({
-    queryKey: ['inspector-estudiantes'],
-    queryFn: () => apiClient.get('/api/inspector/estudiantes/')
-  });
-  const { data: classesData, isLoading: loadingClasses } = useQuery({
-    queryKey: ['inspector-clases'],
-    queryFn: () => apiClient.get('/api/v1/profesor/clases/')
-  });
-  const { data: justificationsData, isLoading: loadingJustifications } = useQuery({
-    queryKey: ['inspector-justificativos'],
-    queryFn: () => apiClient.get('/api/inspector/justificativos/')
-  });
-
-  const loading = loadingStudents || loadingClasses || loadingJustifications;
-  const error = errorStudentsObj?.message;
-
-  useEffect(() => {
-    if (studentsData) {
-      setStudents(Array.isArray(studentsData?.estudiantes) ? studentsData.estudiantes : []);
-    }
-  }, [studentsData]);
-
-  useEffect(() => {
-    if (classesData) {
-      const classRows = Array.isArray(classesData?.results)
-        ? classesData.results
-        : Array.isArray(classesData)
-          ? classesData
-          : [];
-      setClasses(classRows);
-    }
-  }, [classesData]);
-
-  useEffect(() => {
-    if (justificationsData) {
-      setJustifications(Array.isArray(justificationsData?.justificativos) ? justificationsData.justificativos : []);
-    }
-  }, [justificationsData]);
-
-  function onChange(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
   async function onSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
@@ -111,21 +129,21 @@ export default function InspectorConvivenciaPage() {
       return;
     }
 
-    setSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'saving', value: true });
     try {
       const payload = await apiClient.post('/api/inspector/anotaciones/crear/', {
-        estudiante_id: Number(form.estudiante_id),
-        tipo: form.tipo,
-        categoria: form.categoria,
-        descripcion: form.descripcion,
-        gravedad: Number(form.gravedad),
+        estudiante_id: Number(state.form.estudiante_id),
+        tipo: state.form.tipo,
+        categoria: state.form.categoria,
+        descripcion: state.form.descripcion,
+        gravedad: Number(state.form.gravedad),
       });
       toast.success(payload?.message || 'Anotacion registrada.');
-      setForm(EMPTY_FORM);
+      dispatch({ type: 'RESET_FORM' });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo registrar la anotacion.'));
     } finally {
-      setSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'saving', value: false });
     }
   }
 
@@ -136,23 +154,22 @@ export default function InspectorConvivenciaPage() {
       return;
     }
 
-    setReviewSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'reviewSaving', value: true });
     try {
       const payload = await apiClient.post(
-        `/api/inspector/justificativos/${reviewForm.justificativo_id}/estado/`,
+        `/api/inspector/justificativos/${state.reviewForm.justificativo_id}/estado/`,
         {
-          estado: reviewForm.estado,
-          observaciones: reviewForm.observaciones,
+          estado: state.reviewForm.estado,
+          observaciones: state.reviewForm.observaciones,
         }
       );
       toast.success(payload?.message || 'Justificativo actualizado.');
-      setJustifications((prev) => prev.filter((item) => String(item.id) !== String(reviewForm.justificativo_id)));
-      setReviewForm({ justificativo_id: '', estado: 'APROBADO', observaciones: '' });
+      dispatch({ type: 'RESET_REVIEW_FORM' });
       await queryClient.invalidateQueries({ queryKey: ['inspector-justificativos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo actualizar el justificativo.'));
     } finally {
-      setReviewSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'reviewSaving', value: false });
     }
   }
 
@@ -162,19 +179,18 @@ export default function InspectorConvivenciaPage() {
       return;
     }
 
-    setReviewSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'reviewSaving', value: true });
     try {
       const payload = await apiClient.post(`/api/inspector/justificativos/${justificativoId}/estado/`, {
         estado,
         observaciones: '',
       });
       toast.success(payload?.message || 'Justificativo actualizado.');
-      setJustifications((prev) => prev.filter((item) => String(item.id) !== String(justificativoId)));
       await queryClient.invalidateQueries({ queryKey: ['inspector-justificativos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo actualizar el justificativo.'));
     } finally {
-      setReviewSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'reviewSaving', value: false });
     }
   }
 
@@ -185,20 +201,20 @@ export default function InspectorConvivenciaPage() {
       return;
     }
 
-    setDelaySaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'delaySaving', value: true });
     try {
       const payload = await apiClient.post('/api/inspector/asistencia/registrar_atraso/', {
-        estudiante_id: Number(delayForm.estudiante_id),
-        clase_id: Number(delayForm.clase_id),
-        fecha: delayForm.fecha,
-        observaciones: delayForm.observaciones,
+        estudiante_id: Number(state.delayForm.estudiante_id),
+        clase_id: Number(state.delayForm.clase_id),
+        fecha: state.delayForm.fecha,
+        observaciones: state.delayForm.observaciones,
       });
       toast.success(payload?.message || 'Atraso registrado.');
-      setDelayForm({ estudiante_id: '', clase_id: '', fecha: '', observaciones: '' });
+      dispatch({ type: 'RESET_DELAY_FORM' });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo registrar el atraso.'));
     } finally {
-      setDelaySaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'delaySaving', value: false });
     }
   }
 
@@ -211,7 +227,7 @@ export default function InspectorConvivenciaPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -228,224 +244,42 @@ export default function InspectorConvivenciaPage() {
       </div>
 
       <div className="grid-2">
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3>Nueva anotacion</h3>
+        <AnotacionForm
+          students={students}
+          form={state.form}
+          saving={state.saving}
+          canCreate={canCreate}
+          onChange={(name, value) => dispatch({ type: 'SET_FORM_FIELD', name, value })}
+          onSubmit={onSubmit}
+        />
 
-        <label>
-          Estudiante
-          <select
-            value={form.estudiante_id}
-            onChange={(e) => onChange('estudiante_id', e.target.value)}
-            disabled={!canCreate || saving}
-            required
-          >
-            <option value="">Selecciona estudiante</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.nombre_completo || student.nombre || `Estudiante #${student.id}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Tipo
-          <select value={form.tipo} onChange={(e) => onChange('tipo', e.target.value)} disabled={!canCreate || saving}>
-            <option value="POSITIVA">Positiva</option>
-            <option value="NEUTRA">Neutra</option>
-            <option value="NEGATIVA">Negativa</option>
-          </select>
-        </label>
-
-        <label>
-          Categoria
-          <input
-            value={form.categoria}
-            onChange={(e) => onChange('categoria', e.target.value)}
-            disabled={!canCreate || saving}
-          />
-        </label>
-
-        <label>
-          Gravedad
-          <input
-            type="number"
-            min="1"
-            max="5"
-            value={form.gravedad}
-            onChange={(e) => onChange('gravedad', e.target.value)}
-            disabled={!canCreate || saving}
-          />
-        </label>
-
-        <label>
-          Descripcion
-          <textarea
-            value={form.descripcion}
-            onChange={(e) => onChange('descripcion', e.target.value)}
-            disabled={!canCreate || saving}
-            required
-          />
-        </label>
-
-          <div>
-            <button type="submit" disabled={!canCreate || saving || !form.estudiante_id || !form.descripcion}>
-              {saving ? 'Guardando...' : 'Registrar anotacion'}
-            </button>
-          </div>
-        </form>
-
-        <form className="card form-grid" onSubmit={onReviewSubmit}>
-          <h3>Revisar justificativo</h3>
-
-          <label>
-            Justificativo ID
-            <input
-              type="number"
-              min="1"
-              value={reviewForm.justificativo_id}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, justificativo_id: e.target.value }))}
-              disabled={!canReview || reviewSaving}
-              required
-            />
-          </label>
-
-          <label>
-            Estado
-            <select
-              value={reviewForm.estado}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, estado: e.target.value }))}
-              disabled={!canReview || reviewSaving}
-            >
-              <option value="APROBADO">Aprobado</option>
-              <option value="RECHAZADO">Rechazado</option>
-            </select>
-          </label>
-
-          <label>
-            Observaciones
-            <textarea
-              value={reviewForm.observaciones}
-              onChange={(e) => setReviewForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-              disabled={!canReview || reviewSaving}
-            />
-          </label>
-
-          <div>
-            <button type="submit" disabled={!canReview || reviewSaving || !reviewForm.justificativo_id}>
-              {reviewSaving ? 'Guardando...' : 'Actualizar justificativo'}
-            </button>
-          </div>
-        </form>
+        <ReviewForm
+          form={state.reviewForm}
+          saving={state.reviewSaving}
+          canReview={canReview}
+          onChange={(name, value) => dispatch({ type: 'SET_REVIEW_FORM_FIELD', name, value })}
+          onSubmit={onReviewSubmit}
+        />
       </div>
 
-      <article className="card section-card">
-        <h3>Justificativos pendientes ({justifications.length})</h3>
-        {loading ? (
-          <TableLoadingState />
-        ) : justifications.length === 0 ? (
-          <p>Sin justificativos pendientes.</p>
-        ) : (
-          <ul>
-            {justifications.slice(0, 15).map((item) => (
-              <li key={item.id}>
-                <strong>#{item.id}</strong> {item.estudiante} - {item.fecha_ausencia}
-                <div>
-                  <button
-                    type="button"
-                    disabled={!canReview || reviewSaving}
-                    onClick={() => onQuickReview(item.id, 'APROBADO')}
-                  >
-                    Aprobar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canReview || reviewSaving}
-                    onClick={() => onQuickReview(item.id, 'RECHAZADO')}
-                  >
-                    Rechazar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReviewForm((prev) => ({ ...prev, justificativo_id: String(item.id) }))}
-                    disabled={!canReview || reviewSaving}
-                  >
-                    Usar en formulario
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </article>
+      <JustificativosList
+        justifications={justifications}
+        loading={loading}
+        saving={state.reviewSaving}
+        canReview={canReview}
+        onQuickReview={onQuickReview}
+        onSelectForReview={(id) => dispatch({ type: 'SET_REVIEW_FORM_FIELD', name: 'justificativo_id', value: id })}
+      />
 
-      <form className="card form-grid" onSubmit={onDelaySubmit}>
-        <h3>Registrar atraso</h3>
-
-        <label>
-          Estudiante
-          <select
-            value={delayForm.estudiante_id}
-            onChange={(e) => setDelayForm((prev) => ({ ...prev, estudiante_id: e.target.value }))}
-            disabled={!canCreate || delaySaving}
-            required
-          >
-            <option value="">Selecciona estudiante</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.nombre_completo || student.nombre || `Estudiante #${student.id}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Clase
-          <select
-            value={delayForm.clase_id}
-            onChange={(e) => setDelayForm((prev) => ({ ...prev, clase_id: e.target.value }))}
-            disabled={!canCreate || delaySaving}
-            required
-          >
-            <option value="">Selecciona clase</option>
-            {classes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre || item.asignatura || `Clase #${item.id}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Fecha
-          <input
-            type="date"
-            value={delayForm.fecha}
-            onChange={(e) => setDelayForm((prev) => ({ ...prev, fecha: e.target.value }))}
-            disabled={!canCreate || delaySaving}
-            required
-          />
-        </label>
-
-        <label>
-          Observaciones
-          <textarea
-            value={delayForm.observaciones}
-            onChange={(e) => setDelayForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-            disabled={!canCreate || delaySaving}
-          />
-        </label>
-
-        <div>
-          <button
-            type="submit"
-            disabled={!canCreate || delaySaving || !delayForm.estudiante_id || !delayForm.clase_id || !delayForm.fecha}
-          >
-            {delaySaving ? 'Guardando...' : 'Registrar atraso'}
-          </button>
-        </div>
-      </form>
+      <DelayForm
+        students={students}
+        classes={classes}
+        form={state.delayForm}
+        saving={state.delaySaving}
+        canCreate={canCreate}
+        onChange={(name, value) => dispatch({ type: 'SET_DELAY_FORM_FIELD', name, value })}
+        onSubmit={onDelaySubmit}
+      />
     </section>
   );
 }
-

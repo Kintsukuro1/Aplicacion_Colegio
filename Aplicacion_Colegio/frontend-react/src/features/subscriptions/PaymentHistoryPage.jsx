@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
 
@@ -14,33 +14,51 @@ function providerLabel(provider) {
   if (provider === 'bank_transfer') return 'Transferencia';
   if (provider === 'webpay') return 'Webpay';
   if (provider === 'mercadopago') return 'MercadoPago';
-  return provider || '—';
+  return provider || '-';
+}
+
+const initialState = {
+  payments: [],
+  loading: true,
+  error: '',
+  statusFilter: '',
+  gatewayFilter: '',
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, loading: true, error: '' };
+    case 'FETCH_SUCCESS':
+      return { ...state, loading: false, payments: action.payload };
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    case 'SET_FILTER':
+      return { ...state, [action.payload.name]: action.payload.value };
+    default:
+      return state;
+  }
 }
 
 export default function PaymentHistoryPage() {
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [gatewayFilter, setGatewayFilter] = useState('');
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  const { payments, loading, error, statusFilter, gatewayFilter } = state;
 
   useEffect(() => {
     let active = true;
 
     async function loadHistory() {
-      setLoading(true);
-      setError('');
+      dispatch({ type: 'FETCH_START' });
       try {
         const response = await apiClient.get('/api/v1/payments/history/');
         if (active) {
-          setPayments(response.payments || []);
+          dispatch({ type: 'FETCH_SUCCESS', payload: response.payments || [] });
         }
       } catch (err) {
         if (active) {
-          setError(err.payload?.detail || 'No se pudo cargar el historial de pagos.');
+          dispatch({ type: 'FETCH_ERROR', payload: err.payload?.detail || 'No se pudo cargar el historial de pagos.' });
         }
-      } finally {
-        if (active) setLoading(false);
       }
     }
 
@@ -62,14 +80,14 @@ export default function PaymentHistoryPage() {
     const rows = [
       ['Fecha', 'Plan', 'Monto', 'Moneda', 'Estado', 'Gateway', 'Proveedor', 'External ID'],
       ...filteredPayments.map((payment) => [
-        payment.fecha_pago || payment.fecha_creacion || '—',
-        payment.plan || '—',
+        payment.fecha_pago || payment.fecha_creacion || '-',
+        payment.plan || '-',
         payment.monto || '0',
         payment.moneda || 'CLP',
         statusLabel(payment.status),
-        payment.gateway || '—',
+        payment.gateway || '-',
         providerLabel(payment.gateway),
-        payment.external_id || '—',
+        payment.external_id || '-',
       ]),
     ];
 
@@ -104,7 +122,7 @@ export default function PaymentHistoryPage() {
         <div className="transfer-notices-filters">
           <label>
             Estado
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <select value={statusFilter} onChange={(e) => dispatch({ type: 'SET_FILTER', payload: { name: 'statusFilter', value: e.target.value } })}>
               <option value="">Todos</option>
               <option value="pending">Pendiente</option>
               <option value="approved">Aprobado</option>
@@ -114,7 +132,7 @@ export default function PaymentHistoryPage() {
           </label>
           <label>
             Gateway
-            <select value={gatewayFilter} onChange={(event) => setGatewayFilter(event.target.value)}>
+            <select value={gatewayFilter} onChange={(e) => dispatch({ type: 'SET_FILTER', payload: { name: 'gatewayFilter', value: e.target.value } })}>
               <option value="">Todos</option>
               <option value="bank_transfer_bancoestado">BancoEstado</option>
               <option value="bank_transfer">Transferencia</option>
@@ -125,8 +143,8 @@ export default function PaymentHistoryPage() {
         </div>
       ) : null}
 
-      {loading ? <div className="loading-dot"><span /><span /><span /></div> : null}
-      {error ? <div className="error-box">{error}</div> : null}
+      {loading ? <div className="loading-dot" role="status" aria-live="polite" aria-label="Cargando"><span /><span /><span /></div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       {!loading && filteredPayments.length > 0 ? (
         <div className="table-wrap">
@@ -144,7 +162,7 @@ export default function PaymentHistoryPage() {
             <tbody>
               {filteredPayments.map((payment) => (
                 <tr key={payment.id}>
-                  <td>{payment.fecha_pago || payment.fecha_creacion || '—'}</td>
+                  <td>{payment.fecha_pago || payment.fecha_creacion || '-'}</td>
                   <td>{payment.plan}</td>
                   <td>{payment.moneda} {payment.monto}</td>
                   <td><span className={`badge badge-${payment.status}`}>{statusLabel(payment.status)}</span></td>

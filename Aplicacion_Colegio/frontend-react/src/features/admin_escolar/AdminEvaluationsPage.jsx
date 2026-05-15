@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
@@ -34,7 +34,7 @@ export default function AdminEvaluationsPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [processingBulk, setProcessingBulk] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
-  const [lastBulkTargetActive, setLastBulkTargetActive] = useState(null);
+  const lastBulkTargetActiveRef = useRef(null);
   const { canAny } = usePermissions(me);
 
   const canView = canAny(['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE', 'SYSTEM_ADMIN']);
@@ -78,7 +78,7 @@ export default function AdminEvaluationsPage() {
   async function runBulkToggleActive(targetIds, targetActive) {
     setProcessingBulk(true);
     setBulkResult(null);
-    setLastBulkTargetActive(targetActive);
+    lastBulkTargetActiveRef.current = targetActive;
 
     try {
       let result;
@@ -94,16 +94,23 @@ export default function AdminEvaluationsPage() {
           throw batchError;
         }
 
-        let success = 0;
-        const failedIds = [];
-        for (const evaluationId of targetIds) {
-          try {
-            await apiClient.patch(`/api/v1/profesor/evaluaciones/${evaluationId}/`, { activa: targetActive });
-            success += 1;
-          } catch (_) {
-            failedIds.push(evaluationId);
+        const results = await Promise.all(
+          targetIds.map(async (evaluationId) => {
+            try {
+              await apiClient.patch(`/api/v1/profesor/evaluaciones/${evaluationId}/`, { activa: targetActive });
+              return { ok: true, id: evaluationId };
+            } catch (_) {
+              return { ok: false, id: evaluationId };
+            }
+          })
+        );
+        const failedIds = results.reduce((acc, item) => {
+          if (!item.ok) {
+            acc.push(item.id);
           }
-        }
+          return acc;
+        }, []);
+        const success = results.length - failedIds.length;
         result = toBulkResult({ success, failed: failedIds.length }, failedIds);
       }
 
@@ -138,10 +145,10 @@ export default function AdminEvaluationsPage() {
   }
 
   async function retryFailedBulkUpdate() {
-    if (!bulkResult || bulkResult.failed === 0 || lastBulkTargetActive === null) {
+    if (!bulkResult || bulkResult.failed === 0 || lastBulkTargetActiveRef.current === null) {
       return;
     }
-    await runBulkToggleActive(bulkResult.failedIds, lastBulkTargetActive);
+    await runBulkToggleActive(bulkResult.failedIds, lastBulkTargetActiveRef.current);
   }
 
   if (!canView) {
@@ -166,7 +173,7 @@ export default function AdminEvaluationsPage() {
         </div>
       </header>
 
-      {apiError ? <div className="error-box">{apiError}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError}</div> : null}
       {!canEdit ? <p>Modo restringido: falta capability `GRADE_EDIT` para edicion masiva.</p> : null}
 
       <div className="summary-grid">
@@ -293,4 +300,5 @@ export default function AdminEvaluationsPage() {
     </section>
   );
 }
+
 

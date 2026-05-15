@@ -1,8 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation, m } from 'framer-motion';
 
 /**
- * Button — Componente de botón reutilizable
+ * Button - Componente de botón reutilizable
  * 
  * Características:
  * - Múltiples variantes (primary, secondary, danger, ghost)
@@ -40,25 +40,28 @@ export function Button({
   };
 
   return (
-    <motion.button
-      whileHover={{ scale: disabled ? 1 : 1.02 }}
-      whileTap={{ scale: disabled ? 1 : 0.98 }}
-      type={type}
-      onClick={onClick}
-      disabled={disabled || loading}
-      className={`rounded-lg font-medium transition inline-flex items-center gap-2 ${variants[variant]} ${sizes[size]} ${className}`}
-    >
-      {loading && (
-        <motion.span
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
-          ⟳
-        </motion.span>
-      )}
-      {children}
-    </motion.button>
+    <LazyMotion features={domAnimation}>
+      <m.button
+        whileHover={{ scale: disabled ? 1 : 1.02 }}
+        whileTap={{ scale: disabled ? 1 : 0.98 }}
+        type={type}
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`rounded-lg font-medium transition inline-flex items-center gap-2 ${variants[variant]} ${sizes[size]} ${className}`}
+      >
+        {loading && (
+          <m.span
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          >
+            ⟳
+          </m.span>
+        )}
+        {children}
+      </m.button>
+    </LazyMotion>
   );
 }
 
-export default Button;
+
+

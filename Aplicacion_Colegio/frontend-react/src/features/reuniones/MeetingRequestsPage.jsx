@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
@@ -7,33 +7,61 @@ import { usePermissions } from '../../lib/hooks/usePermissions';
 const STATES = ['pendiente', 'confirmada', 'reprogramada', 'rechazada', 'completada', 'cancelada'];
 const TYPES = ['academica', 'conductual', 'orientacion', 'administrativa', 'general'];
 
-export default function MeetingRequestsPage() {  const me = useAuthStore((state) => state.user);  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [savingId, setSavingId] = useState(null);
-  const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ estado: '', tipo: '' });
-  const [responseText, setResponseText] = useState({});
-  const [newDate, setNewDate] = useState({});
-  const [newTime, setNewTime] = useState({});
+const initialState = {
+  rows: [],
+  loading: false,
+  savingId: null,
+  error: '',
+  filters: { estado: '', tipo: '' },
+  responseText: {},
+  newDate: {},
+  newTime: {},
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload, error: '' };
+    case 'SET_ROWS':
+      return { ...state, rows: action.payload, loading: false };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false, savingId: null };
+    case 'SET_SAVING_ID':
+      return { ...state, savingId: action.payload, error: '' };
+    case 'SET_FILTER':
+      return { ...state, filters: { ...state.filters, [action.payload.name]: action.payload.value } };
+    case 'SET_RESPONSE_TEXT':
+      return { ...state, responseText: { ...state.responseText, [action.payload.id]: action.payload.value } };
+    case 'SET_NEW_DATE':
+      return { ...state, newDate: { ...state.newDate, [action.payload.id]: action.payload.value } };
+    case 'SET_NEW_TIME':
+      return { ...state, newTime: { ...state.newTime, [action.payload.id]: action.payload.value } };
+    default:
+      return state;
+  }
+}
+
+export default function MeetingRequestsPage() {
+  const me = useAuthStore((state) => state.user);
+  
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { rows, loading, savingId, error, filters, responseText, newDate, newTime } = state;
 
   const { canAny } = usePermissions(me);
   const canView = canAny(['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN']);
   const canRespond = canAny(['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN']);
 
   async function loadRows() {
-    setLoading(true);
-    setError('');
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const params = new URLSearchParams();
       if (filters.estado) params.set('estado', filters.estado);
       if (filters.tipo) params.set('tipo', filters.tipo);
       const payload = await apiClient.get(`/api/v1/reuniones/mis-reuniones/?${params.toString()}`);
-      setRows(Array.isArray(payload?.reuniones) ? payload.reuniones : []);
+      dispatch({ type: 'SET_ROWS', payload: Array.isArray(payload?.reuniones) ? payload.reuniones : [] });
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudieron cargar las reuniones.');
-      setRows([]);
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: err.payload?.detail || 'No se pudieron cargar las reuniones.' });
+      dispatch({ type: 'SET_ROWS', payload: [] });
     }
   }
 
@@ -44,7 +72,7 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
 
   async function respond(row, action) {
     if (!canRespond) {
-      setError('No tienes permisos para responder reuniones.');
+      dispatch({ type: 'SET_ERROR', payload: 'No tienes permisos para responder reuniones.' });
       return;
     }
 
@@ -56,20 +84,18 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
       payload.fecha_confirmada = newDate[row.id] || '';
       payload.hora_confirmada = newTime[row.id] || '';
       if (!payload.fecha_confirmada || !payload.hora_confirmada) {
-        setError('Debes indicar fecha y hora para reprogramar.');
+        dispatch({ type: 'SET_ERROR', payload: 'Debes indicar fecha y hora para reprogramar.' });
         return;
       }
     }
 
-    setSavingId(row.id);
-    setError('');
+    dispatch({ type: 'SET_SAVING_ID', payload: row.id });
     try {
       await apiClient.post(`/api/v1/reuniones/${row.id}/responder/`, payload);
       await loadRows();
+      dispatch({ type: 'SET_SAVING_ID', payload: null });
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo responder la reunion.');
-    } finally {
-      setSavingId(null);
+      dispatch({ type: 'SET_ERROR', payload: err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo responder la reunion.' });
     }
   }
 
@@ -78,17 +104,15 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
       return;
     }
 
-    setSavingId(row.id);
-    setError('');
+    dispatch({ type: 'SET_SAVING_ID', payload: row.id });
     try {
       await apiClient.post(`/api/v1/reuniones/${row.id}/cancelar/`, {
         motivo: responseText[row.id] || '',
       });
       await loadRows();
+      dispatch({ type: 'SET_SAVING_ID', payload: null });
     } catch (err) {
-      setError(err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo cancelar la reunion.');
-    } finally {
-      setSavingId(null);
+      dispatch({ type: 'SET_ERROR', payload: err.payload?.detail || JSON.stringify(err.payload || {}) || 'No se pudo cancelar la reunion.' });
     }
   }
 
@@ -114,19 +138,13 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
-      <form
-        className="card form-grid"
-        onSubmit={(event) => {
-          event.preventDefault();
-          loadRows();
-        }}
-      >
+      <div className="card form-grid">
         <h3 className="full">Filtros</h3>
         <label>
           Estado
-          <select value={filters.estado} onChange={(e) => setFilters((prev) => ({ ...prev, estado: e.target.value }))}>
+          <select value={filters.estado} onChange={(e) => dispatch({ type: 'SET_FILTER', payload: { name: 'estado', value: e.target.value } })}>
             <option value="">Todos</option>
             {STATES.map((item) => (
               <option key={item} value={item}>{item}</option>
@@ -135,7 +153,7 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
         </label>
         <label>
           Tipo
-          <select value={filters.tipo} onChange={(e) => setFilters((prev) => ({ ...prev, tipo: e.target.value }))}>
+          <select value={filters.tipo} onChange={(e) => dispatch({ type: 'SET_FILTER', payload: { name: 'tipo', value: e.target.value } })}>
             <option value="">Todos</option>
             {TYPES.map((item) => (
               <option key={item} value={item}>{item}</option>
@@ -143,9 +161,9 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
           </select>
         </label>
         <div className="actions">
-          <button type="submit" className="secondary" disabled={loading}>Aplicar</button>
+          <button type="button" className="secondary" disabled={loading} onClick={loadRows}>Aplicar</button>
         </div>
-      </form>
+      </div>
 
       <div className="table-wrap">
         <table>
@@ -177,19 +195,19 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
                       className="small"
                       placeholder="Respuesta"
                       value={responseText[row.id] || ''}
-                      onChange={(e) => setResponseText((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      onChange={(e) => dispatch({ type: 'SET_RESPONSE_TEXT', payload: { id: row.id, value: e.target.value } })}
                     />
                     <input
                       className="small"
                       type="date"
                       value={newDate[row.id] || ''}
-                      onChange={(e) => setNewDate((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      onChange={(e) => dispatch({ type: 'SET_NEW_DATE', payload: { id: row.id, value: e.target.value } })}
                     />
                     <input
                       className="small"
                       type="time"
                       value={newTime[row.id] || ''}
-                      onChange={(e) => setNewTime((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      onChange={(e) => dispatch({ type: 'SET_NEW_TIME', payload: { id: row.id, value: e.target.value } })}
                     />
                     <button
                       type="button"
@@ -235,8 +253,9 @@ export default function MeetingRequestsPage() {  const me = useAuthStore((state)
           </tbody>
         </table>
       </div>
-      {loading ? <p>Cargando...</p> : null}
+      {loading ? <p>Cargando…</p> : null}
     </section>
   );
 }
+
 

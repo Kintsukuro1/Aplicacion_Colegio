@@ -1,18 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { useQuery } from '@tanstack/react-query';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-import AppSidebar from './components/AppSidebar';
+import { AppSidebar } from './components/AppSidebar';
 import MobileBottomNav from './components/MobileBottomNav';
 import NotificationBell from './components/NotificationBell';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -22,258 +13,18 @@ import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';
 import { useAuthStore } from './lib/store/useAuthStore';
+import { APP_ROUTES } from './routes/appRoutes';
+
+const ReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-query-devtools').then((module) => ({
+        default: module.ReactQueryDevtools,
+      }))
+    )
+  : null;
 // Eager load only public/login pages if desired, but we can lazy load them too for max savings
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
-
-// Lazy load feature modules (Code Splitting)
-const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
-const TeacherClassesPage = lazy(() => import('./features/profesor/TeacherClassesPage'));
-const TeacherAttendancePage = lazy(() => import('./features/profesor/TeacherAttendancePage'));
-const TeacherEvaluationsPage = lazy(() => import('./features/profesor/TeacherEvaluationsPage'));
-const TeacherGradesPage = lazy(() => import('./features/profesor/TeacherGradesPage'));
-const StudentSelfPage = lazy(() => import('./features/estudiante/StudentSelfPage'));
-const AdminStudentsPage = lazy(() => import('./features/admin_escolar/AdminStudentsPage'));
-const AdminOverviewPage = lazy(() => import('./features/admin_escolar/AdminOverviewPage'));
-const AdminCoursesPage = lazy(() => import('./features/admin_escolar/AdminCoursesPage'));
-const AdminClassesPage = lazy(() => import('./features/admin_escolar/AdminClassesPage'));
-const AdminEvaluationsPage = lazy(() => import('./features/admin_escolar/AdminEvaluationsPage'));
-const AdminGradesPage = lazy(() => import('./features/admin_escolar/AdminGradesPage'));
-const AdminAttendancePage = lazy(() => import('./features/admin_escolar/AdminAttendancePage'));
-const AdminImportExportPage = lazy(() => import('./features/admin_escolar/AdminImportExportPage'));
-const CalendarEventsPage = lazy(() => import('./features/calendar/CalendarEventsPage'));
-const MeetingRequestsPage = lazy(() => import('./features/reuniones/MeetingRequestsPage'));
-const ActiveSessionsPage = lazy(() => import('./features/security/ActiveSessionsPage'));
-const PasswordHistoryPage = lazy(() => import('./features/security/PasswordHistoryPage'));
-const AsesorFinancieroPage = lazy(() => import('./features/asesor_financiero/AsesorFinancieroPage'));
-const InspectorConvivenciaPage = lazy(() => import('./features/inspector_convivencia/InspectorConvivenciaPage'));
-const PsicologoOrientadorPage = lazy(() => import('./features/psicologo_orientador/PsicologoOrientadorPage'));
-const SoporteTecnicoPage = lazy(() => import('./features/soporte_tecnico/SoporteTecnicoPage'));
-const BibliotecarioDigitalPage = lazy(() => import('./features/bibliotecario_digital/BibliotecarioDigitalPage'));
-const CoordinadorAcademicoPage = lazy(() => import('./features/coordinador_academico/CoordinadorAcademicoPage'));
-const ApoderadoPage = lazy(() => import('./features/apoderado/ApoderadoPage'));
-const PricingPage = lazy(() => import('./features/subscriptions/PricingPage'));
-const PaymentHistoryPage = lazy(() => import('./features/subscriptions/PaymentHistoryPage'));
-const TransferNoticesPage = lazy(() => import('./features/subscriptions/TransferNoticesPage'));
-
-const APP_ROUTES = [
-  {
-    path: 'dashboard',
-    to: '/dashboard',
-    label: 'Inicio',
-    component: DashboardPage,
-    anyOf: ['DASHBOARD_VIEW_SELF', 'DASHBOARD_VIEW_SCHOOL', 'DASHBOARD_VIEW_ANALYTICS'],
-  },
-  {
-    path: 'admin-escolar/panel',
-    to: '/admin-escolar/panel',
-    label: 'Panel administrativo',
-    component: AdminOverviewPage,
-    anyOf: ['DASHBOARD_VIEW_SCHOOL', 'DASHBOARD_VIEW_ANALYTICS'],
-  },
-  {
-    path: 'admin-escolar/estudiantes',
-    to: '/admin-escolar/estudiantes',
-    label: 'Estudiantes',
-    component: AdminStudentsPage,
-    anyOf: ['STUDENT_EDIT', 'STUDENT_CREATE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/cursos',
-    to: '/admin-escolar/cursos',
-    label: 'Cursos',
-    component: AdminCoursesPage,
-    anyOf: ['COURSE_EDIT', 'COURSE_CREATE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/clases',
-    to: '/admin-escolar/clases',
-    label: 'Clases',
-    component: AdminClassesPage,
-    anyOf: ['CLASS_EDIT', 'CLASS_CREATE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/evaluaciones',
-    to: '/admin-escolar/evaluaciones',
-    label: 'Evaluaciones',
-    component: AdminEvaluationsPage,
-    anyOf: ['GRADE_EDIT', 'GRADE_CREATE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/calificaciones',
-    to: '/admin-escolar/calificaciones',
-    label: 'Calificaciones',
-    component: AdminGradesPage,
-    anyOf: ['GRADE_EDIT', 'GRADE_CREATE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/asistencias',
-    to: '/admin-escolar/asistencias',
-    label: 'Asistencias',
-    component: AdminAttendancePage,
-    anyOf: ['CLASS_TAKE_ATTENDANCE', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'admin-escolar/importacion-exportacion',
-    to: '/admin-escolar/importacion-exportacion',
-    label: 'Importar y exportar',
-    component: AdminImportExportPage,
-    anyOf: ['SYSTEM_ADMIN', 'SYSTEM_CONFIGURE'],
-    allOf: ['DASHBOARD_VIEW_SCHOOL'],
-  },
-  {
-    path: 'calendario/eventos',
-    to: '/calendario/eventos',
-    label: 'Calendario escolar',
-    component: CalendarEventsPage,
-    anyOf: ['ANNOUNCEMENT_VIEW', 'ANNOUNCEMENT_CREATE', 'ANNOUNCEMENT_EDIT', 'ANNOUNCEMENT_DELETE', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'reuniones/solicitudes',
-    to: '/reuniones/solicitudes',
-    label: 'Solicitudes',
-    component: MeetingRequestsPage,
-    allowedRoles: ['profesor', 'apoderado', 'admin_escolar', 'admin_general'],
-    anyOf: ['CLASS_VIEW', 'SYSTEM_CONFIGURE', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'seguridad/sesiones-activas',
-    to: '/seguridad/sesiones-activas',
-    label: 'Sesiones activas',
-    component: ActiveSessionsPage,
-    anyOf: ['AUDIT_VIEW', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'seguridad/password-history',
-    to: '/seguridad/password-history',
-    label: 'Historial de claves',
-    component: PasswordHistoryPage,
-    anyOf: ['AUDIT_VIEW', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'profesor/clases',
-    to: '/profesor/clases',
-    label: 'Mis clases',
-    component: TeacherClassesPage,
-    allowedRoles: ['profesor'],
-    anyOf: ['CLASS_VIEW'],
-  },
-  {
-    path: 'profesor/asistencias',
-    to: '/profesor/asistencias',
-    label: 'Asistencias',
-    component: TeacherAttendancePage,
-    allowedRoles: ['profesor'],
-    anyOf: ['CLASS_VIEW_ATTENDANCE', 'CLASS_TAKE_ATTENDANCE'],
-  },
-  {
-    path: 'profesor/evaluaciones',
-    to: '/profesor/evaluaciones',
-    label: 'Evaluaciones',
-    component: TeacherEvaluationsPage,
-    allowedRoles: ['profesor'],
-    anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
-  },
-  {
-    path: 'profesor/calificaciones',
-    to: '/profesor/calificaciones',
-    label: 'Calificaciones',
-    component: TeacherGradesPage,
-    allowedRoles: ['profesor'],
-    anyOf: ['GRADE_VIEW', 'GRADE_CREATE', 'GRADE_EDIT', 'GRADE_DELETE'],
-  },
-  {
-    path: 'estudiante/panel',
-    to: '/estudiante/panel',
-    label: 'Mi panel',
-    component: StudentSelfPage,
-    allowedRoles: ['estudiante', 'alumno'],
-    anyOf: ['PORTAL_ESTUDIANTE'],
-  },
-  {
-    path: 'asesor-financiero/panel',
-    to: '/asesor-financiero/panel',
-    label: 'Panel financiero',
-    component: AsesorFinancieroPage,
-    allowedRoles: ['asesor_financiero'],
-    anyOf: ['FINANCE_VIEW', 'FINANCE_MANAGE_PAYMENTS'],
-  },
-  {
-    path: 'inspector-convivencia/panel',
-    to: '/inspector-convivencia/panel',
-    label: 'Panel convivencia',
-    component: InspectorConvivenciaPage,
-    allowedRoles: ['inspector_convivencia'],
-    anyOf: ['DISCIPLINE_VIEW', 'DISCIPLINE_CREATE', 'JUSTIFICATION_APPROVE'],
-  },
-  {
-    path: 'psicologo-orientador/panel',
-    to: '/psicologo-orientador/panel',
-    label: 'Panel orientacion',
-    component: PsicologoOrientadorPage,
-    allowedRoles: ['psicologo_orientador'],
-    anyOf: ['COUNSELING_VIEW', 'COUNSELING_CREATE', 'REFERRAL_CREATE', 'REFERRAL_EDIT'],
-  },
-  {
-    path: 'soporte-tecnico/panel',
-    to: '/soporte-tecnico/panel',
-    label: 'Panel soporte',
-    component: SoporteTecnicoPage,
-    allowedRoles: ['soporte_tecnico_escolar'],
-    anyOf: ['SUPPORT_VIEW_TICKETS', 'SUPPORT_CREATE_TICKET', 'SUPPORT_RESOLVE_TICKET', 'SUPPORT_RESET_PASSWORD'],
-  },
-  {
-    path: 'bibliotecario-digital/panel',
-    to: '/bibliotecario-digital/panel',
-    label: 'Panel biblioteca',
-    component: BibliotecarioDigitalPage,
-    allowedRoles: ['bibliotecario_digital'],
-    anyOf: ['LIBRARY_VIEW', 'LIBRARY_CREATE', 'LIBRARY_MANAGE_LOANS'],
-  },
-  {
-    path: 'coordinador-academico/panel',
-    to: '/coordinador-academico/panel',
-    label: 'Panel academico',
-    component: CoordinadorAcademicoPage,
-    allowedRoles: ['coordinador_academico'],
-    anyOf: ['PLANNING_VIEW', 'PLANNING_APPROVE'],
-  },
-  {
-    path: 'apoderado/panel',
-    to: '/apoderado/panel',
-    label: 'Mi panel',
-    component: ApoderadoPage,
-    allowedRoles: ['apoderado'],
-    anyOf: ['PORTAL_APODERADO'],
-  },
-  {
-    path: 'planes',
-    to: '/planes',
-    label: 'Planes',
-    component: PricingPage,
-    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'pagos/historial',
-    to: '/pagos/historial',
-    label: 'Historial de pagos',
-    component: PaymentHistoryPage,
-    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
-  },
-  {
-    path: 'pagos/transferencias',
-    to: '/pagos/transferencias',
-    label: 'Transferencias',
-    component: TransferNoticesPage,
-    anyOf: ['FINANCE_MANAGE_PAYMENTS', 'SYSTEM_ADMIN'],
-  },
-];
 
 function AccessDeniedPage() {
   return (
@@ -427,58 +178,49 @@ function GuardedPage({ route }) {
 }
 
 function AuthorizedApp() {
-  const me = useAuthStore((state) => state.user);
-  const setMe = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
-  const [loadingMe, setLoadingMe] = useState(true);
+  const setMe = useAuthStore((state) => state.setUser);
+  
+  const { data: mePayload, isLoading: loadingMe } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => apiClient.get('/api/v1/me/'),
+    retry: false,
+  });
 
+  // Sync me payload to Zustand during render (not in useEffect)
+  const syncedMeRef = useMemo(() => ({ current: null }), []);
+  if (mePayload && mePayload !== syncedMeRef.current) {
+    syncedMeRef.current = mePayload;
+    setMe(mePayload);
+  }
+
+  // Listen for multi-tab logout events
   useEffect(() => {
-    let active = true;
-
-    async function loadMe() {
-      setLoadingMe(true);
-      try {
-        const payload = await apiClient.get('/api/v1/me/');
-        if (active) {
-          setMe(payload);
-        }
-      } catch {
-        if (active) {
-          logout();
-        }
-      } finally {
-        if (active) {
-          setLoadingMe(false);
-        }
-      }
-    }
-
-    loadMe();
-    return () => {
-      active = false;
+    const handleRemoteLogout = (event) => {
+      console.info('[Auth] Remote logout detected:', event.detail);
+      logout();
     };
-  }, [setMe, logout]);
+
+    window.addEventListener('auth-logout', handleRemoteLogout);
+    return () => {
+      window.removeEventListener('auth-logout', handleRemoteLogout);
+    };
+  }, [logout]);
 
   const visibleRoutes = useMemo(() => {
-    if (!me) {
+    if (!mePayload) {
       return [];
     }
-    return APP_ROUTES.filter((route) => canAccessRoute(me, route));
-  }, [me]);
+    return APP_ROUTES.filter((route) => canAccessRoute(mePayload, route));
+  }, [mePayload]);
 
-  if (loadingMe) {
-    return (
-      <section>
-        <p>Cargando sesion...</p>
-      </section>
-    );
-  }
-
-  if (!me) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return (
+  return loadingMe ? (
+    <section>
+      <p>Cargando sesión…</p>
+    </section>
+  ) : !mePayload && !loadingMe ? (
+    <Navigate to="/login" replace />
+  ) : (
     <>
       <UpdateListener />
       <ShellLayout visibleRoutes={visibleRoutes}>
@@ -499,9 +241,9 @@ function AuthorizedApp() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <MotionConfig reducedMotion="user">
       <ToastProvider>
-        <Suspense fallback={<div className="page-loader">Cargando aplicación...</div>}>
+        <Suspense fallback={<div className="page-loader">Cargando aplicación…</div>}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -515,8 +257,12 @@ export default function App() {
             />
           </Routes>
         </Suspense>
+        {ReactQueryDevtools ? (
+          <Suspense fallback={null}>
+            <ReactQueryDevtools initialIsOpen={false} />
+          </Suspense>
+        ) : null}
       </ToastProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    </MotionConfig>
   );
 }

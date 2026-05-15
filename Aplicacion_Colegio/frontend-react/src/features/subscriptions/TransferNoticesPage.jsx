@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useReducer, useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/authStore';
@@ -32,10 +32,29 @@ async function downloadWithAuth(path, fallbackName) {
 }
 
 export default function TransferNoticesPage() {
-  const [notices, setNotices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [state, dispatch] = useReducer(
+    (current, action) => {
+      switch (action.type) {
+        case 'loading':
+          return { ...current, loading: true, error: '' };
+        case 'loaded':
+          return { ...current, loading: false, notices: action.notices, error: '' };
+        case 'error':
+          return { ...current, loading: false, error: action.error };
+        case 'message':
+          return { ...current, message: action.message };
+        default:
+          return current;
+      }
+    },
+    {
+      notices: [],
+      loading: true,
+      error: '',
+      message: '',
+    },
+  );
+  const { notices, loading, error, message } = state;
   const [filters, setFilters] = useState({
     status: 'pending',
     gateway: 'bank_transfer_bancoestado',
@@ -44,8 +63,7 @@ export default function TransferNoticesPage() {
   });
 
   async function loadNotices() {
-    setLoading(true);
-    setError('');
+    dispatch({ type: 'loading' });
     try {
       const params = new URLSearchParams();
       if (filters.status) params.set('status', filters.status);
@@ -53,11 +71,12 @@ export default function TransferNoticesPage() {
       if (filters.since) params.set('since', filters.since);
       if (filters.until) params.set('until', filters.until);
       const response = await apiClient.get(`/api/v1/payments/transfer-notices/?${params.toString()}`);
-      setNotices(response.notices || []);
+      dispatch({ type: 'loaded', notices: response.notices || [] });
     } catch (err) {
-      setError(err.payload?.detail || 'No se pudieron cargar los avisos de transferencia.');
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: 'error',
+        error: err.payload?.detail || 'No se pudieron cargar los avisos de transferencia.',
+      });
     }
   }
 
@@ -66,18 +85,18 @@ export default function TransferNoticesPage() {
   }, [filters]);
 
   async function handleApprove(paymentId) {
-    setMessage('');
+    dispatch({ type: 'message', message: '' });
     try {
       const response = await apiClient.post('/api/v1/payments/transfer-notices/approve/', { payment_id: paymentId });
-      setMessage(response?.detail || 'Transferencia aprobada.');
+      dispatch({ type: 'message', message: response?.detail || 'Transferencia aprobada.' });
       await loadNotices();
     } catch (err) {
-      setMessage(err.payload?.detail || 'No se pudo aprobar la transferencia.');
+      dispatch({ type: 'message', message: err.payload?.detail || 'No se pudo aprobar la transferencia.' });
     }
   }
 
   async function handleExport() {
-    setMessage('');
+    dispatch({ type: 'message', message: '' });
     try {
       const params = new URLSearchParams();
       if (filters.status) params.set('status', filters.status);
@@ -85,9 +104,9 @@ export default function TransferNoticesPage() {
       if (filters.since) params.set('since', filters.since);
       if (filters.until) params.set('until', filters.until);
       await downloadWithAuth(`/api/v1/payments/transfer-notices/export/?${params.toString()}`, 'transferencias_pendientes.csv');
-      setMessage('Exportación descargada.');
+      dispatch({ type: 'message', message: 'Exportación descargada.' });
     } catch (err) {
-      setMessage(err.message || 'No se pudo exportar el listado.');
+      dispatch({ type: 'message', message: err.message || 'No se pudo exportar el listado.' });
     }
   }
 
@@ -100,9 +119,9 @@ export default function TransferNoticesPage() {
         </div>
       </header>
 
-      {loading ? <div className="loading-dot"><span /><span /><span /></div> : null}
-      {error ? <div className="error-box">{error}</div> : null}
-      {message ? <div className="error-box">{message}</div> : null}
+      {loading ? <div className="loading-dot" role="status" aria-live="polite" aria-label="Cargando"><span /><span /><span /></div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
+      {message ? <div className="error-box" role="alert" aria-live="assertive">{message}</div> : null}
 
       <div className="transfer-notices-filters">
         <label>
@@ -148,11 +167,11 @@ export default function TransferNoticesPage() {
                 <strong>{notice.plan}</strong>
                 <span className={`badge badge-${notice.status}`}>{notice.status}</span>
               </div>
-              <p><strong>Referencia:</strong> {notice.notice?.reference || '—'}</p>
+              <p><strong>Referencia:</strong> {notice.notice?.reference || '-'}</p>
               <p><strong>Monto:</strong> {notice.moneda} {notice.monto}</p>
-              <p><strong>Banco:</strong> {notice.notice?.bank_name || '—'}</p>
-              <p><strong>Titular:</strong> {notice.notice?.account_holder || '—'}</p>
-              <p><strong>Observaciones:</strong> {notice.notice?.notes || '—'}</p>
+              <p><strong>Banco:</strong> {notice.notice?.bank_name || '-'}</p>
+              <p><strong>Titular:</strong> {notice.notice?.account_holder || '-'}</p>
+              <p><strong>Observaciones:</strong> {notice.notice?.notes || '-'}</p>
               <button type="button" className="pricing-cta pricing-cta-primary" onClick={() => handleApprove(notice.payment_id)}>
                 Aprobar conciliación
               </button>

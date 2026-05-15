@@ -89,7 +89,7 @@ export default function TeacherClassesPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -137,8 +137,8 @@ export default function TeacherClassesPage() {
               </label>
             </div>
 
-            {loadingTrends ? <p>Cargando tendencias...</p> : null}
-            {trendsError ? <div className="error-box">{trendsError}</div> : null}
+            {loadingTrends ? <p>Cargando tendencias…</p> : null}
+            {trendsError ? <div className="error-box" role="alert" aria-live="assertive">{trendsError}</div> : null}
 
             {!loadingTrends && !trendsError && trends?.tendencia_general ? (
               <div className="summary-grid section-card">
@@ -186,8 +186,8 @@ export default function TeacherClassesPage() {
                 <p>Bloques asignados para hoy y el resto de la semana.</p>
               </div>
             </div>
-            {loadingSchedule ? <p>Cargando horario...</p> : null}
-            {scheduleError ? <div className="error-box">{scheduleError}</div> : null}
+            {loadingSchedule ? <p>Cargando horario…</p> : null}
+            {scheduleError ? <div className="error-box" role="alert" aria-live="assertive">{scheduleError}</div> : null}
 
             {!loadingSchedule && !scheduleError && schedule ? (
               <>
@@ -274,3 +274,4 @@ export default function TeacherClassesPage() {
     </section>
   );
 }
+

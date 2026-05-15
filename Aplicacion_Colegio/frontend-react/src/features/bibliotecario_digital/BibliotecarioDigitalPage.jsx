@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
@@ -7,6 +7,11 @@ import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
 import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
+
+import { ResourceForm } from './ResourceForm';
+import { PublishForm } from './PublishForm';
+import { LoanForm } from './LoanForm';
+import { ReturnForm } from './ReturnForm';
 
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;
@@ -21,23 +26,51 @@ const EMPTY_RESOURCE = {
   es_plan_lector: false,
 };
 
+const EMPTY_PUBLISH_FORM = { recurso_id: '' };
+const EMPTY_LOAN_FORM = { recurso_id: '', usuario_id: '', dias_prestamo: 14 };
+const EMPTY_RETURN_FORM = { prestamo_id: '' };
 
+const initialState = {
+  resourceForm: EMPTY_RESOURCE,
+  publishForm: EMPTY_PUBLISH_FORM,
+  loanForm: EMPTY_LOAN_FORM,
+  returnForm: EMPTY_RETURN_FORM,
+  saving: false,
+  publishSaving: false,
+  loanSaving: false,
+  returnSaving: false,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_RESOURCE_FIELD':
+      return { ...state, resourceForm: { ...state.resourceForm, [action.name]: action.value } };
+    case 'SET_PUBLISH_FIELD':
+      return { ...state, publishForm: { ...state.publishForm, [action.name]: action.value } };
+    case 'SET_LOAN_FIELD':
+      return { ...state, loanForm: { ...state.loanForm, [action.name]: action.value } };
+    case 'SET_RETURN_FIELD':
+      return { ...state, returnForm: { ...state.returnForm, [action.name]: action.value } };
+    case 'RESET_RESOURCE_FORM':
+      return { ...state, resourceForm: EMPTY_RESOURCE };
+    case 'RESET_PUBLISH_FORM':
+      return { ...state, publishForm: EMPTY_PUBLISH_FORM };
+    case 'RESET_LOAN_FORM':
+      return { ...state, loanForm: EMPTY_LOAN_FORM };
+    case 'RESET_RETURN_FORM':
+      return { ...state, returnForm: EMPTY_RETURN_FORM };
+    case 'SET_SAVING':
+      return { ...state, [action.field]: action.value };
+    default:
+      return state;
+  }
+}
 
 export default function BibliotecarioDigitalPage() {
   const me = useAuthStore((state) => state.user);
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [resources, setResources] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loans, setLoans] = useState([]);
-  const [resourceForm, setResourceForm] = useState(EMPTY_RESOURCE);
-  const [publishForm, setPublishForm] = useState({ recurso_id: '' });
-  const [loanForm, setLoanForm] = useState({ recurso_id: '', usuario_id: '', dias_prestamo: 14 });
-  const [returnForm, setReturnForm] = useState({ prestamo_id: '' });
-  const [saving, setSaving] = useState(false);
-  const [publishSaving, setPublishSaving] = useState(false);
-  const [loanSaving, setLoanSaving] = useState(false);
-  const [returnSaving, setReturnSaving] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   const { canAny } = usePermissions(me);
   const canCreate = canAny(['LIBRARY_CREATE', 'SYSTEM_ADMIN']);
@@ -60,6 +93,10 @@ export default function BibliotecarioDigitalPage() {
   const loading = loadingResources || loadingUsers || loadingLoans;
   const error = errorResourcesObj?.message;
 
+  const resources = Array.isArray(resourcesData?.recursos) ? resourcesData.recursos : [];
+  const users = Array.isArray(usersData?.usuarios) ? usersData.usuarios : [];
+  const loans = Array.isArray(loansData?.prestamos) ? loansData.prestamos : [];
+  
   const summaryCards = useMemo(() => {
     const publishedCount = resources.filter((item) => item.publicado).length;
     const loanCount = loans.length;
@@ -88,28 +125,6 @@ export default function BibliotecarioDigitalPage() {
     ];
   }, [loans.length, resources, users.length]);
 
-  useEffect(() => {
-    if (resourcesData) {
-      setResources(Array.isArray(resourcesData?.recursos) ? resourcesData.recursos : []);
-    }
-  }, [resourcesData]);
-
-  useEffect(() => {
-    if (usersData) {
-      setUsers(Array.isArray(usersData?.usuarios) ? usersData.usuarios : []);
-    }
-  }, [usersData]);
-
-  useEffect(() => {
-    if (loansData) {
-      setLoans(Array.isArray(loansData?.prestamos) ? loansData.prestamos : []);
-    }
-  }, [loansData]);
-
-  function onChange(name, value) {
-    setResourceForm((prev) => ({ ...prev, [name]: value }));
-  }
-
   async function onSubmit(event) {
     event.preventDefault();
     if (!canCreate) {
@@ -117,16 +132,16 @@ export default function BibliotecarioDigitalPage() {
       return;
     }
 
-    setSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'saving', value: true });
     try {
-      const payload = await apiClient.post('/api/bibliotecario/recursos/crear/', resourceForm);
+      const payload = await apiClient.post('/api/bibliotecario/recursos/crear/', state.resourceForm);
       toast.success(payload?.message || 'Recurso creado.');
-      setResourceForm(EMPTY_RESOURCE);
+      dispatch({ type: 'RESET_RESOURCE_FORM' });
       await queryClient.invalidateQueries({ queryKey: ['bibliotecario-recursos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo crear el recurso.'));
     } finally {
-      setSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'saving', value: false });
     }
   }
 
@@ -137,16 +152,16 @@ export default function BibliotecarioDigitalPage() {
       return;
     }
 
-    setPublishSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'publishSaving', value: true });
     try {
-      const payload = await apiClient.post(`/api/bibliotecario/recursos/${publishForm.recurso_id}/publicar/`, {});
+      const payload = await apiClient.post(`/api/bibliotecario/recursos/${state.publishForm.recurso_id}/publicar/`, {});
       toast.success(payload?.message || 'Publicacion actualizada.');
-      setPublishForm({ recurso_id: '' });
+      dispatch({ type: 'RESET_PUBLISH_FORM' });
       await queryClient.invalidateQueries({ queryKey: ['bibliotecario-recursos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo cambiar publicacion.'));
     } finally {
-      setPublishSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'publishSaving', value: false });
     }
   }
 
@@ -157,23 +172,23 @@ export default function BibliotecarioDigitalPage() {
       return;
     }
 
-    setLoanSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'loanSaving', value: true });
     try {
       const payload = await apiClient.post('/api/bibliotecario/prestamos/crear/', {
-        recurso_id: Number(loanForm.recurso_id),
-        usuario_id: Number(loanForm.usuario_id),
-        dias_prestamo: Number(loanForm.dias_prestamo),
+        recurso_id: Number(state.loanForm.recurso_id),
+        usuario_id: Number(state.loanForm.usuario_id),
+        dias_prestamo: Number(state.loanForm.dias_prestamo),
       });
       toast.success(payload?.message || 'Prestamo registrado.');
       if (payload?.id) {
-        setReturnForm({ prestamo_id: String(payload.id) });
+        dispatch({ type: 'SET_RETURN_FIELD', name: 'prestamo_id', value: String(payload.id) });
       }
       await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
-      setLoanForm({ recurso_id: '', usuario_id: '', dias_prestamo: 14 });
+      dispatch({ type: 'RESET_LOAN_FORM' });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo crear el prestamo.'));
     } finally {
-      setLoanSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'loanSaving', value: false });
     }
   }
 
@@ -184,17 +199,16 @@ export default function BibliotecarioDigitalPage() {
       return;
     }
 
-    setReturnSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'returnSaving', value: true });
     try {
-      const payload = await apiClient.post(`/api/bibliotecario/prestamos/${returnForm.prestamo_id}/devolver/`, {});
+      const payload = await apiClient.post(`/api/bibliotecario/prestamos/${state.returnForm.prestamo_id}/devolver/`, {});
       toast.success(payload?.message || 'Devolucion registrada.');
-      setLoans((prev) => prev.filter((item) => String(item.id) !== String(returnForm.prestamo_id)));
-      setReturnForm({ prestamo_id: '' });
+      dispatch({ type: 'RESET_RETURN_FORM' });
       await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo registrar devolucion.'));
     } finally {
-      setReturnSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'returnSaving', value: false });
     }
   }
 
@@ -204,16 +218,15 @@ export default function BibliotecarioDigitalPage() {
       return;
     }
 
-    setReturnSaving(true);
+    dispatch({ type: 'SET_SAVING', field: 'returnSaving', value: true });
     try {
       const payload = await apiClient.post(`/api/bibliotecario/prestamos/${loanId}/devolver/`, {});
       toast.success(payload?.message || 'Devolucion registrada.');
-      setLoans((prev) => prev.filter((item) => String(item.id) !== String(loanId)));
       await queryClient.invalidateQueries({ queryKey: ['bibliotecario-prestamos'] });
     } catch (err) {
       toast.error(resolveError(err, 'No se pudo registrar devolucion.'));
     } finally {
-      setReturnSaving(false);
+      dispatch({ type: 'SET_SAVING', field: 'returnSaving', value: false });
     }
   }
 
@@ -226,7 +239,7 @@ export default function BibliotecarioDigitalPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -276,173 +289,42 @@ export default function BibliotecarioDigitalPage() {
         </article>
       </div>
 
-      <form className="card section-card form-grid" onSubmit={onSubmit}>
-        <h3>Nuevo recurso</h3>
-
-        <label>
-          Titulo
-          <input
-            value={resourceForm.titulo}
-            onChange={(e) => onChange('titulo', e.target.value)}
-            disabled={!canCreate || saving}
-            required
-          />
-        </label>
-
-        <label>
-          Descripcion
-          <textarea
-            value={resourceForm.descripcion}
-            onChange={(e) => onChange('descripcion', e.target.value)}
-            disabled={!canCreate || saving}
-          />
-        </label>
-
-        <label>
-          Tipo
-          <select value={resourceForm.tipo} onChange={(e) => onChange('tipo', e.target.value)} disabled={!canCreate || saving}>
-            <option value="LIBRO">Libro</option>
-            <option value="VIDEO">Video</option>
-            <option value="DOCUMENTO">Documento</option>
-            <option value="ENLACE">Enlace</option>
-            <option value="SOFTWARE">Software</option>
-            <option value="MATERIAL_CRA">Material CRA</option>
-          </select>
-        </label>
-
-        <label>
-          URL externa
-          <input value={resourceForm.url_externa} onChange={(e) => onChange('url_externa', e.target.value)} disabled={!canCreate || saving} />
-        </label>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={resourceForm.publicado}
-            onChange={(e) => onChange('publicado', e.target.checked)}
-            disabled={!canCreate || saving}
-          />
-          Publicado
-        </label>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={resourceForm.es_plan_lector}
-            onChange={(e) => onChange('es_plan_lector', e.target.checked)}
-            disabled={!canCreate || saving}
-          />
-          Plan lector
-        </label>
-
-        <div>
-          <button type="submit" disabled={!canCreate || saving || !resourceForm.titulo}>
-            {saving ? 'Guardando...' : 'Crear recurso'}
-          </button>
-        </div>
-      </form>
+      <ResourceForm
+        form={state.resourceForm}
+        saving={state.saving}
+        canCreate={canCreate}
+        onChange={(name, value) => dispatch({ type: 'SET_RESOURCE_FIELD', name, value })}
+        onSubmit={onSubmit}
+      />
 
       <div className="grid-2">
-        <form className="card section-card form-grid" onSubmit={onTogglePublish}>
-          <h3>Publicar o despublicar recurso</h3>
-          <label>
-            Recurso
-            <select
-              value={publishForm.recurso_id}
-              onChange={(e) => setPublishForm({ recurso_id: e.target.value })}
-              disabled={!canEdit || publishSaving}
-              required
-            >
-              <option value="">Selecciona recurso</option>
-              {resources.map((item) => (
-                <option key={item.id || item.id_recurso} value={item.id || item.id_recurso}>
-                  {item.titulo || `Recurso #${item.id || item.id_recurso}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div>
-            <button type="submit" disabled={!canEdit || publishSaving || !publishForm.recurso_id}>
-              {publishSaving ? 'Guardando...' : 'Toggle publicar'}
-            </button>
-          </div>
-        </form>
+        <PublishForm
+          resources={resources}
+          form={state.publishForm}
+          saving={state.publishSaving}
+          canEdit={canEdit}
+          onChange={(name, value) => dispatch({ type: 'SET_PUBLISH_FIELD', name, value })}
+          onSubmit={onTogglePublish}
+        />
 
-        <form className="card section-card form-grid" onSubmit={onCreateLoan}>
-          <h3>Crear prestamo</h3>
-          <label>
-            Recurso
-            <select
-              value={loanForm.recurso_id}
-              onChange={(e) => setLoanForm((prev) => ({ ...prev, recurso_id: e.target.value }))}
-              disabled={!canManageLoans || loanSaving}
-              required
-            >
-              <option value="">Selecciona recurso</option>
-              {resources.map((item) => (
-                <option key={item.id || item.id_recurso} value={item.id || item.id_recurso}>
-                  {item.titulo || `Recurso #${item.id || item.id_recurso}`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Usuario
-            <select
-              value={loanForm.usuario_id}
-              onChange={(e) => setLoanForm((prev) => ({ ...prev, usuario_id: e.target.value }))}
-              disabled={!canManageLoans || loanSaving}
-              required
-            >
-              <option value="">Selecciona usuario</option>
-              {users.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre || item.full_name || `Usuario #${item.id}`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Dias prestamo
-            <input
-              type="number"
-              min="1"
-              max="90"
-              value={loanForm.dias_prestamo}
-              onChange={(e) => setLoanForm((prev) => ({ ...prev, dias_prestamo: e.target.value }))}
-              disabled={!canManageLoans || loanSaving}
-            />
-          </label>
-
-          <div>
-            <button type="submit" disabled={!canManageLoans || loanSaving || !loanForm.recurso_id || !loanForm.usuario_id}>
-              {loanSaving ? 'Guardando...' : 'Registrar prestamo'}
-            </button>
-          </div>
-        </form>
+        <LoanForm
+          resources={resources}
+          users={users}
+          form={state.loanForm}
+          saving={state.loanSaving}
+          canManageLoans={canManageLoans}
+          onChange={(name, value) => dispatch({ type: 'SET_LOAN_FIELD', name, value })}
+          onSubmit={onCreateLoan}
+        />
       </div>
 
-      <form className="card section-card form-grid" onSubmit={onReturnLoan}>
-        <h3>Registrar devolucion</h3>
-        <label>
-          Prestamo ID
-          <input
-            type="number"
-            min="1"
-            value={returnForm.prestamo_id}
-            onChange={(e) => setReturnForm({ prestamo_id: e.target.value })}
-            disabled={!canManageLoans || returnSaving}
-            required
-          />
-        </label>
-        <div>
-          <button type="submit" disabled={!canManageLoans || returnSaving || !returnForm.prestamo_id}>
-            {returnSaving ? 'Guardando...' : 'Registrar devolucion'}
-          </button>
-        </div>
-      </form>
+      <ReturnForm
+        form={state.returnForm}
+        saving={state.returnSaving}
+        canManageLoans={canManageLoans}
+        onChange={(name, value) => dispatch({ type: 'SET_RETURN_FIELD', name, value })}
+        onSubmit={onReturnLoan}
+      />
 
       <article className="card section-card">
         <div className="section-card-head">
@@ -462,13 +344,13 @@ export default function BibliotecarioDigitalPage() {
               <li key={item.id}>
                 <strong>#{item.id}</strong> {item.recurso} - {item.usuario}
                 <div>
-                  <button type="button" disabled={!canManageLoans || returnSaving} onClick={() => quickReturnLoan(item.id)}>
+                  <button type="button" disabled={!canManageLoans || state.returnSaving} onClick={() => quickReturnLoan(item.id)}>
                     Devolver ahora
                   </button>
                   <button
                     type="button"
-                    disabled={!canManageLoans || returnSaving}
-                    onClick={() => setReturnForm({ prestamo_id: String(item.id) })}
+                    disabled={!canManageLoans || state.returnSaving}
+                    onClick={() => dispatch({ type: 'SET_RETURN_FIELD', name: 'prestamo_id', value: String(item.id) })}
                   >
                     Usar en formulario
                   </button>
@@ -481,4 +363,3 @@ export default function BibliotecarioDigitalPage() {
     </section>
   );
 }
-

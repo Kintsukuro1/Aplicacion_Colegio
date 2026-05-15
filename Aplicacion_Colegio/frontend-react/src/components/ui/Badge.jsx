@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Badge — Componente de etiqueta/distintivo
+ * Badge - Componente de etiqueta/distintivo
  * 
  * Características:
  * - Múltiples variantes de color
@@ -55,4 +55,5 @@ export function Badge({
   );
 }
 
-export default Badge;
+
+

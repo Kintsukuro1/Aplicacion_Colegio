@@ -9,6 +9,9 @@ import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
 
+import { TeacherAttendanceForm } from './TeacherAttendanceForm';
+import { TeacherAttendanceTable } from './TeacherAttendanceTable';
+
 const EMPTY_FORM = {
   clase: '',
   estudiante: '',
@@ -17,8 +20,6 @@ const EMPTY_FORM = {
   tipo_asistencia: 'Presencial',
   observaciones: '',
 };
-
-
 
 export default function TeacherAttendancePage() {
   const me = useAuthStore((state) => state.user);
@@ -178,7 +179,7 @@ export default function TeacherAttendancePage() {
         </div>
       </header>
 
-      {apiError ? <div className="error-box">{apiError}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError}</div> : null}
       {!canTakeAttendance ? <p>Modo solo lectura: falta capability `CLASS_TAKE_ATTENDANCE`.</p> : null}
 
       <div className="summary-grid">
@@ -195,102 +196,18 @@ export default function TeacherAttendancePage() {
             ))}
       </div>
 
-      <form className="card section-card form-grid" onSubmit={onSubmit}>
-        <h3>{editingId ? `Editar #${editingId}` : 'Nueva Asistencia'}</h3>
-
-        <label>
-          Clase
-          <select
-            value={form.clase}
-            onChange={(e) => onChange('clase', e.target.value)}
-            required
-            disabled={!canTakeAttendance}
-          >
-            <option value="">Seleccionar</option>
-            {classes.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.curso_nombre} - {row.asignatura_nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Estudiante
-          <select
-            value={form.estudiante}
-            onChange={(e) => onChange('estudiante', e.target.value)}
-            required
-            disabled={!canTakeAttendance}
-          >
-            <option value="">Seleccionar</option>
-            {students.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.nombre} {row.apellido_paterno}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Fecha
-          <input
-            type="date"
-            value={form.fecha}
-            onChange={(e) => onChange('fecha', e.target.value)}
-            required
-            disabled={!canTakeAttendance}
-          />
-        </label>
-
-        <label>
-          Estado
-          <select
-            value={form.estado}
-            onChange={(e) => onChange('estado', e.target.value)}
-            required
-            disabled={!canTakeAttendance}
-          >
-            <option value="P">Presente</option>
-            <option value="A">Ausente</option>
-            <option value="T">Tardanza</option>
-            <option value="J">Justificada</option>
-          </select>
-        </label>
-
-        <label>
-          Tipo
-          <select
-            value={form.tipo_asistencia}
-            onChange={(e) => onChange('tipo_asistencia', e.target.value)}
-            disabled={!canTakeAttendance}
-          >
-            <option value="Presencial">Presencial</option>
-            <option value="Remota">Remota</option>
-            <option value="Hibrida">Híbrida</option>
-          </select>
-        </label>
-
-        <label className="full">
-          Observaciones
-          <input
-            value={form.observaciones}
-            onChange={(e) => onChange('observaciones', e.target.value)}
-            disabled={!canTakeAttendance}
-          />
-        </label>
-
-        <div className="actions full">
-          <button type="submit" disabled={!canSubmit || saving}>
-            {saving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-          </button>
-          {editingId ? (
-            <button type="button" className="secondary" onClick={resetForm}>
-              Cancelar Edicion
-            </button>
-          ) : null}
-        </div>
-        </form>
+      <TeacherAttendanceForm
+        form={form}
+        classes={classes}
+        students={students}
+        editingId={editingId}
+        saving={saving}
+        canSubmit={canSubmit}
+        canTakeAttendance={canTakeAttendance}
+        onChange={onChange}
+        resetForm={resetForm}
+        onSubmit={onSubmit}
+      />
 
       <article className="card section-card">
         <div className="section-card-head">
@@ -303,50 +220,12 @@ export default function TeacherAttendancePage() {
         {loading ? (
           <TableLoadingState />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Fecha</th>
-                  <th>Estudiante</th>
-                  <th>Estado</th>
-                  <th>Tipo</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_asistencia}>
-                    <td>{row.id_asistencia}</td>
-                    <td>{row.fecha}</td>
-                    <td>{row.estudiante_nombre}</td>
-                    <td>{row.estado}</td>
-                    <td>{row.tipo_asistencia}</td>
-                    <td className="actions-cell">
-                      {canTakeAttendance ? (
-                        <>
-                          <button type="button" className="small" onClick={() => startEdit(row)}>
-                            Editar
-                          </button>
-                          <button type="button" className="small danger" onClick={() => onDelete(row.id_asistencia)}>
-                            Eliminar
-                          </button>
-                        </>
-                      ) : (
-                        <span>Solo lectura</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {!loading && rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="6">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <TeacherAttendanceTable
+            rows={rows}
+            canTakeAttendance={canTakeAttendance}
+            onStartEdit={startEdit}
+            onDelete={onDelete}
+          />
         )}
 
         {!loading && rows.length === 0 ? <p className="section-muted">No hay asistencias para el filtro actual.</p> : null}
@@ -354,4 +233,3 @@ export default function TeacherAttendancePage() {
     </section>
   );
 }
-

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
@@ -15,9 +15,6 @@ function resolveError(err, fallback) {
 export default function ApoderadoPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [justificativos, setJustificativos] = useState([]);
-  const [pendientes, setPendientes] = useState([]);
-  const [firmados, setFirmados] = useState([]);
   const [signForm, setSignForm] = useState({
     tipo_documento: 'AUTORIZACION',
     titulo: '',
@@ -38,18 +35,10 @@ export default function ApoderadoPage() {
   const justError = justErrorObj?.message;
   const signError = signErrorObj?.message;
 
-  useEffect(() => {
-    if (justData) {
-      setJustificativos(Array.isArray(justData.justificativos) ? justData.justificativos : []);
-    }
-  }, [justData]);
-
-  useEffect(() => {
-    if (signData) {
-      setPendientes(Array.isArray(signData.pendientes) ? signData.pendientes : []);
-      setFirmados(Array.isArray(signData.firmados) ? signData.firmados : []);
-    }
-  }, [signData]);
+  // Derive data inline from query results (no useEffect sync needed)
+  const justificativos = Array.isArray(justData?.justificativos) ? justData.justificativos : [];
+  const pendientes = Array.isArray(signData?.pendientes) ? signData.pendientes : [];
+  const firmados = Array.isArray(signData?.firmados) ? signData.firmados : [];
 
   const loading = justLoading || signLoading;
   const error = justError || signError;
@@ -108,7 +97,7 @@ export default function ApoderadoPage() {
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -193,3 +182,4 @@ export default function ApoderadoPage() {
     </section>
   );
 }
+

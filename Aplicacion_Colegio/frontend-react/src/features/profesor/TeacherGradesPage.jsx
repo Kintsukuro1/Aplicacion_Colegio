@@ -1,49 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../lib/apiClient';
 import { formatNumber } from '../../lib/formatters';
 import { asResults } from '../../lib/httpHelpers';
-import EditableTableRow from '../../components/EditableTableRow';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { SummarySkeleton } from '../../components/TableLoadingState';
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
+import { TeacherGradesForm } from './TeacherGradesForm';
+import { TeacherGradesTable } from './TeacherGradesTable';
 
 const EMPTY_FORM = {
   evaluacion: '',
   estudiante: '',
   nota: '',
 };
-
-function InlineEditGrade({ row, isSaving, onSave, onCancel }) {
-  const [nota, setNota] = useState(row.nota);
-  return (
-    <>
-      <td>{row.id_calificacion}</td>
-      <td>{row.estudiante_nombre}</td>
-      <td>
-        <input
-          type="number"
-          step="0.1"
-          style={{ width: '80px', padding: '0.2rem' }}
-          value={nota}
-          onChange={(e) => setNota(e.target.value)}
-          disabled={isSaving}
-        />
-      </td>
-      <td>{row.fecha_creacion}</td>
-      <td className="actions-cell">
-        <button type="button" className="small" disabled={isSaving} onClick={() => onSave({ nota })}>
-          Guardar
-        </button>
-        <button type="button" className="small secondary" disabled={isSaving} onClick={onCancel}>
-          Cancelar
-        </button>
-      </td>
-    </>
-  );
-}
 
 export default function TeacherGradesPage() {
   const me = useAuthStore((state) => state.user);
@@ -221,7 +193,7 @@ export default function TeacherGradesPage() {
         </div>
       </header>
 
-      {apiError ? <div className="error-box">{apiError?.message || 'Error al cargar datos.'}</div> : null}
+      {apiError ? <div className="error-box" role="alert" aria-live="assertive">{apiError?.message || 'Error al cargar datos.'}</div> : null}
       {!canCreate ? <p>Modo restringido: falta capability `GRADE_CREATE` para crear.</p> : null}
 
       <div className="summary-grid">
@@ -253,46 +225,16 @@ export default function TeacherGradesPage() {
         </label>
       </div>
 
-      {canCreate ? (
-        <form className="card form-grid" onSubmit={onSubmit}>
-          <h3>Nueva Calificacion</h3>
-
-          <label>
-            Evaluacion
-            <select value={form.evaluacion} onChange={(e) => onChange('evaluacion', e.target.value)} required disabled={createMutation.isPending}>
-              <option value="">Seleccionar</option>
-              {evaluations.map((row) => (
-                <option key={row.id_evaluacion} value={row.id_evaluacion}>
-                  {row.nombre} ({row.fecha_evaluacion})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Estudiante
-            <select value={form.estudiante} onChange={(e) => onChange('estudiante', e.target.value)} required disabled={createMutation.isPending}>
-              <option value="">Seleccionar</option>
-              {students.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.nombre} {row.apellido_paterno}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Nota
-            <input value={form.nota} onChange={(e) => onChange('nota', e.target.value)} required disabled={createMutation.isPending} />
-          </label>
-
-          <div className="actions full">
-            <button type="submit" disabled={!canSubmit || createMutation.isPending}>
-              {createMutation.isPending ? 'Creando...' : 'Crear'}
-            </button>
-          </div>
-        </form>
-      ) : null}
+      <TeacherGradesForm
+        form={form}
+        evaluations={evaluations}
+        students={students}
+        canCreate={canCreate}
+        isPending={createMutation.isPending}
+        onChange={onChange}
+        onSubmit={onSubmit}
+        canSubmit={canSubmit}
+      />
 
       <article className="card section-card">
         <div className="section-card-head">
@@ -302,67 +244,19 @@ export default function TeacherGradesPage() {
           </div>
         </div>
 
-        {loadingGrades ? (
-          <TableLoadingState />
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Estudiante</th>
-                  <th>Nota</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <EditableTableRow
-                    key={row.id_calificacion}
-                    onSave={async (data) => {
-                      await updateMutation.mutateAsync({
-                        id: row.id_calificacion,
-                        payload: { nota: data.nota },
-                      });
-                    }}
-                    renderView={({ onEdit }) => (
-                      <>
-                        <td>{row.id_calificacion}</td>
-                        <td>{row.estudiante_nombre}</td>
-                        <td>{formatNumber(row.nota)}</td>
-                        <td>{row.fecha_creacion}</td>
-                        <td className="actions-cell">
-                          {canEdit ? (
-                            <button type="button" className="small" onClick={onEdit}>
-                              Editar
-                            </button>
-                          ) : null}
-                          {canDelete ? (
-                            <button type="button" className="small danger" onClick={() => onDelete(row.id_calificacion)}>
-                              Eliminar
-                            </button>
-                          ) : null}
-                          {!canEdit && !canDelete ? <span>Solo lectura</span> : null}
-                        </td>
-                      </>
-                    )}
-                    renderEdit={({ onSave, onCancel, isSaving }) => (
-                      <InlineEditGrade row={row} isSaving={isSaving} onSave={onSave} onCancel={onCancel} />
-                    )}
-                  />
-                ))}
-                {!loadingGrades && rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="5">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <TeacherGradesTable
+          rows={rows}
+          loading={loadingGrades}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          onUpdate={async (id, data) => {
+            await updateMutation.mutateAsync({ id, payload: { nota: data.nota } });
+          }}
+          onDelete={onDelete}
+        />
       </article>
     </section>
   );
 }
+
 

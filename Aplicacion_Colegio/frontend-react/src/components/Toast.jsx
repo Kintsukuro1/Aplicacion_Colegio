@@ -23,14 +23,25 @@ export function ToastProvider({ children }) {
   return (
     <>
       {children}
-      <div className="toast-container" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.type}`}>
+      <div className="toast-container" aria-live="polite" aria-atomic="true">
+        {toasts.map((t) => {
+          const isAlert = t.type === 'error' || t.type === 'warning';
+          const role = isAlert ? 'alert' : 'status';
+          const live = isAlert ? 'assertive' : 'polite';
+
+          return (
+            <div
+              key={t.id}
+              className={`toast toast-${t.type}`}
+              role={role}
+              aria-live={live}
+              aria-atomic="true"
+            >
             <span className="toast-icon">
-              {t.type === 'success' && '✓'}
-              {t.type === 'error' && '✕'}
-              {t.type === 'info' && 'ℹ'}
-              {t.type === 'warning' && '⚠'}
+              {t.type === 'success' && 'OK'}
+              {t.type === 'error' && 'X'}
+              {t.type === 'info' && 'i'}
+              {t.type === 'warning' && '!'}
             </span>
             <span className="toast-message">{t.message}</span>
             <button
@@ -39,10 +50,11 @@ export function ToastProvider({ children }) {
               onClick={() => dismiss(t.id)}
               aria-label="Cerrar"
             >
-              ×
+              X
             </button>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,9 @@ import FormOverlay from '../../components/FormOverlay';
 import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
 import { usePermissions } from '../../lib/hooks/usePermissions';
 import { useToast } from '../../components/Toast';
+
+import { AdminCoursesForm } from './AdminCoursesForm';
+import { AdminCoursesTable } from './AdminCoursesTable';
 
 const EMPTY_FORM = {
   nombre: '',
@@ -29,7 +32,6 @@ export default function AdminCoursesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [error, setError] = useState('');
   const { canAny } = usePermissions(me);
 
   const canView = useMemo(() => canAny(['COURSE_VIEW', 'SYSTEM_ADMIN']), [canAny]);
@@ -105,9 +107,8 @@ export default function AdminCoursesPage() {
   const hasNext = pagination.currentPage < Math.max(0, pagination.totalPages - 1);
   const hasPrevious = pagination.currentPage > 0;
 
-  useEffect(() => {
-    if (apiError) setError(apiError);
-  }, [apiError]);
+  // Derive error inline (no useEffect sync needed)
+  const error = apiError || '';
 
   const createMutation = useMutation({
     mutationFn: async (payload) => {
@@ -213,7 +214,7 @@ export default function AdminCoursesPage() {
         ) : null}
       </header>
 
-      {error && !isFormOpen ? <div className="error-box">{error}</div> : null}
+      {error && !isFormOpen ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
       {!canCreate && !canUpdate && !canDelete ? <p>Modo restringido: Solo lectura.</p> : null}
 
       <div className="summary-grid">
@@ -248,51 +249,14 @@ export default function AdminCoursesPage() {
         {loading ? (
           <TableLoadingState />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nombre</th>
-                  <th>Activo</th>
-                  <th>Colegio</th>
-                  <th>Nivel</th>
-                  <th>Ciclo</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id_curso}>
-                    <td>{row.id_curso}</td>
-                    <td>{row.nombre}</td>
-                    <td>{row.activo ? 'Si' : 'No'}</td>
-                    <td>{row.colegio_id ?? '-'}</td>
-                    <td>{row.nivel_id ?? '-'}</td>
-                    <td>{row.ciclo_academico_id ?? '-'}</td>
-                    <td className="actions-cell">
-                      {canUpdate ? (
-                        <button type="button" className="small" onClick={() => startEdit(row)}>
-                          Editar
-                        </button>
-                      ) : null}
-                      {canDelete ? (
-                        <button type="button" className="small danger" onClick={() => onDelete(row.id_curso)} disabled={deleteMutation.isPending}>
-                          Eliminar
-                        </button>
-                      ) : null}
-                      {!canUpdate && !canDelete ? <span>-</span> : null}
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan="7">Sin registros</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <AdminCoursesTable
+            rows={rows}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onStartEdit={startEdit}
+            onDelete={onDelete}
+            deletePending={deleteMutation.isPending}
+          />
         )}
       </article>
 
@@ -310,63 +274,17 @@ export default function AdminCoursesPage() {
         onClose={handleCloseModal}
         title={editingId ? `Editar curso #${editingId}` : 'Nuevo Curso'}
       >
-        <form className="form-grid" onSubmit={onSubmit} style={{ marginTop: '0', padding: '0', background: 'transparent', boxShadow: 'none' }}>
-          <label style={{ gridColumn: '1 / -1' }}>
-            Nombre
-            <input
-              value={form.nombre}
-              onChange={(e) => onChange('nombre', e.target.value)}
-              required
-              disabled={formLocked || isSaving}
-            />
-          </label>
-
-          <label>
-            Nivel ID
-            <input
-              type="number"
-              value={form.nivel_id}
-              onChange={(e) => onChange('nivel_id', e.target.value)}
-              required
-              disabled={formLocked || isSaving}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Ciclo Academico ID (opcional)
-            <input
-              type="number"
-              value={form.ciclo_academico_id}
-              onChange={(e) => onChange('ciclo_academico_id', e.target.value)}
-              disabled={formLocked || isSaving}
-              min="1"
-            />
-          </label>
-
-          <label>
-            Activo
-            <select
-              value={form.activo ? '1' : '0'}
-              onChange={(e) => onChange('activo', e.target.value === '1')}
-              disabled={formLocked || isSaving}
-            >
-              <option value="1">Si</option>
-              <option value="0">No</option>
-            </select>
-          </label>
-
-          <div className="actions full" style={{ marginTop: '1rem' }}>
-            <button type="submit" disabled={!canSubmit || formLocked || isSaving}>
-              {isSaving ? 'Guardando...' : editingId ? 'Actualizar' : 'Crear'}
-            </button>
-            <button type="button" className="secondary" onClick={handleCloseModal} disabled={isSaving}>
-              Cancelar
-            </button>
-          </div>
-        </form>
+        <AdminCoursesForm
+          form={form}
+          editingId={editingId}
+          formLocked={formLocked}
+          isSaving={isSaving}
+          canSubmit={canSubmit}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          onClose={handleCloseModal}
+        />
       </FormOverlay>
     </section>
   );
 }
-

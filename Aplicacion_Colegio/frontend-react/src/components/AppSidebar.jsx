@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 import { getUserRole } from '../lib/capabilities';
@@ -22,13 +22,20 @@ const MODULE_ORDER = [
   'pagos',
   'planes',
 ];
+const EMPTY_ROUTES = [];
 
-export function AppSidebar({ visibleRoutes = [], onLogout = () => {}, isOpen = false, onClose = () => {} }) {
+export function AppSidebar({ visibleRoutes = EMPTY_ROUTES, onLogout = () => {}, isOpen = false, onClose = () => {} }) {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const [expanded, setExpanded] = useState({});
 
   const activeModule = getRouteModule(location.pathname);
+  const prevModuleRef = useRef(activeModule);
+
+  if (activeModule !== prevModuleRef.current) {
+    prevModuleRef.current = activeModule;
+    setExpanded((current) => ({ ...current, [activeModule]: true }));
+  }
 
   const menuGroups = useMemo(() => {
     const grouped = new Map();
@@ -62,11 +69,7 @@ export function AppSidebar({ visibleRoutes = [], onLogout = () => {}, isOpen = f
     });
   }, [visibleRoutes]);
 
-  useEffect(() => {
-    if (activeModule) {
-      setExpanded((current) => ({ ...current, [activeModule]: true }));
-    }
-  }, [activeModule]);
+
 
   const role = getRoleDisplay(getUserRole(user));
   const displayName = user?.full_name || user?.user?.name || user?.email || 'Usuario';
@@ -238,4 +241,4 @@ function getModuleIcon(module) {
   return icons[module] || 'MD';
 }
 
-export default AppSidebar;
+

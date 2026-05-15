@@ -1,6 +1,6 @@
-# 📌 FASE5_CHECKLIST_INTEGRACION.md
+﻿# 📌 FASE5_CHECKLIST_INTEGRACION.md
 
-## 🎯 Plan de Integración — Pasos Concretos
+## 🎯 Plan de Integración - Pasos Concretos
 
 Este documento enumera exactamente dónde y cómo integrar los componentes UI nuevos en el proyecto existente.
 
@@ -368,3 +368,4 @@ npm test components/ui/Modal.test.jsx
 **Documento creado:** Fase 5 Integración
 **Estado:** Listo para implementación
 **Estimado:** 2-3 semanas para migración completa
+

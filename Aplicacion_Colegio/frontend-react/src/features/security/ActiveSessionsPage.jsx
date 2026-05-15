@@ -11,8 +11,6 @@ import { formatNumber } from '../../lib/formatters';
 
 export default function ActiveSessionsPage() {
   const me = useAuthStore((state) => state.user);
-  const [rows, setRows] = useState([]);
-  const [dashboard, setDashboard] = useState(null);
   const [message, setMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -25,17 +23,9 @@ export default function ActiveSessionsPage() {
   const loading = loadingSessions || loadingDashboard;
   const error = errorSessions || errorDashboard;
 
-  useEffect(() => {
-    if (sessionsData) {
-      setRows(Array.isArray(sessionsData?.sesiones) ? sessionsData.sesiones : []);
-    }
-  }, [sessionsData]);
-
-  useEffect(() => {
-    if (dashboardData) {
-      setDashboard(dashboardData || null);
-    }
-  }, [dashboardData]);
+  // Derive rows and dashboard inline from query data (no useEffect sync needed)
+  const rows = Array.isArray(sessionsData?.sesiones) ? sessionsData.sesiones : [];
+  const dashboard = dashboardData || null;
 
   const summaryCards = useMemo(
     () => [
@@ -123,7 +113,7 @@ export default function ActiveSessionsPage() {
         </div>
       </header>
 
-      {error || errorMsg ? <div className="error-box">{error || errorMsg}</div> : null}
+      {error || errorMsg ? <div className="error-box" role="alert" aria-live="assertive">{error || errorMsg}</div> : null}
       {message ? <div className="info-box">{message}</div> : null}
 
       <div className="summary-grid">
@@ -246,4 +236,5 @@ export default function ActiveSessionsPage() {
     </section>
   );
 }
+
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { useFetch } from '../../lib/hooks';
@@ -9,23 +9,42 @@ import { formatNumber } from '../../lib/formatters';
 
 
 
-export default function PasswordHistoryPage() {  const me = useAuthStore((state) => state.user);  const [rows, setRows] = useState([]);
-  const [auditRows, setAuditRows] = useState([]);
-  const [periodDays, setPeriodDays] = useState('7');
-  const [modelFilter, setModelFilter] = useState('');
-  const [loadingAudit, setLoadingAudit] = useState(false);
-  const [auditError, setAuditError] = useState('');
+const initialState = {
+  auditRows: [],
+  periodDays: '7',
+  modelFilter: '',
+  loadingAudit: false,
+  auditError: '',
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.payload.name]: action.payload.value };
+    case 'START_AUDIT':
+      return { ...state, loadingAudit: true, auditError: '' };
+    case 'FINISH_AUDIT':
+      return { ...state, loadingAudit: false, auditRows: action.payload };
+    case 'ERROR_AUDIT':
+      return { ...state, loadingAudit: false, auditError: action.payload, auditRows: [] };
+    default:
+      return state;
+  }
+}
+
+export default function PasswordHistoryPage() {
+  const me = useAuthStore((state) => state.user);
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { auditRows, periodDays, modelFilter, loadingAudit, auditError } = state;
 
   const { canAny } = usePermissions(me);
   const canView = canAny(['AUDIT_VIEW', 'SYSTEM_ADMIN']);
 
   const { data: passwordData, loading, error } = useFetch('/api/v1/seguridad/password-history/');
 
-  useEffect(() => {
-    if (passwordData) {
-      setRows(Array.isArray(passwordData?.entries) ? passwordData.entries : []);
-    }
-  }, [passwordData]);
+  // Derive rows inline from query data (no useEffect sync needed)
+  const rows = Array.isArray(passwordData?.entries) ? passwordData.entries : [];
 
   const summaryCards = useMemo(() => {
     return [
@@ -53,8 +72,7 @@ export default function PasswordHistoryPage() {  const me = useAuthStore((state)
   }, [auditRows.length, modelFilter, periodDays, rows.length]);
 
   async function loadSensitiveAudit() {
-    setLoadingAudit(true);
-    setAuditError('');
+    dispatch({ type: 'START_AUDIT' });
     try {
       const params = new URLSearchParams();
       if (periodDays) {
@@ -65,12 +83,9 @@ export default function PasswordHistoryPage() {  const me = useAuthStore((state)
       }
       const query = params.toString();
       const payload = await apiClient.get(`/api/v1/seguridad/auditoria-datos-sensibles/${query ? `?${query}` : ''}`);
-      setAuditRows(Array.isArray(payload?.eventos) ? payload.eventos : []);
+      dispatch({ type: 'FINISH_AUDIT', payload: Array.isArray(payload?.eventos) ? payload.eventos : [] });
     } catch (err) {
-      setAuditError(err.payload?.detail || 'No se pudo cargar la auditoria de datos sensibles.');
-      setAuditRows([]);
-    } finally {
-      setLoadingAudit(false);
+      dispatch({ type: 'ERROR_AUDIT', payload: err.payload?.detail || 'No se pudo cargar la auditoria de datos sensibles.' });
     }
   }
 
@@ -101,7 +116,7 @@ export default function PasswordHistoryPage() {  const me = useAuthStore((state)
         </div>
       </header>
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <div className="error-box" role="alert" aria-live="assertive">{error}</div> : null}
 
       <div className="summary-grid">
         {loading
@@ -170,14 +185,14 @@ export default function PasswordHistoryPage() {  const me = useAuthStore((state)
               min="1"
               max="90"
               value={periodDays}
-              onChange={(e) => setPeriodDays(e.target.value)}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { name: 'periodDays', value: e.target.value } })}
             />
           </label>
           <label>
             Modelo
             <input
               value={modelFilter}
-              onChange={(e) => setModelFilter(e.target.value)}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { name: 'modelFilter', value: e.target.value } })}
               placeholder="Ej: PerfilEstudiante"
             />
           </label>
@@ -235,4 +250,5 @@ export default function PasswordHistoryPage() {  const me = useAuthStore((state)
     </section>
   );
 }
+
 
