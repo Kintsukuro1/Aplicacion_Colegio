@@ -1,4 +1,4 @@
-/* ===========================
+﻿/* ===========================
    ACADEMIC SCHEDULE - MODERN CALENDAR
    Diseño inspirado en plataformas educativas modernas
    =========================== */
@@ -123,9 +123,9 @@ body {
 }
 
 .btn-add-event {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
 }
 
 .btn-add-event:hover {
@@ -185,7 +185,7 @@ body {
 
 .calendar-day:hover {
     background: #f8f9fa;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
@@ -203,7 +203,7 @@ body {
 
 .calendar-day.today {
     background: linear-gradient(135deg, #fff8f0 0%, #ffe8cc 100%);
-    border: 2px solid #ff8a00;
+    border: 2px solid var(--color-primary);
     font-weight: 700;
 }
 
@@ -219,7 +219,7 @@ body {
 }
 
 .calendar-day.today .day-number {
-    color: #ff8a00;
+    color: var(--color-primary);
 }
 
 /* Event Pills on Calendar */
@@ -256,7 +256,7 @@ body {
 }
 
 .event-entregada {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
 }
 
 .event-corregida {
@@ -286,7 +286,7 @@ body {
     border-radius: 8px;
     font-size: 0.9rem;
     font-weight: 600;
-    color: #ff8a00;
+    color: var(--color-primary);
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -296,7 +296,7 @@ body {
 
 .btn-export:hover {
     background: #fff8f0;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.2);
 }
@@ -332,14 +332,14 @@ body {
 
 .view-all-link {
     font-size: 0.85rem;
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.2s ease;
 }
 
 .view-all-link:hover {
-    color: #e67700;
+    color: var(--color-primary-hover);
 }
 
 /* Events List */
@@ -353,7 +353,7 @@ body {
     display: flex;
     gap: 15px;
     padding: 12px;
-    border-left: 3px solid #ff8a00;
+    border-left: 3px solid var(--color-primary);
     background: #f8f9fa;
     border-radius: 8px;
     cursor: pointer;
@@ -362,13 +362,13 @@ body {
 
 .event-item:hover {
     background: #fff8f0;
-    border-left-color: #e67700;
+    border-left-color: var(--color-primary-hover);
     transform: translateX(4px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .event-date-badge {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
     border-radius: 8px;
     padding: 8px 10px;
@@ -551,7 +551,7 @@ body {
 
 .badge-entregada {
     background: #fff8f0;
-    color: #ff8a00;
+    color: var(--color-primary);
 }
 
 .badge-corregida {
@@ -568,14 +568,14 @@ body {
 .calificacion-grande {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #ff8a00;
+    color: var(--color-primary);
 }
 
 .detalle-instrucciones {
     padding: 20px;
     background: #f8f9fa;
     border-radius: 10px;
-    border-left: 4px solid #ff8a00;
+    border-left: 4px solid var(--color-primary);
 }
 
 .detalle-instrucciones strong {
@@ -600,7 +600,7 @@ body {
 
 .btn-primary {
     padding: 12px 24px;
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
     border: none;
     border-radius: 8px;

@@ -1,4 +1,4 @@
-/* ===========================
+﻿/* ===========================
    MIS CLASES - PROFESOR
    Estilos para el módulo de visualización de clases del profesor
    =========================== */
@@ -354,7 +354,7 @@
     gap: 8px;
     padding: 20px;
     background: #fef3c7;
-    border: 1px dashed #f59e0b;
+    border: 1px dashed var(--color-primary);
     border-radius: 8px;
     color: #92400e;
     font-size: 0.9rem;
@@ -414,7 +414,7 @@
 }
 
 .warning-text {
-    color: #f59e0b !important;
+    color: var(--color-primary) !important;
     font-weight: 600;
     margin-top: 20px !important;
 }

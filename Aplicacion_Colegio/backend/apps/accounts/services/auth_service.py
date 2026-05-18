@@ -192,13 +192,45 @@ class AuthService:
         return username, was_authenticated
     
     @staticmethod
+    def _user_login_scopes(user) -> tuple[bool, bool]:
+        """Deriva alcance staff / estudiante-apoderado por capabilities."""
+        has_staff_scope = (
+            PolicyService.has_capability(user, 'SYSTEM_ADMIN')
+            or PolicyService.has_capability(user, 'SYSTEM_CONFIGURE')
+            or PolicyService.has_capability(user, 'DASHBOARD_VIEW_SCHOOL')
+            or PolicyService.has_capability(user, 'TEACHER_VIEW')
+            or PolicyService.has_capability(user, 'CLASS_TAKE_ATTENDANCE')
+            or PolicyService.has_capability(user, 'USER_VIEW')
+        )
+        has_student_scope = (
+            PolicyService.has_capability(user, 'DASHBOARD_VIEW_SELF')
+            and not has_staff_scope
+        )
+        return has_staff_scope, has_student_scope
+
+    @staticmethod
+    def resolve_login_scope(user) -> Optional[str]:
+        """
+        Determina el portal correcto tras login unificado.
+
+        Returns:
+            'staff', 'student' o None si el usuario no tiene alcance válido.
+        """
+        has_staff_scope, has_student_scope = AuthService._user_login_scopes(user)
+        if has_staff_scope:
+            return 'staff'
+        if has_student_scope:
+            return 'student'
+        return None
+
+    @staticmethod
     def validate_role_for_login_type(user, login_type) -> Optional[Dict[str, Any]]:
         """
         Valida que el rol del usuario sea compatible con el tipo de login que está usando
         
         Args:
             user: Usuario autenticado
-            login_type (str): 'staff' o 'student'
+            login_type (str): 'staff', 'student' o 'unified'
             
         Returns:
             Optional[Dict]: None si válido, Dict con error si inválido
@@ -212,19 +244,20 @@ class AuthService:
             })
         
         user_role = user.role.nombre
-        # Capability-first scope derivation
-        has_staff_scope = (
-            PolicyService.has_capability(user, 'SYSTEM_ADMIN')
-            or PolicyService.has_capability(user, 'SYSTEM_CONFIGURE')
-            or PolicyService.has_capability(user, 'DASHBOARD_VIEW_SCHOOL')
-            or PolicyService.has_capability(user, 'TEACHER_VIEW')
-            or PolicyService.has_capability(user, 'CLASS_TAKE_ATTENDANCE')
-            or PolicyService.has_capability(user, 'USER_VIEW')
-        )
-        has_student_scope = (
-            PolicyService.has_capability(user, 'DASHBOARD_VIEW_SELF')
-            and not has_staff_scope
-        )
+        has_staff_scope, has_student_scope = AuthService._user_login_scopes(user)
+
+        if login_type == 'unified':
+            if has_staff_scope or has_student_scope:
+                return None
+            security_logger.warning(
+                f"[SEGURIDAD] Usuario sin alcance de portal - Usuario: {user.email}, Rol: {user_role}"
+            )
+            return ErrorResponseBuilder.build('PERMISSION_DENIED', context={
+                'user_role': user_role,
+                'required_scope': 'unified',
+                'login_type': login_type,
+                'message': 'Tu cuenta no tiene permisos para acceder al portal. Contacta al administrador.',
+            })
 
         if login_type == 'staff':
             if not has_staff_scope:
@@ -262,7 +295,7 @@ class AuthService:
             password (str): Contraseña
             captcha_response (str): Respuesta del captcha
             remember_me (bool): Recordar sesión
-            login_type (str): 'staff' o 'student' - Tipo de portal desde donde se hace login
+            login_type (str): 'staff', 'student' o 'unified' (detecta portal automáticamente)
             
         Returns:
             dict: {

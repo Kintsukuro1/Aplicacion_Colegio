@@ -1,4 +1,4 @@
-.content-wrapper {
+﻿.content-wrapper {
     padding: 2rem;
 }
 
@@ -33,7 +33,7 @@
 }
 
 .estudiante-info-card {
-    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
     color: white;
     padding: 2rem;
     border-radius: 16px;

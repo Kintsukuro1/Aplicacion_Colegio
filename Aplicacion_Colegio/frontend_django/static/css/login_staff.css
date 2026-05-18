@@ -1,4 +1,4 @@
-/* ===========================
+﻿/* ===========================
    EDUMANAGE STAFF LOGIN
    Split Screen Design
    =========================== */
@@ -189,7 +189,7 @@ form {
 
 .forgot-password {
     font-size: 0.85rem;
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     transition: opacity 0.2s;
@@ -225,7 +225,7 @@ form {
 
 .input-with-icon input:focus {
     outline: none;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
 }
 
@@ -271,7 +271,7 @@ form {
 }
 
 .checkbox-container:hover {
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     background: #fffaf5;
 }
 
@@ -292,8 +292,8 @@ form {
 }
 
 .checkbox-container input[type="checkbox"]:checked ~ .checkmark {
-    background: #ff8a00;
-    border-color: #ff8a00;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
 .checkbox-container input[type="checkbox"]:checked ~ .checkmark::after {
@@ -332,7 +332,7 @@ form {
 .signin-btn {
     width: 100%;
     padding: 16px 24px;
-    background: linear-gradient(135deg, #ff8a00 0%, #f97316 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
     color: white;
     border: none;
     border-radius: 10px;
@@ -349,7 +349,7 @@ form {
 }
 
 .signin-btn:hover {
-    background: #e67700;
+    background: var(--color-primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(255, 138, 0, 0.3);
 }
@@ -374,7 +374,7 @@ form {
 }
 
 .help-section a {
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
 }

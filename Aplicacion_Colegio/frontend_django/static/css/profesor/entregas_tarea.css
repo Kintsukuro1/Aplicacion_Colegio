@@ -1,4 +1,4 @@
-/* ===========================
+﻿/* ===========================
    TAREAS - PROFESOR Y ESTUDIANTE
    =========================== */
 
@@ -115,7 +115,7 @@
 }
 
 .tarea-card.urgente {
-    border-left: 4px solid #f59e0b;
+    border-left: 4px solid var(--color-primary);
 }
 
 .tarea-card.vencida {
@@ -141,7 +141,7 @@
 }
 
 .tarea-status-indicator.estado-urgente {
-    background: #f59e0b;
+    background: var(--color-primary);
 }
 
 .tarea-status-indicator.estado-vencida {

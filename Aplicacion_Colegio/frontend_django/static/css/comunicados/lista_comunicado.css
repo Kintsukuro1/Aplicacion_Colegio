@@ -1,4 +1,4 @@
-.comunicados-container {
+﻿.comunicados-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
@@ -85,7 +85,7 @@
 }
 
 .comunicado-card.destacado {
-    border-left-color: #f59e0b;
+    border-left-color: var(--color-primary);
     background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
 }
 
@@ -209,7 +209,7 @@
 }
 
 .confirmacion-estado.pendiente {
-    color: #f59e0b;
+    color: var(--color-primary);
 }
 
 .empty-state {

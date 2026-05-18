@@ -40,18 +40,22 @@ def login_view(request):
             remember_me = form.cleaned_data.get('remember_me', False)
             captcha_response = request.POST.get("h-captcha-response", "")
             
-            # Delegar a servicio
+            # Login unificado: detecta staff vs estudiante/apoderado por capabilities
             result = AuthService.perform_login(
                 request=request,
                 username=username,
                 password=password,
                 captcha_response=captcha_response,
-                remember_me=remember_me
+                remember_me=remember_me,
+                login_type='unified',
             )
             
             # Manejar resultado
             if result['success']:
                 messages.success(request, f"¡Bienvenido/a {result['user'].get_full_name()}!")
+                scope = AuthService.resolve_login_scope(result['user'])
+                if scope:
+                    request.session['last_rol'] = scope
                 return redirect('dashboard')
             else:
                 # Mostrar mensaje de error estructurado
@@ -109,8 +113,6 @@ def logout_view(request):
     if was_authenticated:
         messages.success(request, "Has cerrado sesión exitosamente.")
 
-    if is_staff_user or last_rol == 'staff':
-        return redirect('accounts:login_staff')
     return redirect('accounts:login')
 
 

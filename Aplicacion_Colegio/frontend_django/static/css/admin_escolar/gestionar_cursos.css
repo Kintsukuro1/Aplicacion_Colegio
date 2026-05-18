@@ -1,4 +1,4 @@
-/* ====================================
+﻿/* ====================================
    GESTIÓN DE CURSOS - ESTILOS
    ==================================== */
 
@@ -70,7 +70,7 @@
 }
 
 .stat-card.orange {
-    border-left-color: #f59e0b;
+    border-left-color: var(--color-primary);
 }
 
 .stat-icon {
@@ -99,7 +99,7 @@
 }
 
 .stat-card.orange .stat-icon {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    background: linear-gradient(135deg, #fbbf24 0%, var(--color-primary) 100%);
     color: white;
 }
 

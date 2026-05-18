@@ -509,7 +509,7 @@
    Setup Banner
    ════════════════════════════════════════════ */
 .setup-banner {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
     padding: 1.2rem 1.8rem;
     border-radius: 16px;
@@ -543,7 +543,7 @@
 
 .setup-banner-cta {
     background: white;
-    color: #ff8a00;
+    color: var(--color-primary);
     padding: 0.8rem 1.8rem;
     border-radius: 10px;
     text-decoration: none;
@@ -806,7 +806,7 @@
     padding: 0.6rem 1.5rem;
     border: none;
     border-radius: 6px;
-    background: #f39c12;
+    background: var(--color-primary);
     color: #fff;
     cursor: pointer;
     font-weight: 600;
@@ -851,7 +851,7 @@
 .tag-error { background: #fee2e2; color: #ef4444; }
 .tag-info { background: #dbeafe; color: #3b82f6; }
 .tag-success { background: #d1fae5; color: #059669; }
-.tag-warning { background: #fef3c7; color: #f59e0b; }
+.tag-warning { background: #fef3c7; color: var(--color-primary); }
 .badge-error-light { background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); }
 
 /* Form label light */
@@ -917,7 +917,7 @@
 
 /* Estudiante Home */
 .student-home-banner {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: #fff;
     padding: 2rem 2.5rem;
     border-radius: 20px;
@@ -949,7 +949,7 @@
 }
 
 .student-home-section-link {
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 500;
     font-size: 0.9rem;
@@ -1132,7 +1132,7 @@
 .student-home-progress-value {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #ff8a00;
+    color: var(--color-primary);
 }
 
 .student-home-progress-bar {
@@ -1145,7 +1145,7 @@
 .student-home-progress-fill {
     display: block;
     height: 100%;
-    background: #ff8a00;
+    background: var(--color-primary);
     border-radius: 6px;
     transition: width 0.3s ease;
 }
@@ -1167,7 +1167,7 @@
 }
 
 .student-home-continue-btn:hover {
-    background: #ff8a00;
+    background: var(--color-primary);
     color: #fff;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.2);

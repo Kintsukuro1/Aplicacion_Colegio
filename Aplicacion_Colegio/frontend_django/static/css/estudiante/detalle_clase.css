@@ -1,4 +1,4 @@
-/* ===========================
+﻿/* ===========================
    DETALLE DE CLASE - MODERN DESIGN
    Diseño moderno inspirado en plataformas LMS
    =========================== */
@@ -32,7 +32,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-size: 0.95rem;
     font-weight: 600;
@@ -40,7 +40,7 @@ body {
 }
 
 .back-button:hover {
-    color: #e67700;
+    color: var(--color-primary-hover);
     transform: translateX(-4px);
 }
 
@@ -94,7 +94,7 @@ body {
 }
 
 .badge-semester {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     border-color: rgba(255, 138, 0, 0.5);
 }
 
@@ -147,7 +147,7 @@ body {
 
 .progress-fill-hero {
     height: 100%;
-    background: linear-gradient(90deg, #ff8a00 0%, #ffd93d 100%);
+    background: linear-gradient(90deg, var(--color-primary) 0%, #ffd93d 100%);
     border-radius: 10px;
     transition: width 0.6s ease;
     box-shadow: 0 0 15px rgba(255, 138, 0, 0.5);
@@ -216,7 +216,7 @@ body {
 }
 
 .tab-btn.active {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.3);
 }
@@ -277,7 +277,7 @@ body {
 }
 
 .link-download {
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
@@ -285,7 +285,7 @@ body {
 }
 
 .link-download:hover {
-    color: #e67700;
+    color: var(--color-primary-hover);
     transform: translateX(4px);
 }
 
@@ -330,7 +330,7 @@ body {
 }
 
 .schedule-week.in-progress {
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     background: #fff8f0;
 }
 
@@ -368,7 +368,7 @@ body {
 }
 
 .week-status-icon.orange {
-    background: #ff8a00;
+    background: var(--color-primary);
 }
 
 .week-title {
@@ -442,7 +442,7 @@ body {
 }
 
 .start-badge:hover {
-    background: #ff8a00;
+    background: var(--color-primary);
     color: white;
 }
 
@@ -505,7 +505,7 @@ body {
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -532,7 +532,7 @@ body {
 .assignment-card {
     background: #f8f9fa;
     border: 2px solid #e9ecef;
-    border-left: 4px solid #ff8a00;
+    border-left: 4px solid var(--color-primary);
     border-radius: 12px;
     padding: 1.5rem;
     transition: all 0.3s ease;
@@ -598,7 +598,7 @@ body {
 
 .btn-submit {
     padding: 8px 16px;
-    background: #ff8a00;
+    background: var(--color-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -609,7 +609,7 @@ body {
 }
 
 .btn-submit:hover {
-    background: #e67700;
+    background: var(--color-primary-hover);
     transform: translateY(-2px);
 }
 
@@ -706,7 +706,7 @@ body {
 }
 
 .btn-action.email {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     color: white;
 }
 
@@ -722,8 +722,8 @@ body {
 }
 
 .btn-action.office:hover {
-    border-color: #ff8a00;
-    color: #ff8a00;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
 /* Office Hours */
@@ -768,7 +768,7 @@ body {
     padding: 12px;
     background: #f8f9fa;
     border-radius: 8px;
-    border-left: 3px solid #ff8a00;
+    border-left: 3px solid var(--color-primary);
     position: relative;
 }
 
@@ -781,7 +781,7 @@ body {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #ff8a00;
+    background: var(--color-primary);
     margin-top: 4px;
     flex-shrink: 0;
 }
@@ -853,7 +853,7 @@ body {
 }
 
 .resource-link:hover {
-    background: #ff8a00;
+    background: var(--color-primary);
     color: white;
     transform: translateX(4px);
 }
