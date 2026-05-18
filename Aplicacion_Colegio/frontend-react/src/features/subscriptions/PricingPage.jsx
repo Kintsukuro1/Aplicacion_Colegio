@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from 'react';
 
-import SubscriptionStatusCard from '../../components/SubscriptionStatusCard';
+import SubscriptionStatusCard from '../../components/layout/SubscriptionStatusCard';
 import { apiClient } from '../../lib/apiClient';
 
 const FEATURE_LABELS = {

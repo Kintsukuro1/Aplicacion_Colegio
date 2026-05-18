@@ -5,10 +5,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import { formatNumber } from '../../lib/formatters';
 import { asResults } from '../../lib/httpHelpers';
-import FormOverlay from '../../components/FormOverlay';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import FormOverlay from '../../components/forms/FormOverlay';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 import { TeacherEvaluationsForm } from './TeacherEvaluationsForm';
 import { TeacherEvaluationsTable } from './TeacherEvaluationsTable';

@@ -3,7 +3,7 @@ import { useMemo, useReducer } from 'react';
 import { apiClient } from '../../lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import { hasCapability } from '../../lib/capabilities';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { InterviewForm } from './InterviewForm';

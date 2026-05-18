@@ -3,7 +3,7 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 function resolveError(err, fallback) {
   return err?.payload?.error || err?.payload?.detail || fallback;

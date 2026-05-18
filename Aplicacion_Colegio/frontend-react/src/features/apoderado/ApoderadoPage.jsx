@@ -2,8 +2,8 @@ import { useState } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
-import { useToast } from '../../components/Toast';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { useToast } from '../../components/feedback/Toast';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 function resolveError(err, fallback) {

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { apiClient } from '../../lib/apiClient';
 import { useFetch } from '../../lib/hooks';
-import { SummarySkeleton } from '../../components/TableLoadingState';
+import { SummarySkeleton } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 const SCOPES = ['school', 'analytics'];

@@ -4,10 +4,10 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 import { apiClient } from '../../lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { asResults } from '../../lib/httpHelpers';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 import { TeacherAttendanceForm } from './TeacherAttendanceForm';
 import { TeacherAttendanceTable } from './TeacherAttendanceTable';

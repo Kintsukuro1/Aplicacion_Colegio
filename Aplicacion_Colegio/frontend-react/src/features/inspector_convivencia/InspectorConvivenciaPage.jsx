@@ -3,10 +3,10 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 
 import { apiClient } from '../../lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SummarySkeleton } from '../../components/TableLoadingState';
+import { SummarySkeleton } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 import { AnotacionForm } from './AnotacionForm';
 import { ReviewForm } from './ReviewForm';

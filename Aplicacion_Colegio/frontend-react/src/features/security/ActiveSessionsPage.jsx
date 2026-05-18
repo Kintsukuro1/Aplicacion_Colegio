@@ -4,7 +4,7 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 import { apiClient } from '../../lib/apiClient';
 import { useFetch } from '../../lib/hooks';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 

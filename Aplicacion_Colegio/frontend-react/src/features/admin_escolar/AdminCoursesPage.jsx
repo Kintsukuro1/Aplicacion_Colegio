@@ -3,14 +3,14 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import PaginationControls from '../../components/PaginationControls';
+import PaginationControls from '../../components/tables/PaginationControls';
 import { apiClient } from '../../lib/apiClient';
 import { usePagination } from '../../lib/hooks';
 import { formatNumber } from '../../lib/formatters';
-import FormOverlay from '../../components/FormOverlay';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import FormOverlay from '../../components/forms/FormOverlay';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 import { AdminCoursesForm } from './AdminCoursesForm';
 import { AdminCoursesTable } from './AdminCoursesTable';

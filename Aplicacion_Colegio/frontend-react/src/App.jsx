@@ -3,12 +3,12 @@ import { MotionConfig } from 'framer-motion';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
-import { AppSidebar } from './components/AppSidebar';
-import MobileBottomNav from './components/MobileBottomNav';
-import NotificationBell from './components/NotificationBell';
-import ProtectedRoute from './components/ProtectedRoute';
-import { ToastProvider } from './components/Toast';
-import { UpdateListener } from './components/UpdateListener';
+import { AppSidebar } from './components/layout/AppSidebar';
+import MobileBottomNav from './components/layout/MobileBottomNav';
+import NotificationBell from './components/feedback/NotificationBell';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import { ToastProvider } from './components/feedback/Toast';
+import { UpdateListener } from './components/utils/UpdateListener';
 import { apiClient } from './lib/apiClient';
 import { clearTokens, getRefreshToken } from './lib/authStore';
 import { canAccessRoute } from './lib/capabilities';

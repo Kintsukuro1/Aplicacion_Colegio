@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
-import { SummarySkeleton } from '../../components/TableLoadingState';
+import { SummarySkeleton } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 function formatPercentage(value) {

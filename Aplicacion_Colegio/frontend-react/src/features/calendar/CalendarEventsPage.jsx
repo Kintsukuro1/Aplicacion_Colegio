@@ -3,14 +3,14 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { apiClient } from '../../lib/apiClient';
-import PaginationControls from '../../components/PaginationControls';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import PaginationControls from '../../components/tables/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 import { usePagination } from '../../lib/hooks';
 import { usePermissionChecks } from '../../lib/hooks/usePermissionChecks';
 import { useFormCRUD } from '../../lib/hooks/useFormCRUD';
 import { useEventFilters } from '../../lib/hooks/useEventFilters';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 import { CalendarFilterForm } from './CalendarFilterForm';
 import { CalendarEventForm } from './CalendarEventForm';
 import { CalendarEventsTable } from './CalendarEventsTable';

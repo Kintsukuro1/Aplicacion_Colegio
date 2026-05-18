@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { apiClient } from '../../lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 const CLP_FORMATTER = new Intl.NumberFormat('es-CL', {

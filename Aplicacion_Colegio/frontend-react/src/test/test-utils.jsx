@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
 
 import { useAuthStore } from '../lib/store/useAuthStore';
-import { ToastProvider } from '../components/Toast';
+import { ToastProvider } from '../components/feedback/Toast';
 
 // Centralized mocks for the API client
 export const getMock = vi.fn();

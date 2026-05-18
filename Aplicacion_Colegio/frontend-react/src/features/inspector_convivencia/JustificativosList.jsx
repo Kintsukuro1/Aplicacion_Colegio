@@ -1,4 +1,4 @@
-import { TableLoadingState } from '../../components/TableLoadingState';
+import { TableLoadingState } from '../../components/feedback/TableLoadingState';
 
 /**
  * List of pending justifications with quick action buttons.

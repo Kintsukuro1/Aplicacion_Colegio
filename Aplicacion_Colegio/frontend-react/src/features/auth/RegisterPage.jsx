@@ -1,7 +1,7 @@
 import { useMemo, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import OnboardingWizard from '../../components/OnboardingWizard';
+import OnboardingWizard from '../../components/utils/OnboardingWizard';
 import { apiClient } from '../../lib/apiClient';
 import { setTokens } from '../../lib/authStore';
 

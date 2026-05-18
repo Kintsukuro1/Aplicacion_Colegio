@@ -2,12 +2,12 @@
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
-import PaginationControls from '../../components/PaginationControls';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import PaginationControls from '../../components/tables/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { usePagination } from '../../lib/hooks';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 import { apiClient } from '../../lib/apiClient';
 
 function isBatchEndpointUnavailable(error) {

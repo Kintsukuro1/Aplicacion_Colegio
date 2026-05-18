@@ -2,13 +2,13 @@ import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useAuthStore } from '../../lib/store/useAuthStore';
 import { useSearchParams } from 'react-router-dom';
 
-import PaginationControls from '../../components/PaginationControls';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import PaginationControls from '../../components/tables/PaginationControls';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { apiClient } from '../../lib/apiClient';
 import { useFetch, usePagination } from '../../lib/hooks';
 import { formatNumber } from '../../lib/formatters';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
+import { useToast } from '../../components/feedback/Toast';
 
 import { AdminAttendanceFilters } from './AdminAttendanceFilters';
 import { AdminAttendanceForm } from './AdminAttendanceForm';

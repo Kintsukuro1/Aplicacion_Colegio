@@ -4,8 +4,8 @@ import { useAuthStore } from '../../lib/store/useAuthStore';
 import { apiClient } from '../../lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '../../lib/hooks/usePermissions';
-import { useToast } from '../../components/Toast';
-import { SummarySkeleton, TableLoadingState } from '../../components/TableLoadingState';
+import { useToast } from '../../components/feedback/Toast';
+import { SummarySkeleton, TableLoadingState } from '../../components/feedback/TableLoadingState';
 import { formatNumber } from '../../lib/formatters';
 
 import { ResourceForm } from './ResourceForm';

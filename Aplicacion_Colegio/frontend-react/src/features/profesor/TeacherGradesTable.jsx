@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { formatNumber } from '../../lib/formatters';
-import EditableTableRow from '../../components/EditableTableRow';
-import { TableLoadingState } from '../../components/TableLoadingState';
+import EditableTableRow from '../../components/tables/EditableTableRow';
+import { TableLoadingState } from '../../components/feedback/TableLoadingState';
 
 function InlineEditGrade({ row, isSaving, onSave, onCancel }) {
   const notaRef = useRef(row.nota ?? '');
