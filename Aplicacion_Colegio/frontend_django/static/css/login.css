@@ -1,7 +1,21 @@
-/* ===========================
-   EDUCONNECT LOGIN PAGE
-   Modern Student & Family Portal Design
-   =========================== */
+﻿/* EduHub — Login unificado (paleta pastel) */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+    --color-primary: #E8967A;
+    --color-primary-hover: #d9856a;
+    --color-secondary: #C084A0;
+    --color-background: #FDF8F0;
+    --color-navbar: #FFE4E4;
+    --color-card: #E8E4FF;
+    --color-text: #3D3D3D;
+    --color-text-light: #7A7A7A;
+    --color-border: #F0E0E0;
+    --color-white: #FFFFFF;
+    --radius-btn: 14px;
+    --shadow-soft: 0 12px 40px rgba(61, 61, 61, 0.1);
+}
 
 * {
     margin: 0;
@@ -10,28 +24,48 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background:
-        radial-gradient(circle at 10% 10%, rgba(255, 138, 0, 0.15) 0%, rgba(255, 138, 0, 0) 35%),
-        radial-gradient(circle at 90% 80%, rgba(44, 62, 80, 0.08) 0%, rgba(44, 62, 80, 0) 38%),
-        #f5f5f5;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-background);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    color: var(--color-text);
 }
 
-/* ===========================
-   TOP NAVIGATION
-   =========================== */
 .top-nav {
-    background: rgba(255, 255, 255, 0.88);
-    padding: 15px 40px;
+    background: var(--color-navbar);
+    padding: 14px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 10px 28px rgba(44, 62, 80, 0.09);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(255, 138, 0, 0.2);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 4px 16px rgba(61, 61, 61, 0.05);
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-btn);
+    background: var(--color-white);
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-btn:hover {
+    border-color: var(--color-secondary);
+    color: var(--color-secondary);
 }
 
 .nav-brand {
@@ -40,14 +74,14 @@ body {
     gap: 10px;
     font-size: 1.1rem;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--color-text);
 }
 
 .help-link {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #ff8a00;
+    color: var(--color-secondary);
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 600;
@@ -55,129 +89,60 @@ body {
 }
 
 .help-link:hover {
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
-/* ===========================
-   LOGIN CONTAINER
-   =========================== */
 .login-container {
     flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 40px 20px;
+    padding: 48px 20px;
 }
 
 .login-card {
     width: 100%;
-    max-width: 580px;
-    background: white;
+    max-width: 460px;
+    background: var(--color-white);
     border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 28px 70px rgba(44, 62, 80, 0.18);
-    position: relative;
-    border: 1px solid rgba(255, 138, 0, 0.2);
+    padding: 44px 40px 40px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--color-border);
+    animation: slideIn 0.4s ease-out;
 }
 
-/* Background Image Section */
-.card-background {
-    height: 180px;
-    background: linear-gradient(135deg, rgba(210, 180, 140, 0.9) 0%, rgba(160, 130, 100, 0.9) 100%),
-                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300"><defs><filter id="blur"><feGaussianBlur stdDeviation="3"/></filter></defs><rect fill="%23c9a876" width="800" height="300"/><circle cx="200" cy="150" r="80" fill="rgba(255,255,255,0.1)" filter="url(%23blur)"/><circle cx="600" cy="100" r="60" fill="rgba(255,255,255,0.08)" filter="url(%23blur)"/><rect x="300" y="100" width="200" height="120" rx="5" fill="rgba(255,255,255,0.15)" filter="url(%23blur)"/></svg>');
-    background-size: cover;
-    background-position: center;
-    position: relative;
-}
-
-.card-background::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.3) 100%);
-}
-
-/* Card Content */
-.card-content {
-    padding: 40px 50px 50px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #ffffff 100%);
-}
-
-/* ===========================
-   HEADER
-   =========================== */
 .login-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 32px;
+}
+
+.login-logo {
+    margin-bottom: 16px;
 }
 
 .login-header h1 {
-    font-size: 1.75rem;
+    font-size: 1.65rem;
     font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 8px;
+    color: var(--color-text);
+    margin-bottom: 10px;
 }
 
 .subtitle {
-    font-size: 0.95rem;
-    color: #6c757d;
+    font-size: 0.92rem;
+    color: var(--color-text-light);
+    line-height: 1.6;
 }
 
-/* ===========================
-   ROLE TABS
-   =========================== */
-.role-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 30px;
-    background: #f8f9fa;
-    padding: 4px;
-    border-radius: 8px;
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    background: transparent;
-    color: #6c757d;
-    font-weight: 600;
-    font-size: 0.95rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tab-btn:hover {
-    background: rgba(255, 138, 0, 0.1);
-    color: #ff8a00;
-}
-
-.tab-btn.active {
-    background: white;
-    color: #ff8a00;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* ===========================
-   MESSAGES
-   =========================== */
 .error-message {
-    background: #fee;
-    border-left: 4px solid #f44;
-    color: #c33;
+    background: #fce8ec;
+    border-left: 4px solid var(--color-secondary);
+    color: #8b4a5c;
     padding: 12px 16px;
-    border-radius: 6px;
+    border-radius: 10px;
     margin-bottom: 20px;
     font-size: 0.9rem;
 }
 
-/* ===========================
-   FORM
-   =========================== */
 form {
     display: flex;
     flex-direction: column;
@@ -193,7 +158,7 @@ form {
 .form-group label {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--color-text);
 }
 
 .input-with-icon {
@@ -205,29 +170,26 @@ form {
 .input-icon {
     position: absolute;
     left: 16px;
-    color: #adb5bd;
+    color: var(--color-text-light);
     pointer-events: none;
 }
 
 .input-with-icon input {
     width: 100%;
     padding: 14px 16px 14px 45px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-btn);
     font-size: 0.95rem;
-    background: #fafafa;
+    background: var(--color-background);
+    font-family: inherit;
     transition: all 0.2s;
 }
 
 .input-with-icon input:focus {
     outline: none;
-    border-color: #ff8a00;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
-}
-
-.input-with-icon input::placeholder {
-    color: #adb5bd;
+    border-color: var(--color-primary);
+    background: var(--color-white);
+    box-shadow: 0 0 0 3px rgba(232, 150, 122, 0.2);
 }
 
 .toggle-password {
@@ -237,172 +199,85 @@ form {
     border: none;
     cursor: pointer;
     padding: 6px;
-    color: #adb5bd;
-    transition: color 0.2s;
-    display: flex;
-    align-items: center;
+    color: var(--color-text-light);
 }
 
-.toggle-password:hover {
-    color: #6c757d;
-}
-
-/* ===========================
-   FORM OPTIONS
-   =========================== */
 .form-options {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-end;
     margin-top: -8px;
 }
 
 .forgot-pass {
-    color: #ff8a00;
+    color: var(--color-secondary);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 500;
-    transition: opacity 0.2s;
 }
 
 .forgot-pass:hover {
-    opacity: 0.8;
     text-decoration: underline;
 }
 
-/* ===========================
-   LOGIN BUTTON
-   =========================== */
 .login-btn {
     width: 100%;
     padding: 16px 24px;
-    background: linear-gradient(135deg, #ff8a00 0%, #f97316 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    color: var(--color-white);
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-btn);
     font-size: 1rem;
     font-weight: 700;
+    font-family: inherit;
     cursor: pointer;
     transition: all 0.3s;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-top: 10px;
+    margin-top: 8px;
+    box-shadow: 0 6px 20px rgba(232, 150, 122, 0.35);
 }
 
 .login-btn:hover {
-    background: linear-gradient(135deg, #f08200 0%, #ea6b10 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 138, 0, 0.3);
+    box-shadow: 0 8px 24px rgba(192, 132, 160, 0.4);
 }
 
-.login-btn:active {
-    transform: translateY(0);
-}
-
-/* ===========================
-   SIGNUP LINK
-   =========================== */
 .signup-link {
     text-align: center;
-    margin-top: 25px;
+    margin-top: 24px;
     font-size: 0.9rem;
-    color: #6c757d;
+    color: var(--color-text-light);
 }
 
 .signup-link a {
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
 }
 
-.signup-link a:hover {
-    text-decoration: underline;
-}
-
-/* ===========================
-   FOOTER
-   =========================== */
 .login-footer {
-    background: white;
     padding: 20px;
     text-align: center;
-    border-top: 1px solid #e9ecef;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-navbar);
 }
 
 .login-footer p {
     font-size: 0.85rem;
-    color: #6c757d;
-    margin: 0;
+    color: var(--color-text-light);
 }
 
-/* ===========================
-   HCAPTCHA
-   =========================== */
 .h-captcha {
-    margin: 20px 0;
     display: flex;
     justify-content: center;
 }
 
-/* ===========================
-   RESPONSIVE DESIGN
-   =========================== */
-@media (max-width: 640px) {
-    .top-nav {
-        padding: 15px 20px;
-    }
-    
-    .nav-brand {
-        font-size: 1rem;
-    }
-    
-    .login-container {
-        padding: 20px 15px;
-    }
-    
-    .card-background {
-        height: 140px;
-    }
-    
-    .card-content {
-        padding: 30px 25px 35px;
-    }
-    
-    .login-header h1 {
-        font-size: 1.5rem;
-    }
-    
-    .tab-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-    
-    .input-with-icon input {
-        padding: 12px 14px 12px 42px;
-        font-size: 0.9rem;
-    }
-    
-    .login-btn {
-        padding: 14px 20px;
-        font-size: 0.95rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .help-link span {
-        display: none;
-    }
-}
-
-/* ===========================
-   ANIMATIONS
-   =========================== */
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(16px);
     }
     to {
         opacity: 1;
@@ -410,6 +285,11 @@ form {
     }
 }
 
-.login-card {
-    animation: slideIn 0.4s ease-out;
+@media (max-width: 640px) {
+    .top-nav {
+        padding: 12px 20px;
+    }
+    .login-card {
+        padding: 32px 24px;
+    }
 }

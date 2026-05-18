@@ -1,28 +1,30 @@
 /* Design System - Variables Globales */
 :root {
-    /* Colores Principales - Premium Pastel */
-    --color-primary: #7b9acc;
-    --color-primary-hover: #6789bf;
-    --color-secondary: #8da0b7;
-    --color-success: #7fb89a;
+    /* Paleta pastel EduHub */
+    --color-primary: #E8967A;
+    --color-primary-hover: #d9856a;
+    --color-secondary: #C084A0;
+    --color-background: #FDF8F0;
+    --color-navbar: #FFE4E4;
+    --color-card: #E8E4FF;
+    --color-card-yellow: #FFF9E6;
+    --color-success: #E8F5F0;
+    --color-text: #3D3D3D;
+    --color-text-light: #7A7A7A;
+    --color-border: #F0E0E0;
+    --color-white: #FFFFFF;
+
+    /* Alias compatibilidad */
     --color-danger: #d18b96;
-    --color-warning: #d7b072;
-    --color-info: #83a8c8;
-    
-    /* Colores de Fondo */
-    --color-bg-primary: #ffffff;
-    --color-bg-secondary: #f6f8fb;
-    --color-bg-tertiary: #eef3f9;
-    
-    /* Colores de Texto */
-    --color-text-primary: #233245;
-    --color-text-secondary: #6c7f95;
-    --color-text-tertiary: #95a4b6;
-    --color-white: #ffffff;
-    
-    /* Bordes */
-    --color-border: #dbe4ef;
-    --color-border-hover: #c6d3e3;
+    --color-warning: #E8967A;
+    --color-info: #C084A0;
+    --color-bg-primary: var(--color-white);
+    --color-bg-secondary: var(--color-background);
+    --color-bg-tertiary: var(--color-card);
+    --color-text-primary: var(--color-text);
+    --color-text-secondary: var(--color-text-light);
+    --color-text-tertiary: #a8a8a8;
+    --color-border-hover: #e8d4d4;
     
     /* Espaciado */
     --spacing-xs: 0.25rem;
