@@ -26,6 +26,11 @@
     --color-text-secondary: var(--color-text-light);
     --color-text-tertiary: #a8a8a8;
     --color-border-hover: #c0dce8;
+
+    /* Paleta por rol (default: alumno) */
+    --rol-primary: #5ba8d4;
+    --rol-sidebar: #d0e8f5;
+    --rol-accent: #3a8fc4;
     
     /* Espaciado */
     --spacing-xs: 0.25rem;
@@ -94,6 +99,25 @@ body {
     color: var(--color-text-primary);
     background-color: var(--color-bg-secondary);
     line-height: 1.5;
+}
+
+/* CATHERINE: paletas por rol */
+body.vista-alumno {
+    --rol-primary: #5ba8d4;
+    --rol-sidebar: #d0e8f5;
+    --rol-accent: #3a8fc4;
+}
+
+body.vista-apoderado {
+    --rol-primary: #5bb88a;
+    --rol-sidebar: #d0f0e0;
+    --rol-accent: #3a9e6f;
+}
+
+body.vista-personal {
+    --rol-primary: #8b7cc8;
+    --rol-sidebar: #e8e0ff;
+    --rol-accent: #6a5ab8;
 }
 
 /* Contenedores */

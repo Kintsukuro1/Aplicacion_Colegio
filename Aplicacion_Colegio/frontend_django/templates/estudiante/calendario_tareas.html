@@ -1,4 +1,5 @@
 {% load static %}
+{% include 'estudiante/_alumno_wrap_start.html' %}
 <link rel="stylesheet" href="{% static 'css/estudiante/calendario_tareas.css' %}">
 
 <div class="academic-schedule-container">
@@ -85,6 +86,7 @@
         </div>
     </div>
 </div>
+{% include 'estudiante/_alumno_wrap_end.html' %}
 
 {% block page_scripts %}
 {{ tareas_json|json_script:"tareas-data" }}

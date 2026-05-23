@@ -142,4 +142,38 @@ El resto de CSS por módulo (profesor, estudiante, admin_escolar, etc.) hereda c
 - Alinear `login_staff.html` con el mismo diseño que `login.html` o redirigir al login único
 - Revisar páginas con CSS muy específico que aún usen fondos `#fff4ed` u otros restos locales
 - Añadir entradas nuevas en este archivo (o `CAMBIOS_VISUALES_YYYY-MM-DD.md`) por cada iteración visual
-# Cambios visuales — Frontend Django (EduHub)
+
+---
+
+## Dashboard alumno — sidebar unificado y inicio  (2026-05-23)
+
+### Archivos nuevos
+- `templates/estudiante/_sidebar.html` — navegación por secciones (Académico / Rendimiento / Comunicación)
+- `templates/estudiante/_alumno_wrap_start.html` / `_alumno_wrap_end.html` — layout + CSS `dashboard_alumno.css`
+
+### Paletas por rol (`design-system.css`)
+- `body.vista-alumno` → celeste (`--rol-primary`, `--rol-sidebar`, `--rol-accent`)
+- `body.vista-apoderado` → verde
+- `body.vista-personal` → violeta
+
+### Páginas con sidebar alumno
+Inicio, Mis Clases, Mi Horario, Tareas Pendientes (`tareas.html`), Calendario, Mis Tareas, Evaluaciones, Calificaciones, Asistencia, Comunicados, Mensajes.
+
+### Inicio estudiante
+- Hero celeste con métricas (borde superior 3px por tipo)
+- Timeline vertical con filtro (JS mínimo)
+- Accesos rápidos: Mis Clases / Tareas / Calendario
+
+### Cache busting
+- `dashboard_alumno.css?v=20260523`
+
+### Ajustes inicio (2026-05-23)
+- Timeline sin texto `{% cycle %}` suelto; solo badges CLASE/TAREA/etc.
+- Métricas con colores #5ba8d4 / #f97316 / #22c55e / #8b5cf6 y barras de progreso
+- Secciones: Clases de hoy, Próximas evaluaciones, cards blancas
+- Fondo página `#f8fafc`; sidebar blanco con separadores
+
+### Verificación
+1. Login como estudiante → `?pagina=inicio`
+2. Navegar por el menú lateral en cada sección
+3. Ctrl+F5 si no carga el CSS

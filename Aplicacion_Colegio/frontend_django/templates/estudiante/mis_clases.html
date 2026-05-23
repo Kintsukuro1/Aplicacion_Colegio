@@ -1,4 +1,5 @@
 {% load static %}
+{% include 'estudiante/_alumno_wrap_start.html' %}
 <link rel="stylesheet" href="{% static 'css/estudiante/mis_clases.css' %}">
 
 <div class="courses-container">
@@ -195,3 +196,4 @@ document.getElementById('resetFilters')?.addEventListener('click', function() {
     });
 });
 </script>
+{% include 'estudiante/_alumno_wrap_end.html' %}

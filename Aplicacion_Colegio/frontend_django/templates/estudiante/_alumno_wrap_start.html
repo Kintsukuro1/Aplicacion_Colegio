@@ -1,0 +1,8 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/dashboard_alumno.css' %}?v=20260523">
+<script>document.body.classList.add('vista-alumno');</script>
+<div class="estudiante-dashboard perfil-alumno vista-alumno">
+<div class="dashboard-alumno-layout">
+{% include 'estudiante/_sidebar.html' %}
+<div class="alumno-main">
+<div class="alumno-main__body alumno-page-content">

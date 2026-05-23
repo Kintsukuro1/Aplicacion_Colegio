@@ -1,3 +1,5 @@
+{% load static %}
+{% include 'estudiante/_alumno_wrap_start.html' %}
 <link rel="stylesheet" href="{% static 'estudiante/css/comunicados.css' %}">
 
 <div class="content-wrapper">
@@ -64,3 +66,4 @@ function verComunicado(id) {
     alert('Ver comunicado ' + id);
 }
 </script>
+{% include 'estudiante/_alumno_wrap_end.html' %}
