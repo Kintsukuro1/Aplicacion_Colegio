@@ -433,7 +433,7 @@
 /* Next Step Banner */
 .next-step-banner {
     background: linear-gradient(to right, #fef3c7 0%, #fde68a 100%);
-    border-left: 4px solid #f59e0b;
+    border-left: 4px solid var(--color-primary);
     border-radius: 8px;
     padding: 1.25rem 1.5rem;
     display: flex;

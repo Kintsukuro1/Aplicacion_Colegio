@@ -1,4 +1,4 @@
-.infraestructura-container {
+﻿.infraestructura-container {
     padding: 20px;
 }
 
@@ -38,7 +38,7 @@
 .stat-card.blue { border-color: #3498db; }
 .stat-card.green { border-color: #2ecc71; }
 .stat-card.purple { border-color: #9b59b6; }
-.stat-card.orange { border-color: #e67e22; }
+.stat-card.orange { border-color: var(--color-primary); }
 .stat-card.cyan { border-color: #1abc9c; }
 .stat-card.success { border-color: #27ae60; }
 
@@ -113,7 +113,7 @@
 }
 
 .infra-card.estado-en-mantenimiento {
-    border-color: #f39c12;
+    border-color: var(--color-primary);
 }
 
 .infra-card.estado-fuera-de-servicio {

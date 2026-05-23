@@ -1,4 +1,4 @@
-.content-wrapper {
+﻿.content-wrapper {
     padding: 2rem;
 }
 
@@ -116,7 +116,7 @@
 
 .resumen-tarde .resumen-icon {
     background: #fef3c7;
-    color: #f59e0b;
+    color: var(--color-primary);
 }
 
 .resumen-justificada .resumen-icon {
@@ -263,7 +263,7 @@
 
 .estado-badge.estado-T {
     background: #fef3c7;
-    color: #f59e0b;
+    color: var(--color-primary);
 }
 
 .estado-badge.estado-J {

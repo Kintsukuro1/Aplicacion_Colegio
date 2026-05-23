@@ -1,4 +1,4 @@
-.comunicados-container {
+﻿.comunicados-container {
     padding: 2rem;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .comunicado-card.destacado {
-    border-left-color: #f59e0b;
+    border-left-color: var(--color-primary);
 }
 
 .comunicado-tipo {

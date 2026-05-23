@@ -7,9 +7,9 @@
 
 body {
     font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-    background-color: #faf7f2; /* Fondo cálido y suave */
+    background-color: var(--color-background, #F0F7FB);
     margin: 0;
-    color: #333;
+    color: var(--color-text, #3D3D3D);
     font-size: 14px;
     line-height: 1.6;
 }
@@ -24,17 +24,17 @@ body {
 /* --- 3. BARRA LATERAL (SIDEBAR) --- */
 .sidebar {
     width: 260px;
-    background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
-    color: #333;
+    background: var(--color-navbar);
+    color: var(--color-text, #3D3D3D);
     height: 100vh;
     position: fixed;
     left: 0;
     top: 0;
     overflow-y: auto;
-    border-right: 1px solid #e8e4df;
+    border-right: 1px solid var(--color-border, #D0E8F2);
     display: flex;
     flex-direction: column;
-    box-shadow: 6px 0 24px rgba(47, 58, 76, 0.06);
+    box-shadow: 6px 0 24px rgba(106, 168, 196, 0.08);
 }
 
 .sidebar-header {
@@ -70,7 +70,7 @@ body {
     border-radius: 50%;
     margin-bottom: 12px;
     object-fit: cover;
-    border: 3px solid #ff8a00;
+    border: 3px solid var(--color-primary);
 }
 
 .profile h3 {
@@ -135,23 +135,23 @@ body {
 }
 
 .sidebar-nav li a:hover {
-    background-color: #fff2e4;
-    color: #db7a0d;
+    background-color: rgba(232, 228, 255, 0.5);
+    color: var(--color-secondary);
     transform: translateX(2px);
 }
 
 .sidebar-nav li.active a,
 .sidebar-nav li a.active {
-    background: linear-gradient(135deg, #ffe9d6 0%, #ffdfbf 100%);
-    color: #bf6408;
+    background: linear-gradient(135deg, var(--color-card) 0%, #f0ecff 100%);
+    color: var(--color-secondary);
     font-weight: 600;
-    border-left: 3px solid #ff8a00;
-    box-shadow: 0 2px 8px rgba(255, 138, 0, 0.16);
+    border-left: 3px solid var(--color-primary);
+    box-shadow: 0 2px 8px rgba(123, 184, 212, 0.15);
 }
 
 /* Badge para mensajes/notificaciones en sidebar */
 .badge {
-    background: #ff8a00;
+    background: var(--color-primary);
     color: white;
     border-radius: 12px;
     padding: 2px 8px;
@@ -179,8 +179,8 @@ body {
 }
 
 .sidebar-footer a:hover {
-    color: #ff8a00;
-    background-color: #fff4ed;
+    color: var(--color-primary);
+    background-color: var(--color-navbar);
 }
 
 /* --- 4. CONTENIDO PRINCIPAL --- */
@@ -189,14 +189,14 @@ body {
     width: calc(100% - 260px);
     display: flex;
     flex-direction: column;
-    background-color: #faf7f2;
+    background-color: var(--color-background, #F0F7FB);
 }
 
 /* 4.1. Encabezado Superior (Header) */
 .top-header {
-    background-color: #ffffff;
+    background-color: var(--color-navbar, #E3F2F9);
     padding: 16px 32px;
-    border-bottom: 1px solid #e8e4df;
+    border-bottom: 1px solid var(--color-border, #D0E8F2);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -240,7 +240,7 @@ body {
 
 .school-icon {
     font-size: 1.2rem;
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b35 100%);
+    background: var(--color-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -288,7 +288,7 @@ body {
 .user-avatar {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%);
+    background: var(--color-primary);
     color: #fff;
     border-radius: 50%;
     display: flex;
@@ -336,7 +336,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    background: linear-gradient(135deg, #fff4ed 0%, #ffffff 100%);
+    background: linear-gradient(135deg, var(--color-navbar) 0%, #ffffff 100%);
 }
 
 .dropdown-header strong {
@@ -359,8 +359,8 @@ body {
 }
 
 .dropdown-item:hover {
-    background-color: #fff4ed;
-    color: #ff8a00;
+    background-color: var(--color-navbar);
+    color: var(--color-primary);
 }
 
 .dropdown-item.logout {
@@ -369,7 +369,7 @@ body {
 }
 
 .dropdown-item.logout:hover {
-    background-color: #fff5f5;
+    background-color: #F0F7FB;
     color: #c0392b;
 }
 
@@ -439,13 +439,13 @@ button.dropdown-item.logout {
 }
 
 .btn-primary {
-    background-color: #ff8a00;
+    background-color: var(--color-primary);
     color: #fff;
     box-shadow: 0 2px 8px rgba(255, 138, 0, 0.2);
 }
 
 .btn-primary:hover {
-    background-color: #e67a00;
+    background-color: var(--color-primary-hover);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.3);
     transform: translateY(-1px);
 }
@@ -464,12 +464,12 @@ button.dropdown-item.logout {
 
 /* Tarjetas (Cards) */
 .card {
-    background-color: #ffffff;
+    background-color: var(--color-white, #ffffff);
     border-radius: 16px;
-    border: 1px solid #e8e4df;
+    border: 1px solid var(--color-border, #D0E8F2);
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 16px rgba(106, 168, 196, 0.08);
     transition: all 0.2s ease;
 }
 
@@ -486,12 +486,12 @@ button.dropdown-item.logout {
 }
 
 .stat-card {
-    background: white;
+    background: var(--color-card-yellow, #FFF9E6);
     padding: 24px;
     border-radius: 16px;
     text-align: center;
-    border: 1px solid #e8e4df;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--color-border, #D0E8F2);
+    box-shadow: 0 4px 16px rgba(106, 168, 196, 0.08);
     transition: all 0.2s ease;
 }
 
@@ -503,7 +503,7 @@ button.dropdown-item.logout {
 .stat-card h2 {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #ff8a00;
+    color: var(--color-primary);
     margin: 0 0 8px 0;
 }
 
@@ -535,9 +535,9 @@ button.dropdown-item.logout {
 }
 
 .alert-warning {
-    border-left-color: #f97316;
+    border-left-color: var(--color-primary);
     color: #9a3412;
-    background-color: #fff7ed;
+    background-color: var(--color-card-yellow);
 }
 
 .alert-danger,
@@ -575,7 +575,7 @@ button.dropdown-item.logout {
 .filter-card select:focus,
 .filter-card input:focus {
     outline: none;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(255, 138, 0, 0.1);
 }
 
@@ -613,7 +613,7 @@ button.dropdown-item.logout {
 .module-icon-container {
     width: 80px;
     height: 80px;
-    background: linear-gradient(135deg, #fff4ed 0%, #ffe9d6 100%);
+    background: var(--color-navbar);
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -667,9 +667,9 @@ button.dropdown-item.logout {
 }
 
 .btn-module:hover {
-    background-color: #ff8a00;
+    background-color: var(--color-primary);
     color: #fff;
-    border-color: #ff8a00;
+    border-color: var(--color-primary);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.25);
     transform: translateY(-2px);
 }
@@ -704,11 +704,11 @@ button.dropdown-item.logout {
 }
 
 .btn-add-column {
-    background-color: #ff8a00;
+    background-color: var(--color-primary);
 }
 
 .btn-add-column:hover {
-    background-color: #e67a00;
+    background-color: var(--color-primary-hover);
     transform: scale(1.1);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.3);
 }
@@ -724,7 +724,7 @@ button.dropdown-item.logout {
 }
 
 .content-header .user-name-highlight {
-    color: #ff8a00;
+    color: var(--color-primary);
     font-weight: 600;
 }
 
@@ -744,13 +744,13 @@ button.dropdown-item.logout {
 }
 
 .btn-primary {
-    background-color: #ff8a00;
+    background-color: var(--color-primary);
     color: #fff;
     box-shadow: 0 2px 8px rgba(255, 138, 0, 0.2);
 }
 
 .btn-primary:hover {
-    background-color: #e67a00;
+    background-color: var(--color-primary-hover);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.3);
     transform: translateY(-1px);
 }
@@ -769,12 +769,12 @@ button.dropdown-item.logout {
 
 /* Tarjetas (Cards) */
 .card {
-    background-color: #ffffff;
+    background-color: var(--color-white, #ffffff);
     border-radius: 16px;
-    border: 1px solid #e8e4df;
+    border: 1px solid var(--color-border, #D0E8F2);
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 16px rgba(106, 168, 196, 0.08);
     transition: all 0.2s ease;
 }
 
@@ -791,12 +791,12 @@ button.dropdown-item.logout {
 }
 
 .stat-card {
-    background: white;
+    background: var(--color-card-yellow, #FFF9E6);
     padding: 24px;
     border-radius: 16px;
     text-align: center;
-    border: 1px solid #e8e4df;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--color-border, #D0E8F2);
+    box-shadow: 0 4px 16px rgba(106, 168, 196, 0.08);
     transition: all 0.2s ease;
 }
 
@@ -808,7 +808,7 @@ button.dropdown-item.logout {
 .stat-card h2 {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #ff8a00;
+    color: var(--color-primary);
     margin: 0 0 8px 0;
 }
 
@@ -840,9 +840,9 @@ button.dropdown-item.logout {
 }
 
 .alert-warning {
-    border-left-color: #f97316;
+    border-left-color: var(--color-primary);
     color: #9a3412;
-    background-color: #fff7ed;
+    background-color: var(--color-card-yellow);
 }
 
 .alert-danger,
@@ -874,7 +874,7 @@ button.dropdown-item.logout {
 }
 
 .section-header .link {
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 500;
     font-size: 0.9rem;
@@ -882,7 +882,7 @@ button.dropdown-item.logout {
 }
 
 .section-header .link:hover {
-    color: #e67a00;
+    color: var(--color-primary-hover);
     text-decoration: underline;
 }
 
@@ -927,7 +927,7 @@ button.dropdown-item.logout {
 }
 
 .gradient-orange {
-    background: linear-gradient(135deg, #ff8a00, #ff6b6b);
+    background: var(--color-primary);
 }
 
 .gradient-blue {
@@ -962,7 +962,7 @@ button.dropdown-item.logout {
 .progress span {
     display: block;
     height: 100%;
-    background: #ff8a00;
+    background: var(--color-primary);
     border-radius: 6px;
     transition: width 0.3s ease;
 }
@@ -981,7 +981,7 @@ button.dropdown-item.logout {
 }
 
 .course-card button:hover {
-    background: #ff8a00;
+    background: var(--color-primary);
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 138, 0, 0.2);
@@ -1049,7 +1049,7 @@ button.dropdown-item.logout {
     align-items: center;
     padding: 1rem 1.2rem;
     border-bottom: 1px solid #e8e4df;
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b6b 100%);
+    background: var(--color-primary);
 }
 
 .notif-header h3 {
@@ -1092,7 +1092,7 @@ button.dropdown-item.logout {
 
 .notif-item:hover {
     background: #fffaf3;
-    box-shadow: inset 3px 0 0 #ff8a00;
+    box-shadow: inset 3px 0 0 var(--color-primary);
     text-decoration: none;
     color: #111827;
 }
@@ -1105,7 +1105,7 @@ button.dropdown-item.logout {
 }
 
 .notif-item:focus-visible {
-    outline: 2px solid #ff8a00;
+    outline: 2px solid var(--color-primary);
     outline-offset: -2px;
 }
 
@@ -1120,7 +1120,7 @@ button.dropdown-item.logout {
     top: 0;
     bottom: 0;
     width: 4px;
-    background: #ff8a00;
+    background: var(--color-primary);
 }
 
 .notif-item-content {
@@ -1197,7 +1197,7 @@ button.dropdown-item.logout {
 
 .notif-footer a {
     display: inline-block;
-    color: #ff8a00;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
@@ -1309,7 +1309,7 @@ body.pagina-libro_clases {
 }
 
 body.pagina-reportes {
-    background: linear-gradient(135deg, #fd7e14 0%, #e8680d 100%); /* Gradiente naranja */
+    background: var(--color-primary); /* Gradiente naranja */
 }
 
 body.pagina-gestionar_estudiantes {
@@ -1333,7 +1333,7 @@ body.pagina-infraestructura {
 }
 
 body.pagina-mi_escuela {
-    background: linear-gradient(135deg, #fd7e14 0%, #e8680d 100%); /* Naranja */
+    background: var(--color-primary); /* Naranja */
 }
 
 body.pagina-escuelas {

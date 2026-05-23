@@ -1,4 +1,4 @@
-.filtros-container {
+﻿.filtros-container {
     margin-bottom: 2rem;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .comunicado-card.tipo-citacion {
-    border-left-color: #f59e0b;
+    border-left-color: var(--color-primary);
 }
 
 .comunicado-header {
@@ -59,7 +59,7 @@
 
 .badge-tipo.tipo-citacion {
     background: #fef3c7;
-    color: #d97706;
+    color: var(--color-primary-hover);
 }
 
 .badge-tipo.tipo-comunicado {

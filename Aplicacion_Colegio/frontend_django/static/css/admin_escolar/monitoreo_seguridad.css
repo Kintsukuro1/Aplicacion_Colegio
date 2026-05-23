@@ -1,4 +1,4 @@
-.seguridad-container {
+﻿.seguridad-container {
     max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
@@ -44,7 +44,7 @@
 }
 
 .stat-card.warning::before {
-    background: linear-gradient(90deg, #f59e0b, #d97706);
+    background: var(--color-primary);
 }
 
 .stat-card.danger::before {

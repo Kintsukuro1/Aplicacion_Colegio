@@ -1,6 +1,6 @@
-/* ============================================================
+﻿/* ============================================================
    BIBLIOTECARIO DIGITAL — inicio.css
-   Tema: Ámbar / conocimiento  #e67e22 → #f39c12
+   Tema: Ámbar / conocimiento  var(--color-primary) → var(--color-primary)
    ============================================================ */
 
 .bibliotecario-dashboard {
@@ -9,7 +9,7 @@
 
 /* ── Welcome Banner ── */
 .welcome-banner {
-    background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+    background: var(--color-primary);
     border-radius: 15px;
     padding: 40px;
     margin-bottom: 30px;
@@ -51,7 +51,7 @@
 
 .stat-card:hover { transform: translateY(-3px); }
 
-.stat-primary  { border-color: #e67e22; }
+.stat-primary  { border-color: var(--color-primary); }
 .stat-success  { border-color: #48bb78; }
 .stat-warning  { border-color: #f6ad55; }
 .stat-danger   { border-color: #f56565; }
@@ -113,7 +113,7 @@
 .module-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    border-color: #e67e22;
+    border-color: var(--color-primary);
 }
 
 .module-icon { font-size: 3em; margin-bottom: 15px; }
@@ -133,7 +133,7 @@
 
 /* ── Module Card Extended ── */
 .module-card-header {
-    background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+    background: var(--color-primary);
     color: white;
     padding: 16px 20px;
     border-radius: 10px 10px 0 0;
@@ -151,7 +151,7 @@
 .btn-module {
     display: inline-block;
     padding: 10px 25px;
-    background: #e67e22;
+    background: var(--color-primary);
     color: white;
     text-decoration: none;
     border-radius: 8px;
