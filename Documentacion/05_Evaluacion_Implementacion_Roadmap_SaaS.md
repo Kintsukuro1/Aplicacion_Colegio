@@ -113,7 +113,7 @@ Toda la lógica de negocio ha sido validada y se encuentra integrada con **100% 
 ### Bloque 2: Libro de Clases Digital & Acreditación Normativa
 1. [x] Unificar formato de notas y comparación bajo la escala 1.0 a 7.0 en todas las utilidades.
 2. [ ] Desarrollar en React la interfaz de firma del libro de clases digital para profesores (mecanismo PIN o firma rápida de cierre de clase).
-3. [ ] Crear el reporte consolidador mensual en formato PDF firmado digitalmente con estándares de la Superintendencia.
+3. [x] Crear el reporte consolidador mensual en formato PDF firmado digitalmente con estándares de la Superintendencia.
 4. [x] Completar convivencia y salvaguarda (módulo del psicólogo y protocolo Aula Segura finalizado y testeado).
 
 ### Bloque 3: Robustecer Fase 2 (SaaS Core)
