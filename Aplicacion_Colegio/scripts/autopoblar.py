@@ -106,6 +106,7 @@ from backend.apps.accounts.models import (
     Role, User, DisponibilidadProfesor, PerfilProfesor, PerfilEstudiante,
     Apoderado, RelacionApoderadoEstudiante, FirmaDigitalApoderado, PerfilAsesorFinanciero
 )
+from backend.apps.accounts.services.capability_seed_service import seed_role_capabilities
 from backend.apps.institucion.models import (
     Region, Comuna, TipoEstablecimiento, DependenciaAdministrativa,
     NivelEducativo, TipoInfraestructura, Colegio, ColegioInfraestructura,
@@ -127,6 +128,28 @@ from backend.apps.core.models import CambioEstado
 from backend.apps.matriculas.models import EstadoMatricula, MatriculaMejorada, CambioEstadoMatricula
 # CicloAcademico se importa desde institucion.models para consistencia
 
+def _db_vendor():
+    from django.db import connection
+    return connection.vendor
+
+def _is_sqlite():
+    return _db_vendor() == "sqlite"
+
+def _get_table_names():
+    from django.db import connection
+    return set(connection.introspection.table_names())
+
+def _table_exists(table_name):
+    return table_name in _get_table_names()
+
+def _disable_fk_checks(cursor):
+    if _is_sqlite():
+        cursor.execute("PRAGMA foreign_keys = OFF;")
+
+def _enable_fk_checks(cursor):
+    if _is_sqlite():
+        cursor.execute("PRAGMA foreign_keys = ON;")
+
 def limpiar_base_datos():
     """Limpiar base de datos de forma segura - solo eliminar datos de tablas que existen"""
     print("\n" + "="*60)
@@ -137,12 +160,11 @@ def limpiar_base_datos():
 
     cursor = connection.cursor()
 
-    # Desactivar restricciones de claves foráneas en SQLite para este borrado
-    cursor.execute("PRAGMA foreign_keys = OFF;")
+    # Desactivar restricciones de claves foráneas solo cuando aplica (SQLite)
+    _disable_fk_checks(cursor)
 
-    # Verificar qué tablas existen realmente
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tablas_existentes = {row[0] for row in cursor.fetchall()}
+    # Verificar qué tablas existen realmente (backend agnostico)
+    tablas_existentes = _get_table_names()
 
     print(f"📊 Total de tablas en base de datos: {len(tablas_existentes)}")
 
@@ -271,16 +293,17 @@ def limpiar_base_datos():
             except Exception as e:
                 print(f"  ⚠️  {tabla}: error al limpiar - {str(e)}")
 
-    # Resetear secuencias de auto-incremento
-    for tabla in tablas_ordenadas:
-        if tabla in tablas_existentes:
-            try:
-                cursor.execute("DELETE FROM sqlite_sequence WHERE name=?", [tabla])
-            except Exception:
-                pass
+    # Resetear secuencias de auto-incremento (solo SQLite)
+    if _is_sqlite():
+        for tabla in tablas_ordenadas:
+            if tabla in tablas_existentes:
+                try:
+                    cursor.execute("DELETE FROM sqlite_sequence WHERE name=?", [tabla])
+                except Exception:
+                    pass
 
-    # Reactivar restricciones de claves foráneas
-    cursor.execute("PRAGMA foreign_keys = ON;")
+    # Reactivar restricciones de claves foráneas solo cuando aplica (SQLite)
+    _enable_fk_checks(cursor)
 
     # Hacer commit explícito de todos los cambios
     connection.commit()
@@ -317,6 +340,15 @@ def poblar_roles():
             print(f"  ⏭️  Rol ya existe: {nombre}")
 
     print("✅ Roles creados\n")
+
+def poblar_role_capabilities():
+    """Crear capabilities y permisos base para cada rol."""
+    print("Creando RoleCapability base...")
+    summary = seed_role_capabilities()
+    print(f"  Capabilities nuevas: {summary['capabilities_created']}")
+    print(f"  RoleCapability nuevas: {summary['role_capabilities_created']}")
+    print(f"  RoleCapability existentes: {summary['role_capabilities_existing']}")
+    print("RoleCapability base creado\n")
 
 def poblar_regiones_comunas():
     """Crear regiones y comunas de Chile"""
@@ -403,13 +435,8 @@ def poblar_ciclos_academicos():
     """Crear ciclos académicos para Fase 3 - Concepto temporal fundamental"""
     print("📅 Creando Ciclos Académicos (Fase 3)...")
 
-    # Verificar si las tablas existen
-    from django.db import connection
-    cursor = connection.cursor()
-
     # Verificar tabla ciclo_academico
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ciclo_academico';")
-    if not cursor.fetchone():
+    if not _table_exists('ciclo_academico'):
         print("  ⚠️  Tabla ciclo_academico no existe. Saltando creación de ciclos académicos.")
         print("  💡 Ejecuta 'python manage.py migrate core' para crear las tablas Fase 3.")
         return
@@ -518,13 +545,8 @@ def poblar_estados_matricula():
     """Crear estados de matrícula con transiciones para Fase 3"""
     print("🏷️  Creando Estados de Matrícula (Fase 3)...")
 
-    # Verificar si las tablas existen
-    from django.db import connection
-    cursor = connection.cursor()
-
     # Verificar tabla estado_matricula
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='estado_matricula';")
-    if not cursor.fetchone():
+    if not _table_exists('estado_matricula'):
         print("  ⚠️  Tabla estado_matricula no existe. Saltando creación de estados.")
         print("  💡 Ejecuta 'python manage.py migrate core' para crear las tablas Fase 3.")
         return
@@ -3372,6 +3394,7 @@ def main():
     try:
         limpiar_base_datos()
         poblar_roles()
+        poblar_role_capabilities()
         poblar_regiones_comunas()
         poblar_catalogos()
         poblar_estados_matricula()  # NUEVO: Fase 3
