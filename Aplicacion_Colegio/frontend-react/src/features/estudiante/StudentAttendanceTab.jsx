@@ -65,6 +65,35 @@ export function StudentAttendanceTab({ attendance, loading, error }) {
     };
   }, [attendance]);
 
+  const attendanceByClass = useMemo(() => {
+    if (!attendance || attendance.length === 0) return [];
+
+    const groups = new Map();
+
+    attendance.forEach((item) => {
+      const classId = item.clase_id || `${item.curso_nombre}-${item.asignatura_nombre}`;
+      const current = groups.get(classId) || {
+        id: classId,
+        curso: item.curso_nombre || 'Curso',
+        asignatura: item.asignatura_nombre || 'Asignatura',
+        P: 0,
+        A: 0,
+        J: 0,
+        T: 0,
+        total: 0,
+      };
+
+      const estado = (item.estado || 'P').toString().toUpperCase().charAt(0);
+      if (current[estado] !== undefined) {
+        current[estado] += 1;
+      }
+      current.total += 1;
+      groups.set(classId, current);
+    });
+
+    return Array.from(groups.values());
+  }, [attendance]);
+
   const totalClasses = attendance?.length || 0;
 
   return (
@@ -84,6 +113,36 @@ export function StudentAttendanceTab({ attendance, loading, error }) {
               Total de registros: <strong>{totalClasses}</strong>
             </p>
           </div>
+          {attendanceByClass.length ? (
+            <div className="table-wrap" style={{ width: '100%' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Asignatura</th>
+                    <th>Curso</th>
+                    <th>Presente</th>
+                    <th>Ausente</th>
+                    <th>Justificado</th>
+                    <th>Atraso</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceByClass.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.asignatura}</td>
+                      <td>{item.curso}</td>
+                      <td>{item.P}</td>
+                      <td>{item.A}</td>
+                      <td>{item.J}</td>
+                      <td>{item.T}</td>
+                      <td>{item.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       ) : (
         <EmptySection title="Sin registros de asistencia" description="Aún no hay asistencia cargada para este periodo." />

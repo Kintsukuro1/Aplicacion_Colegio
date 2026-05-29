@@ -72,7 +72,8 @@ const STUDENT_TAB_ALIASES = {
   attendance: 'student-attendance',
   'student-attendance': 'student-attendance',
   historial: 'student-history',
-  mis_anotaciones: 'student-history',
+  mis_anotaciones: 'student-annotations',
+  anotaciones: 'student-annotations',
   history: 'student-history',
   'student-history': 'student-history',
   tareas: 'student-tasks',
@@ -89,12 +90,16 @@ const STUDENT_TAB_ALIASES = {
 };
 
 const STUDENT_PATH_TABS = {
+  '/estudiante/inicio': 'student-profile',
   '/estudiante/perfil': 'student-profile',
   '/estudiante/mis-clases': 'student-classes',
+  '/estudiante/mi-horario': 'student-classes',
   '/estudiante/mis-notas': 'student-grades',
+  '/estudiante/mis-evaluaciones': 'student-grades',
   '/estudiante/asistencia': 'student-attendance',
   '/estudiante/mi-asistencia': 'student-attendance',
   '/estudiante/historial': 'student-history',
+  '/estudiante/mis-anotaciones': 'student-annotations',
   '/estudiante/tareas': 'student-tasks',
   '/estudiante/calendario-tareas': 'student-task-calendar',
   '/estudiante/comunicados': 'student-comunicados',
@@ -177,6 +182,19 @@ export default function StudentSelfPage() {
   const conversaciones = Array.isArray(conversationsData) ? conversationsData : [];
   const mensajes = Array.isArray(messagesData) ? messagesData : [];
 
+  const academicAnnotations = useMemo(() => {
+    return attendance
+      .filter((item) => String(item?.observaciones || '').trim() !== '')
+      .map((item) => ({
+        id: item.id_asistencia || `${item.clase_id}-${item.fecha}`,
+        fecha: item.fecha,
+        curso: item.curso_nombre,
+        asignatura: item.asignatura_nombre,
+        estado: item.estado,
+        observaciones: item.observaciones,
+      }));
+  }, [attendance]);
+
   const historyUrl = selectedCycle 
     ? `/api/v1/estudiante/historial-academico/?ciclo=${selectedCycle}`
     : '/api/v1/estudiante/historial-academico/';
@@ -210,21 +228,6 @@ export default function StudentSelfPage() {
   const summaryLoading = loadingProfile || loadingClasses || loadingGrades || loadingAttendance || loadingHistory;
   const hasAnyError = profileError || classesError || gradesError || attendanceError || historyError || comunicadosError || conversationsError || messagesError;
 
-  const quickLinks = [
-    { id: 'student-profile', label: 'Mi Perfil', query: 'perfil' },
-    { id: 'student-classes', label: 'Mis Clases', query: 'clases' },
-    { id: 'student-grades', label: 'Mis Notas', query: 'notas' },
-    { id: 'student-attendance', label: 'Mi Asistencia', query: 'asistencia' },
-    { id: 'student-history', label: 'Historial Académico', query: 'historial' },
-    { id: 'student-tasks', label: 'Mis Tareas', query: 'tareas' },
-    { id: 'student-task-calendar', label: 'Calendario de Tareas', query: 'calendario_tareas' },
-    { id: 'student-comunicados', label: 'Comunicados', query: 'comunicados' },
-    { id: 'student-messages', label: 'Mensajes', query: 'mensajes' },
-    { id: 'student-certificados', label: 'Certificados', query: 'certificados' },
-    { id: 'student-estado-cuenta', label: 'Estado de Cuenta', query: 'estado_cuenta' },
-    { id: 'student-mis-pagos', label: 'Mis Pagos', query: 'mis_pagos' },
-    { id: 'student-dashboard', label: 'Graficos', query: 'dashboard_graficos' },
-  ];
 
   useEffect(() => {
     const tabFromUrl =
@@ -234,13 +237,6 @@ export default function StudentSelfPage() {
       setActiveTab(tabFromUrl);
     }
   }, [activeTab, location.pathname, searchParams]);
-
-  function onTabChange(link) {
-    setActiveTab(link.id);
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('tab', link.query);
-    setSearchParams(nextParams, { replace: true });
-  }
 
   function onConversationChange(value) {
     setSelectedConversationId(value);
@@ -337,14 +333,6 @@ export default function StudentSelfPage() {
     ];
   }, [attendanceAverage, classes.length, gradeAverage, grades, profile]);
 
-  const studentId = profile?.id || profile?.estudiante_id || profile?.perfil_estudiante?.id;
-  const certificateLinks = studentId
-    ? [
-        { label: 'Certificado de notas', href: `${apiClient.baseUrl}/pdf/certificado-notas/${studentId}/` },
-        { label: 'Certificado de matricula', href: `${apiClient.baseUrl}/pdf/certificado-matricula/${studentId}/` },
-        { label: 'Informe de rendimiento', href: `${apiClient.baseUrl}/pdf/informe-rendimiento/${studentId}/` },
-      ]
-    : [];
 
   const historyAverage = gradeAverage;
 
@@ -357,20 +345,6 @@ export default function StudentSelfPage() {
         </div>
       </header>
 
-      <div className="tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        {quickLinks.map((link) => (
-          <button
-            key={link.id}
-            type="button"
-            className={activeTab === link.id ? 'primary' : 'secondary'}
-            onClick={() => onTabChange(link)}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {link.label}
-          </button>
-        ))}
-      </div>
-
       <div className="stack">
         {activeTab === 'student-profile' && (
           <StudentProfileTab
@@ -381,7 +355,14 @@ export default function StudentSelfPage() {
           />
         )}
         {activeTab === 'student-classes' && <StudentClassesTab classes={classes} loading={loadingClasses} error={classesError} />}
-        {activeTab === 'student-grades' && <StudentGradesTab grades={grades} loading={loadingGrades} error={gradesError} />}
+        {activeTab === 'student-grades' && (
+          <StudentGradesTab
+            grades={grades}
+            loading={loadingGrades}
+            error={gradesError}
+            classes={classes}
+          />
+        )}
         {activeTab === 'student-attendance' && <StudentAttendanceTab attendance={attendance} loading={loadingAttendance} error={attendanceError} />}
         {activeTab === 'student-history' && (
           <StudentHistoryTab
@@ -393,6 +374,29 @@ export default function StudentSelfPage() {
             historyAverage={historyAverage}
             formatPercentage={formatPercentage}
           />
+        )}
+        {activeTab === 'student-annotations' && (
+          <article className="card section-card">
+            <h3>Mis Anotaciones</h3>
+            {loadingAttendance ? (
+              <SectionStatus title="Cargando anotaciones" description="Revisando observaciones academicas." loading />
+            ) : attendanceError ? (
+              <div className="error-box" role="alert" aria-live="assertive">{attendanceError}</div>
+            ) : academicAnnotations.length === 0 ? (
+              <EmptySection title="Sin anotaciones" description="No hay observaciones academicas registradas." />
+            ) : (
+              <ul className="compact-list">
+                {academicAnnotations.map((item) => (
+                  <li key={item.id}>
+                    <strong>{item.asignatura || 'Asignatura'}</strong>
+                    <span> - {item.curso || 'Curso'}</span>
+                    <p style={{ margin: '0.35rem 0' }}>{item.observaciones}</p>
+                    <span style={{ color: 'var(--muted)' }}>{item.fecha} {item.estado ? `- ${item.estado}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
         )}
         {activeTab === 'student-tasks' && (
           <article className="card section-card">
@@ -501,25 +505,15 @@ export default function StudentSelfPage() {
         {activeTab === 'student-certificados' && (
           <article className="card section-card">
             <h3>Certificados</h3>
-            {certificateLinks.length === 0 ? (
-              <EmptySection title="Sin certificados" description="No se pudo identificar el ID del estudiante para generar certificados." />
-            ) : (
-              <ul className="compact-list">
-                {certificateLinks.map((item) => (
-                  <li key={item.href}>
-                    <a href={item.href} target="_blank" rel="noreferrer">{item.label}</a>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <EmptySection title="Disponible para apoderados" description="Los certificados se solicitan desde el panel del apoderado." />
           </article>
         )}
         {activeTab === 'student-estado-cuenta' && (
           <article className="card section-card">
             <h3>Estado de Cuenta</h3>
             <EmptySection
-              title="Informacion financiera pendiente"
-              description="El estado de cuenta estara disponible cuando el modulo de finanzas se habilite para estudiantes."
+              title="Disponible para apoderados"
+              description="El estado de cuenta se revisa desde el panel del apoderado."
             />
           </article>
         )}
@@ -527,8 +521,8 @@ export default function StudentSelfPage() {
           <article className="card section-card">
             <h3>Mis Pagos</h3>
             <EmptySection
-              title="Historial en preparacion"
-              description="El historial de pagos se publicara cuando el colegio active el modulo de pagos para estudiantes."
+              title="Disponible para apoderados"
+              description="El historial de pagos se revisa desde el panel del apoderado."
             />
           </article>
         )}

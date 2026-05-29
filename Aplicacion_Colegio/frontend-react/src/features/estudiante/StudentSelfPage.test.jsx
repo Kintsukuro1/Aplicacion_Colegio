@@ -55,19 +55,18 @@ describe('StudentSelfPage', () => {
       throw new Error(`Unexpected endpoint: ${path}`);
     });
 
-    renderWithProviders(<StudentSelfPage />);
+    const { unmount } = renderWithProviders(<StudentSelfPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Estudiante: Mi Panel')).toBeInTheDocument();
       expect(screen.getByText('Valentina Rojas')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: 'Mi Perfil' })).toBeInTheDocument();
+    unmount();
 
-    // Navigate to the history tab to see its loading state
-    const historyTabButton = screen.getByRole('button', { name: 'Historial Académico' });
-    await act(async () => {
-      historyTabButton.click();
+    renderWithProviders(<StudentSelfPage />, {
+      route: '/estudiante/historial',
+      path: '/estudiante/historial',
     });
 
     await waitFor(() => {

@@ -316,16 +316,6 @@ export default function ApoderadoPage() {
     setContractForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function onTabChange(tab) {
-    setActiveTab(tab.id);
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('tab', tab.query);
-    if (selectedPupilId) {
-      nextParams.set('estudiante_id', selectedPupilId);
-    }
-    setSearchParams(nextParams, { replace: true });
-  }
-
   function onPupilChange(value) {
     setSelectedPupilId(value);
     const nextParams = new URLSearchParams(searchParams);
@@ -459,35 +449,6 @@ export default function ApoderadoPage() {
       </header>
 
       {error ? <div className="error-box" data-testid="apoderado-error" role="alert" aria-live="assertive">{error}</div> : null}
-
-      <div className="tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        {[
-          { id: 'resumen', label: 'Resumen', query: 'resumen' },
-          { id: 'pupilos', label: 'Pupilos', query: 'pupilos' },
-          { id: 'notas', label: 'Notas', query: 'notas' },
-          { id: 'asistencia', label: 'Asistencia', query: 'asistencia' },
-          { id: 'justificativos', label: 'Justificativos', query: 'justificativos' },
-          { id: 'firmas', label: 'Firmas', query: 'firmas' },
-          { id: 'calendario', label: 'Calendario', query: 'calendario' },
-          { id: 'comunicados', label: 'Comunicados', query: 'comunicados' },
-          { id: 'mensajes', label: 'Mensajes', query: 'mensajes' },
-          { id: 'certificados', label: 'Certificados', query: 'certificados' },
-          { id: 'admision', label: 'Admision', query: 'admision' },
-          { id: 'estado_cuenta', label: 'Estado de cuenta', query: 'estado_cuenta' },
-          { id: 'mis_pagos', label: 'Mis pagos', query: 'mis_pagos' },
-          { id: 'perfil', label: 'Perfil', query: 'perfil' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={activeTab === tab.id ? 'primary' : 'secondary'}
-            onClick={() => onTabChange(tab)}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       <div className="summary-grid" data-testid="apoderado-summary">
         {loading

@@ -205,9 +205,26 @@ export const APP_ROUTES = [
     anyOf: ['PORTAL_ESTUDIANTE'],
   },
   {
+    path: 'estudiante/inicio',
+    to: '/estudiante/inicio',
+    label: 'Inicio',
+    component: StudentSelfPage,
+    allowedRoles: ['estudiante', 'alumno'],
+    anyOf: ['PORTAL_ESTUDIANTE'],
+    hidden: true,
+  },
+  {
     path: 'estudiante/mis-clases',
     to: '/estudiante/mis-clases',
     label: 'Mis clases',
+    component: StudentSelfPage,
+    allowedRoles: ['estudiante', 'alumno'],
+    anyOf: ['PORTAL_ESTUDIANTE'],
+  },
+  {
+    path: 'estudiante/mi-horario',
+    to: '/estudiante/mi-horario',
+    label: 'Mi horario',
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
@@ -217,6 +234,14 @@ export const APP_ROUTES = [
     path: 'estudiante/mis-notas',
     to: '/estudiante/mis-notas',
     label: 'Mis notas',
+    component: StudentSelfPage,
+    allowedRoles: ['estudiante', 'alumno'],
+    anyOf: ['PORTAL_ESTUDIANTE'],
+  },
+  {
+    path: 'estudiante/mis-evaluaciones',
+    to: '/estudiante/mis-evaluaciones',
+    label: 'Mis evaluaciones',
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
@@ -238,7 +263,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/perfil',
@@ -247,7 +271,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/historial',
@@ -259,13 +282,20 @@ export const APP_ROUTES = [
     hidden: true,
   },
   {
+    path: 'estudiante/mis-anotaciones',
+    to: '/estudiante/mis-anotaciones',
+    label: 'Mis anotaciones',
+    component: StudentSelfPage,
+    allowedRoles: ['estudiante', 'alumno'],
+    anyOf: ['PORTAL_ESTUDIANTE'],
+  },
+  {
     path: 'estudiante/tareas',
     to: '/estudiante/tareas',
     label: 'Mis tareas',
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/calendario-tareas',
@@ -274,7 +304,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/comunicados',
@@ -283,7 +312,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/mensajes',
@@ -292,7 +320,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'estudiante/mis-certificados',
@@ -328,7 +355,6 @@ export const APP_ROUTES = [
     component: StudentSelfPage,
     allowedRoles: ['estudiante', 'alumno'],
     anyOf: ['PORTAL_ESTUDIANTE'],
-    hidden: true,
   },
   {
     path: 'asesor-financiero/panel',
@@ -393,7 +419,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/notas',
@@ -402,7 +427,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/asistencia',
@@ -411,7 +435,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/justificativos',
@@ -420,7 +443,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/firmas-pendientes',
@@ -429,7 +451,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/perfil',
@@ -438,7 +459,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/calendario',
@@ -447,7 +467,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/comunicados',
@@ -456,7 +475,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/mensajes',
@@ -465,7 +483,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/mis-certificados',
@@ -474,7 +491,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/admision-matricula',
@@ -483,7 +499,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/estado-cuenta',
@@ -492,7 +507,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'apoderado/mis-pagos',
@@ -501,7 +515,6 @@ export const APP_ROUTES = [
     component: ApoderadoPage,
     allowedRoles: ['apoderado'],
     anyOf: ['PORTAL_APODERADO'],
-    hidden: true,
   },
   {
     path: 'planes',

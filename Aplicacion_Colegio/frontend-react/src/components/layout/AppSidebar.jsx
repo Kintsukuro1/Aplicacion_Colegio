@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { getUserRole } from '../../utils/capabilities';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -26,6 +26,7 @@ const EMPTY_ROUTES = [];
 
 export function AppSidebar({ visibleRoutes = EMPTY_ROUTES, onLogout = () => {}, isOpen = false, onClose = () => {} }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [expanded, setExpanded] = useState({});
 
@@ -36,6 +37,16 @@ export function AppSidebar({ visibleRoutes = EMPTY_ROUTES, onLogout = () => {}, 
     prevModuleRef.current = activeModule;
     setExpanded((current) => ({ ...current, [activeModule]: true }));
   }
+
+  useEffect(() => {
+    if (activeModule === 'apoderado' || activeModule === 'estudiante') {
+      setExpanded((current) => ({
+        ...current,
+        apoderado: activeModule === 'apoderado' ? true : current.apoderado,
+        estudiante: activeModule === 'estudiante' ? true : current.estudiante,
+      }));
+    }
+  }, [activeModule]);
 
   const menuGroups = useMemo(() => {
     const grouped = new Map();
@@ -116,12 +127,19 @@ export function AppSidebar({ visibleRoutes = EMPTY_ROUTES, onLogout = () => {}, 
               );
             }
 
+            const isApoderadoPanel = group.id === 'apoderado' && group.route;
+
             return (
               <div key={group.id} className={`sidebar-nav-group${isActive ? ' active' : ''}`}>
                 <button
                   type="button"
                   className="sidebar-module-toggle"
-                  onClick={() => setExpanded((current) => ({ ...current, [group.id]: !isExpanded }))}
+                  onClick={() => {
+                    if (isApoderadoPanel) {
+                      navigate(group.route.to);
+                    }
+                    setExpanded((current) => ({ ...current, [group.id]: !isExpanded }));
+                  }}
                   aria-expanded={isExpanded}
                 >
                   <span className="sidebar-nav-icon">{group.icon}</span>
@@ -130,7 +148,7 @@ export function AppSidebar({ visibleRoutes = EMPTY_ROUTES, onLogout = () => {}, 
                 </button>
 
                 <div className={`sidebar-submenu${isExpanded ? ' expanded' : ''}`}>
-                  {group.route ? (
+                  {group.route && group.id !== 'apoderado' && group.id !== 'estudiante' ? (
                     <NavLink
                       to={group.route.to}
                       className={({ isActive: linkActive }) => `sidebar-sub-link${linkActive ? ' active' : ''}`}
@@ -203,7 +221,7 @@ function getModuleLabel(module) {
     'admin-escolar': 'Administracion',
     profesor: 'Profesor',
     estudiante: 'Estudiante',
-    apoderado: 'Apoderado',
+    apoderado: 'Mi panel',
     'asesor-financiero': 'Finanzas',
     'inspector-convivencia': 'Convivencia',
     'psicologo-orientador': 'Orientacion',
