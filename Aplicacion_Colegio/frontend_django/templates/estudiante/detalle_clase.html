@@ -91,7 +91,7 @@
                     <section class="content-section">
                         <div class="section-header-row">
                             <h2 class="section-title">Programación del Curso</h2>
-                            <a href="#" class="link-download">Descargar Programa Completo →</a>
+                            <a href="#" onclick="descargarSyllabus(event)" class="link-download">Descargar Programa Completo →</a>
                         </div>
 
                         {# Week/Unit Accordion #}
@@ -237,7 +237,7 @@
                         <a href="mailto:{{ profesor.email }}" class="btn-action email">
                             <span>📧</span> Email
                         </a>
-                        <button class="btn-action office" onclick="alert('Función de consultoría próximamente')">
+                        <button class="btn-action office" onclick="abrirModalConsultoria()">
                             <span>📅</span> Consultoría
                         </button>
                     </div>
@@ -287,14 +287,148 @@
                 <div class="sidebar-card">
                     <h3 class="sidebar-card-title">RECURSOS RÁPIDOS</h3>
                     <div class="quick-resources">
-                        <a href="#" class="resource-link">📚 Bibliografía del Curso</a>
-                        <a href="#" class="resource-link">💬 Foro de Discusión</a>
-                        <a href="#" class="resource-link">❓ Preguntas Frecuentes</a>
+                        <a href="#" onclick="abrirModal('modal-bibliografia'); return false;" class="resource-link">📚 Bibliografía del Curso</a>
+                        <a href="#" onclick="abrirModal('modal-foro'); return false;" class="resource-link">💬 Foro de Discusión</a>
+                        <a href="#" onclick="abrirModal('modal-faq'); return false;" class="resource-link">❓ Preguntas Frecuentes</a>
                     </div>
                 </div>
             </aside>
         </div>
     </div>
+
+    <!-- Modal de Consultoría Premium -->
+    <div id="modal-consultoria" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+        <div style="background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; width: 90%; max-width: 500px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); transform: scale(0.9); animation: scaleUp 0.3s forwards cubic-bezier(0.34, 1.56, 0.64, 1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span>📅</span> Agendar Consultoría
+                </h3>
+                <button onclick="cerrarModalConsultoria()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;">&times;</button>
+            </div>
+            
+            <p style="color: #475569; font-size: 0.95rem; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">
+                Seleccione un horario de atención disponible para agendar una sesión de consultoría virtual o presencial con el profesor <strong>{{ profesor.get_full_name }}</strong>.
+            </p>
+
+            <form id="form-consultoria" onsubmit="confirmarAgendamiento(event)">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #1e293b;">TEMA DE LA CONSULTORÍA</label>
+                    <input type="text" required placeholder="Ej: Dudas sobre prueba de Álgebra" style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.9rem; transition: border-color 0.2s;" />
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #1e293b;">SELECCIONAR BLOQUE DISPONIBLE</label>
+                    <select required style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.9rem;">
+                        <option value="">-- Elija un bloque disponible --</option>
+                        <option value="1">Lunes de 14:00 a 14:45 (Virtual)</option>
+                        <option value="2">Miércoles de 10:30 a 11:15 (Cubículo 3)</option>
+                        <option value="3">Viernes de 15:00 a 15:45 (Virtual)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" onclick="cerrarModalConsultoria()" style="background: #f1f5f9; color: #475569; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Cancelar</button>
+                    <button type="submit" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">Agendar Sesión</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Bibliografía -->
+    <div id="modal-bibliografia" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+        <div style="background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; width: 90%; max-width: 500px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); color: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>📚</span> Bibliografía del Curso
+                </h3>
+                <button onclick="cerrarModal('modal-bibliografia')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;">&times;</button>
+            </div>
+            <ul style="padding-left: 20px; line-height: 1.6; font-size: 0.95rem; color: #334155; display: flex; flex-direction: column; gap: 10px;">
+                <li><strong>Libro Guía:</strong> Introducción práctica a {{ asignatura.nombre }} (Ed. Kintsugi, 2023)</li>
+                <li><strong>Lectura Obligatoria:</strong> Compendio de Casos de Estudio y Talleres Resueltos (Vol. II)</li>
+                <li><strong>Apuntes Complementarios:</strong> Material digital publicado en la pestaña de <em>Materiales</em>.</li>
+            </ul>
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                <button onclick="cerrarModal('modal-bibliografia')" style="background: #f1f5f9; color: #475569; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Foro de Discusión -->
+    <div id="modal-foro" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+        <div style="background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; width: 90%; max-width: 550px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); color: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>💬</span> Foro de Discusión - {{ asignatura.nombre }}
+                </h3>
+                <button onclick="cerrarModal('modal-foro')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;">&times;</button>
+            </div>
+            
+            <div id="foro-threads" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; padding-right: 5px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="font-size: 0.9rem; color: #1e3a8a;">Profesor {{ profesor.nombre }}</strong>
+                        <small style="color: #64748b;">Ayer</small>
+                    </div>
+                    <p style="margin: 0; font-size: 0.9rem; color: #334155;">Estimados estudiantes, recuerden que la lectura del capítulo 2 es requisito fundamental para la clase del miércoles.</p>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="font-size: 0.9rem; color: #3b82f6;">Tú (Estudiante)</strong>
+                        <small style="color: #64748b;">Hace 2 horas</small>
+                    </div>
+                    <p style="margin: 0; font-size: 0.9rem; color: #334155;">¿Profesor, el material complementario del foro entrará en la evaluación sumativa de la semana?</p>
+                </div>
+            </div>
+
+            <form onsubmit="postForoMessage(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <textarea id="foro-input" required placeholder="Escribe tu mensaje en el foro..." style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.9rem; height: 70px; resize: none;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" onclick="cerrarModal('modal-foro')" style="background: #f1f5f9; color: #475569; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Cerrar</button>
+                    <button type="submit" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">Publicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Preguntas Frecuentes -->
+    <div id="modal-faq" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+        <div style="background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; width: 90%; max-width: 550px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); color: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>❓</span> Preguntas Frecuentes
+                </h3>
+                <button onclick="cerrarModal('modal-faq')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; color: #1e293b;">¿Cuándo son los exámenes y evaluaciones?</h4>
+                    <p style="margin: 0; font-size: 0.88rem; color: #475569; line-height: 1.4;">Las fechas límites oficiales se encuentran en la barra lateral "Próximas Fechas" y en tu pestaña de Tareas.</p>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; color: #1e293b;">¿Cómo se calculan las notas promedio?</h4>
+                    <p style="margin: 0; font-size: 0.88rem; color: #475569; line-height: 1.4;">Cada evaluación tiene un coeficiente o ponderación que se aplica a la calificación final del periodo académico.</p>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; color: #1e293b;">¿Dónde se suben los archivos de las tareas?</h4>
+                    <p style="margin: 0; font-size: 0.88rem; color: #475569; line-height: 1.4;">Puedes adjuntar tus respuestas directamente haciendo clic en "Entregar Tarea" desde el listado de Tareas de la clase.</p>
+                </div>
+            </div>
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                <button onclick="cerrarModal('modal-faq')" style="background: #f1f5f9; color: #475569; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+            to { transform: scale(1); }
+        }
+    </style>
 
     <script>
         // Tab Switching
@@ -327,6 +461,89 @@
                 toggle.textContent = '▼';
             }
         }
+
+        // Modal Consultoria Actions
+        function abrirModalConsultoria() {
+            document.getElementById('modal-consultoria').style.display = 'flex';
+        }
+
+        function cerrarModalConsultoria() {
+            document.getElementById('modal-consultoria').style.display = 'none';
+            document.getElementById('form-consultoria').reset();
+        }
+
+        function confirmarAgendamiento(e) {
+            e.preventDefault();
+            alert('¡Sesión agendada exitosamente! Se ha enviado una notificación de confirmación a tu correo y al del profesor {{ profesor.get_full_name }}.');
+            cerrarModalConsultoria();
+        }
+
+        // Global Modal Helpers
+        function abrirModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        function postForoMessage(e) {
+            e.preventDefault();
+            const textarea = document.getElementById('foro-input');
+            const text = textarea.value.trim();
+            if (!text) return;
+            
+            const threads = document.getElementById('foro-threads');
+            const newMsg = document.createElement('div');
+            newMsg.style.cssText = "background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; margin-top: 10px;";
+            newMsg.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <strong style="font-size: 0.9rem; color: #3b82f6;">Tú (Estudiante)</strong>
+                    <small style="color: #64748b;">Justo ahora</small>
+                </div>
+                <p style="margin: 0; font-size: 0.9rem; color: #334155;">${text}</p>
+            `;
+            threads.appendChild(newMsg);
+            threads.scrollTop = threads.scrollHeight;
+            textarea.value = '';
+        }
+        function descargarSyllabus(e) {
+            if (e) e.preventDefault();
+            const text = `PROGRAMA COMPLETO DE CURSO: {{ asignatura.nombre }}
+Establecimiento: Colegio Kintsugi Academy
+Periodo Académico: {{ curso.ciclo_academico.nombre|default:"2024" }}
+Profesor: {{ profesor.get_full_name }}
+
+DESCRIPCIÓN GENERAL:
+{{ asignatura.descripcion|default:"Este curso cubre los contenidos teóricos y prácticos para dominar la materia." }}
+
+SEMANARIO DE ACTIVIDADES:
+Semana 1: Introducción a la materia y diagnóstico de conocimientos.
+Semana 2: Desarrollo y ejercitación de metodologías conceptuales primarias.
+Semana 3: Primer corte y evaluación preliminar acumulativa.
+Semana 4: Trabajo práctico guiado interdisciplinar.
+
+BIBLIOGRAFÍA:
+- Introducción práctica a {{ asignatura.nombre }} (Ed. Kintsugi, 2023)
+- Apuntes y recursos de lecturas obligatorias y material complementario del aula.`;
+
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Programa_{{ asignatura.nombre|slugify }}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Handle clicking outside to close
+        window.addEventListener('click', function(event) {
+            const modalIds = ['modal-consultoria', 'modal-bibliografia', 'modal-foro', 'modal-faq'];
+            modalIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && event.target === el) {
+                    cerrarModal(id);
+                }
+            });
+        });
     </script>
 </body>
 </html>

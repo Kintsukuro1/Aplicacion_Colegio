@@ -57,6 +57,10 @@ from backend.apps.api.resources_views import (
     student_my_classes,
     student_my_grades,
     student_my_profile,
+    student_my_tasks,
+    student_estado_cuenta,
+    student_mis_pagos,
+    student_crear_pago,
 )
 from backend.apps.api.profile_views import my_profile, change_password
 from backend.apps.api.views import api_health, me, operational_metrics
@@ -241,6 +245,10 @@ urlpatterns = [
     path('estudiante/mis-clases/', student_my_classes, name='student_my_classes'),
     path('estudiante/mis-notas/', student_my_grades, name='student_my_grades'),
     path('estudiante/mi-asistencia/', student_my_attendance, name='student_my_attendance'),
+    path('estudiante/tareas/', student_my_tasks, name='student_my_tasks'),
+    path('estudiante/estado-cuenta/', student_estado_cuenta, name='student_estado_cuenta'),
+    path('estudiante/mis-pagos/', student_mis_pagos, name='student_mis_pagos'),
+    path('estudiante/pagos/crear/', student_crear_pago, name='student_crear_pago'),
     # ── Self-service profile (todos los roles) ──
     path('perfil/mi-perfil/', my_profile, name='my_profile'),
     path('perfil/cambiar-password/', change_password, name='change_password'),

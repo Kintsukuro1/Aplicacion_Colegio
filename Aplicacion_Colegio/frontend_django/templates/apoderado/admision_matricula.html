@@ -206,7 +206,15 @@
                 {% elif s.estado == 'ACEPTADA' %}
                     <button class="btn-action btn-sign" onclick="openSignatureModal('{{ s.id }}', '{{ s.nombre_estudiante }}', '{{ s.curso_nombre }}')">✍️ Firmar Contrato</button>
                 {% elif s.estado == 'FIRMADA' %}
-                    <span class="matricula-success">🎓 ¡Matriculado!</span>
+                    <span class="matricula-success" style="margin-bottom: 0.5rem; display: block;">🎓 ¡Matriculado!</span>
+                    <div class="d-flex gap-2 flex-wrap" style="display: flex; gap: 8px;">
+                        {% if s.estudiante_id %}
+                        <a href="{% url 'descargar_certificado_matricula' s.estudiante_id %}" target="_blank" class="btn-action btn-download" style="background: #10b981; color: white; text-decoration: none; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; font-weight: 600;">📄 Comprobante</a>
+                        {% endif %}
+                        {% if s.tiene_contrato %}
+                        <button type="button" class="btn-action" onclick="viewSignedContract('{{ s.nombre_estudiante }}', '{{ s.curso_nombre }}', '{{ s.contrato.rut_firmante }}', '{{ s.contrato.fecha_firma|date:&quot;d/m/Y H:i&quot; }}', '{{ s.contrato.ip_firma }}', '{{ s.contrato.firma_hash }}', '{{ s.contrato.firma_token }}')" style="background: #4b5563; color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer;">🔍 Ver Contrato</button>
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -252,6 +260,41 @@
                     <button type="submit" class="btn-primary-success" id="btnConfirmarFirma">📝 Firmar y Completar Matrícula</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Contrato Firmado (Audit Details) -->
+<div class="modal d-none" id="signedContractModal">
+    <div class="modal-backdrop" onclick="closeSignedContractModal()"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>📄 Contrato de Matrícula Firmado</h3>
+            <button class="close-btn" onclick="closeSignedContractModal()">×</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+            <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); color: #15803d; border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 16px;">
+                ✓ Este contrato ha sido firmado electrónicamente de forma exitosa y la matrícula está completamente formalizada.
+            </div>
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.85rem;">
+                <h5 style="font-weight: 700; margin-bottom: 12px; color: #1e293b;">Detalles del Proceso:</h5>
+                <p style="margin: 0 0 6px 0; color: #475569;"><strong>Alumno:</strong> <span id="view-modal-student-name" style="color: #0f172a; font-weight: 600;">-</span></p>
+                <p style="margin: 0 0 6px 0; color: #475569;"><strong>Curso:</strong> <span id="view-modal-course-name" style="color: #0f172a; font-weight: 600;">-</span></p>
+                <p style="margin: 0 0 6px 0; color: #475569;"><strong>Firmante (Apoderado):</strong> <span id="view-modal-rut" style="color: #0f172a; font-weight: 600;">-</span></p>
+            </div>
+            
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.75rem; font-family: monospace; color: #334155;">
+                <h5 style="font-family: inherit; font-weight: 700; margin-bottom: 12px; color: #1e293b;">Evidencia y Auditoría Digital:</h5>
+                <p style="margin: 0 0 6px 0;"><strong>Fecha/Hora Firma:</strong> <span id="view-modal-date">-</span></p>
+                <p style="margin: 0 0 6px 0;"><strong>Dirección IP:</strong> <span id="view-modal-ip">-</span></p>
+                <p style="margin: 0 0 6px 0; word-break: break-all;"><strong>Hash de Integridad:</strong> <span id="view-modal-hash" style="color: #0f766e; font-weight: 600;">-</span></p>
+                <p style="margin: 0 0 6px 0; word-break: break-all;"><strong>Token de Validación:</strong> <span id="view-modal-token" style="color: #b45309; font-weight: 600;">-</span></p>
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 16px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn-secondary" onclick="closeSignedContractModal()">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -968,4 +1011,20 @@
             btn.textContent = '📝 Firmar y Completar Matrícula';
         });
     });
+
+    // Control del Modal de Visualización de Contrato Firmado
+    function viewSignedContract(studentName, courseName, rut, date, ip, hash, token) {
+        document.getElementById('view-modal-student-name').textContent = studentName;
+        document.getElementById('view-modal-course-name').textContent = courseName;
+        document.getElementById('view-modal-rut').textContent = rut;
+        document.getElementById('view-modal-date').textContent = date || '-';
+        document.getElementById('view-modal-ip').textContent = ip || '-';
+        document.getElementById('view-modal-hash').textContent = hash || '-';
+        document.getElementById('view-modal-token').textContent = token || '-';
+        document.getElementById('signedContractModal').classList.remove('d-none');
+    }
+
+    function closeSignedContractModal() {
+        document.getElementById('signedContractModal').classList.add('d-none');
+    }
 </script>

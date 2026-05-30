@@ -114,6 +114,122 @@ class DashboardContextService:
             context.update(DashboardContextService._get_estudiante_perfil_context(user, escuela_rbd))
         elif pagina_solicitada == 'asistencia':
             context.update(DashboardContextService._get_estudiante_asistencia_context(user, request_get_params))
+"""
+Dashboard Context Service - Context loaders específicos por rol y página.
+
+Extraído de dashboard_service.py para separar responsabilidades.
+"""
+
+from datetime import date, datetime, timedelta
+from django.db.models import Avg, Count, Q, Prefetch
+from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+
+from backend.common.services import PermissionService
+from backend.common.services.policy_service import PolicyService
+from backend.apps.core.services.integrity_service import IntegrityService
+
+
+class DashboardContextService:
+    """Service for role-specific context loading."""
+
+    @staticmethod
+    def execute(operation: str, params: dict):
+        DashboardContextService.validate(operation, params)
+        return DashboardContextService._execute(operation, params)
+
+    @staticmethod
+    def validate(operation: str, params: dict) -> None:
+        if operation == 'get_estudiante_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            if params.get('pagina_solicitada') is None:
+                raise ValueError('Parámetro requerido: pagina_solicitada')
+            if params.get('escuela_rbd') is None:
+                raise ValueError('Parámetro requerido: escuela_rbd')
+            return
+        if operation == 'get_asistencia_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            if params.get('colegio') is None:
+                raise ValueError('Parámetro requerido: colegio')
+            return
+        if operation == 'get_profesor_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            if params.get('pagina_solicitada') is None:
+                raise ValueError('Parámetro requerido: pagina_solicitada')
+            if params.get('escuela_rbd') is None:
+                raise ValueError('Parámetro requerido: escuela_rbd')
+            return
+        if operation == 'get_notificaciones_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            return
+        if operation == 'get_notificaciones_full_context':
+            if params.get('user') is None:
+                raise ValueError('Parámetro requerido: user')
+            return
+        raise ValueError(f'Operación no soportada: {operation}')
+
+    @staticmethod
+    def _execute(operation: str, params: dict):
+        if operation == 'get_estudiante_context':
+            return DashboardContextService._execute_get_estudiante_context(params)
+        if operation == 'get_asistencia_context':
+            return DashboardContextService._execute_get_asistencia_context(params)
+        if operation == 'get_profesor_context':
+            return DashboardContextService._execute_get_profesor_context(params)
+        if operation == 'get_notificaciones_context':
+            return DashboardContextService._execute_get_notificaciones_context(params)
+        if operation == 'get_notificaciones_full_context':
+            return DashboardContextService._execute_get_notificaciones_full_context(params)
+        raise ValueError(f'Operación no soportada: {operation}')
+
+    @staticmethod
+    def _validate_school_integrity(escuela_rbd, action):
+        if escuela_rbd:
+            IntegrityService.validate_school_integrity_or_raise(
+                school_id=escuela_rbd,
+                action=action,
+            )
+
+    @staticmethod
+    def get_estudiante_context(user, pagina_solicitada, escuela_rbd, request_get_params=None):
+        return DashboardContextService.execute('get_estudiante_context', {
+            'user': user,
+            'pagina_solicitada': pagina_solicitada,
+            'escuela_rbd': escuela_rbd,
+            'request_get_params': request_get_params,
+        })
+
+    @staticmethod
+    def _execute_get_estudiante_context(params: dict):
+        """Get context specific for estudiante role - sin decorador, validación manual"""
+        user = params['user']
+        pagina_solicitada = params['pagina_solicitada']
+        escuela_rbd = params['escuela_rbd']
+        request_get_params = params.get('request_get_params')
+
+        DashboardContextService._validate_school_integrity(escuela_rbd, 'DASHBOARD_CONTEXT_ESTUDIANTE')
+        has_student_scope = (
+            PolicyService.has_capability(user, 'CLASS_VIEW', school_id=escuela_rbd)
+            and PolicyService.has_capability(user, 'GRADE_VIEW', school_id=escuela_rbd)
+            and not PolicyService.has_capability(user, 'STUDENT_VIEW', school_id=escuela_rbd)
+        )
+        has_student_management_scope = PolicyService.has_capability(user, 'STUDENT_VIEW', school_id=escuela_rbd)
+
+        if not has_student_scope and not has_student_management_scope:
+            raise PermissionDenied("No tiene permisos para acceder a datos de estudiantes")
+        
+        context = {}
+
+        if pagina_solicitada == 'inicio':
+            context.update(DashboardContextService._get_estudiante_inicio_context(user, escuela_rbd))
+        elif pagina_solicitada == 'perfil':
+            context.update(DashboardContextService._get_estudiante_perfil_context(user, escuela_rbd))
+        elif pagina_solicitada == 'asistencia':
+            context.update(DashboardContextService._get_estudiante_asistencia_context(user, request_get_params))
         elif pagina_solicitada == 'mis_clases':
             context.update(DashboardContextService._get_estudiante_clases_context(user))
         elif pagina_solicitada == 'mis_notas':
@@ -122,6 +238,8 @@ class DashboardContextService:
             context.update(DashboardContextService._get_estudiante_horario_context(user))
         elif pagina_solicitada == 'mis_tareas':
             context.update(DashboardContextService._get_estudiante_tareas_context(user))
+        elif pagina_solicitada == 'mis_evaluaciones':
+            context.update(DashboardContextService._get_estudiante_evaluaciones_context(user, escuela_rbd))
         elif pagina_solicitada == 'mis_anotaciones':
             context.update(DashboardContextService._get_estudiante_anotaciones_context(user))
 
@@ -1105,386 +1223,6 @@ class DashboardContextService:
             # Estadísticas generales para dashboard
             'total_evaluaciones': total_evaluaciones,
             'total_calificaciones': total_calificaciones_general,
-            'promedio_general': promedio_general,
-        }
-
-    @staticmethod
-    def _get_profesor_libro_clases_context(request_get_params, user, colegio):
-        """Get libro_clases context for profesor"""
-        from backend.apps.cursos.models import Clase
-        from backend.apps.academico.services.grades_service import GradesService
-
-        clases = GradesService.get_teacher_classes_for_gradebook(user, colegio)
-        filtro_clase_id = request_get_params.get('clase_id', '')
-        clase_seleccionada = None
-        matriz_calificaciones = []
-        evaluaciones = []
-        promedios_evaluaciones = []
-        total_evaluaciones = 0
-        total_estudiantes = 0
-        promedio_general = 0
-
-        if filtro_clase_id:
-            try:
-                clase_id = int(filtro_clase_id)
-                clase_seleccionada = clases.filter(id=clase_id).first()
-
-                if clase_seleccionada:
-                    gradebook_data = GradesService.build_gradebook_matrix(
-                        colegio, clase_seleccionada
-                    )
-
-                    evaluaciones = gradebook_data['evaluaciones']
-                    matriz_calificaciones = gradebook_data['matriz_calificaciones']
-                    promedios_evaluaciones = gradebook_data['promedios_evaluaciones']
-                    total_evaluaciones = gradebook_data['total_evaluaciones']
-                    total_estudiantes = gradebook_data['total_estudiantes']
-                    promedio_general = gradebook_data['promedio_general']
-
-            except (ValueError, TypeError):
-                pass
-
-        return {
-            'clases': clases,
-            'filtro_clase_id': filtro_clase_id,
-            'clase_seleccionada': clase_seleccionada,
-            'evaluaciones': evaluaciones,
-            'matriz_calificaciones': matriz_calificaciones,
-            'promedios_evaluaciones': promedios_evaluaciones,
-            'total_evaluaciones': total_evaluaciones,
-            'total_estudiantes': total_estudiantes,
-            'promedio_general': promedio_general,
-        }
-
-    @staticmethod
-    def _get_profesor_reportes_context(request_get_params, user, colegio):
-        """Get reportes context for profesor"""
-        from backend.apps.cursos.models import Clase
-        from backend.apps.academico.services.academic_reports_service import AcademicReportsService
-
-        clases = AcademicReportsService.get_classes_for_reports(user, colegio)
-        tipo_reporte = request_get_params.get('tipo', 'asistencia')
-        filtro_clase_id = request_get_params.get('clase_id', '')
-        fecha_inicio = request_get_params.get('fecha_inicio', '')
-        fecha_fin = request_get_params.get('fecha_fin', '')
-
-        reporte_data = None
-        clase_seleccionada = None
-
-        if filtro_clase_id:
-            try:
-                clase_id = int(filtro_clase_id)
-                clase_seleccionada = clases.filter(id=clase_id).first()
-
-                if clase_seleccionada:
-                    fecha_inicio_parsed, fecha_fin_parsed = AcademicReportsService.parse_report_filters(fecha_inicio, fecha_fin)
-                    if tipo_reporte == 'asistencia':
-                        reporte_data = AcademicReportsService.generate_class_attendance_report(
-                            user, clase_seleccionada, fecha_inicio_parsed, fecha_fin_parsed
-                        )
-                    elif tipo_reporte == 'academico':
-                        reporte_data = AcademicReportsService.generate_class_performance_report(
-                            user, clase_seleccionada
-                        )
-
-            except (ValueError, TypeError):
-                pass
-
-        return {
-            'clases': clases,
-            'tipo_reporte': tipo_reporte,
-            'filtro_clase_id': filtro_clase_id,
-            'fecha_inicio': fecha_inicio,
-            'fecha_fin': fecha_fin,
-            'reporte_data': reporte_data,
-            'clase_seleccionada': clase_seleccionada,
-        }
-
-    @staticmethod
-    def _get_profesor_disponibilidad_context(user, colegio):
-        """Get disponibilidad context for profesor"""
-        from backend.apps.accounts.models import DisponibilidadProfesor
-        from backend.apps.cursos.models import BloqueHorario, Clase
-
-        # Obtener bloques horarios disponibles (unique by bloque_numero)
-        bloques_qs = BloqueHorario.objects.filter(
-            colegio=colegio, activo=True
-        ).order_by('bloque_numero', 'hora_inicio')
-
-        bloques_horarios = []
-        seen = set()
-        for bloque in bloques_qs:
-            if bloque.bloque_numero not in seen:
-                bloques_horarios.append({
-                    'numero': bloque.bloque_numero,
-                    'hora_inicio': bloque.hora_inicio,
-                    'hora_fin': bloque.hora_fin,
-                    'nombre': f"{bloque.hora_inicio.strftime('%H:%M')}-{bloque.hora_fin.strftime('%H:%M')}"
-                })
-                seen.add(bloque.bloque_numero)
-
-        # Obtener clases asignadas al profesor
-        clases_asignadas = Clase.objects.filter(
-            profesor=user, colegio=colegio, activo=True
-        ).select_related('curso', 'asignatura')
-
-        # Construir matriz de disponibilidad
-        matriz_disponibilidad = []
-        dias = [
-            {'numero': 1, 'nombre': 'Lunes'},
-            {'numero': 2, 'nombre': 'Martes'},
-            {'numero': 3, 'nombre': 'Miércoles'},
-            {'numero': 4, 'nombre': 'Jueves'},
-            {'numero': 5, 'nombre': 'Viernes'},
-        ]
-
-        for dia in dias:
-            fila = {'dia': dia['nombre'], 'dia_numero': dia['numero'], 'bloques': []}
-            for bloque in bloques_horarios:
-                disponible = DisponibilidadProfesor.objects.filter(
-                    profesor=user, dia_semana=dia['numero'], bloque_numero=bloque['numero'], disponible=True
-                ).exists()
-                fila['bloques'].append({
-                    'numero': bloque['numero'],
-                    'hora_inicio': bloque['hora_inicio'],
-                    'hora_fin': bloque['hora_fin'],
-                    'disponible': disponible
-                })
-            matriz_disponibilidad.append(fila)
-
-        # Estadísticas
-        total_bloques = len(dias) * len(bloques_horarios)
-        bloques_disponibles = DisponibilidadProfesor.objects.filter(
-            profesor=user, disponible=True
-        ).count()
-        bloques_con_clases = BloqueHorario.objects.filter(
-            clase__profesor=user, clase__colegio=colegio, activo=True
-        ).count()
-        bloques_libres = total_bloques - bloques_con_clases
-        porcentaje_disponibilidad = round((bloques_disponibles / total_bloques * 100) if total_bloques > 0 else 0, 1)
-
-        estadisticas = {
-            'total_bloques': total_bloques,
-            'bloques_disponibles': bloques_disponibles,
-            'bloques_con_clases': bloques_con_clases,
-            'bloques_libres': bloques_libres,
-            'porcentaje_disponibilidad': porcentaje_disponibilidad,
-        }
-
-        return {
-            'bloques_horarios': list(bloques_horarios),
-            'matriz_disponibilidad': matriz_disponibilidad,
-            'clases_asignadas': list(clases_asignadas),
-            'estadisticas': estadisticas,
-        }
-
-    @staticmethod
-    def get_notificaciones_context(user):
-        return DashboardContextService.execute('get_notificaciones_context', {
-            'user': user,
-        })
-
-    @staticmethod
-    def get_notificaciones_full_context(user, request_get_params=None):
-        return DashboardContextService.execute('get_notificaciones_full_context', {
-            'user': user,
-            'request_get_params': request_get_params,
-        })
-
-    @staticmethod
-    def _execute_get_notificaciones_context(params: dict):
-        """Get notifications context for any authenticated user"""
-        user = params['user']
-        from backend.apps.notificaciones.models import Notificacion
-        
-        # Get unread notifications count
-        notificaciones_count = Notificacion.objects.filter(
-            destinatario=user,
-            leido=False
-        ).count()
-        
-        # Get recent notifications (last 5, ordered by creation date)
-        notificaciones_recientes = Notificacion.objects.filter(
-            destinatario=user
-        ).order_by('-fecha_creacion')[:5]
-        
-        # Format notifications for template
-        notificaciones_formatted = []
-        for notif in notificaciones_recientes:
-            # Map notification types to icons
-            icon_map = {
-                'calificacion': 'star',
-                'asistencia': 'calendar-check',
-                'evaluacion': 'clipboard-list',
-                'alerta': 'exclamation-triangle',
-                'sistema': 'cog',
-                'tarea_nueva': 'book',
-                'tarea_entregada': 'paper-plane',
-                'tarea_calificada': 'check-circle',
-                'anuncio_nuevo': 'bullhorn',
-                'mensaje_nuevo': 'envelope',
-                'comunicado_nuevo': 'file-alt',
-                'evento_nuevo': 'calendar',
-                'citacion_nueva': 'user-friends',
-                'noticia_nueva': 'newspaper',
-                'urgente_nuevo': 'exclamation-circle',
-            }
-            
-            notificaciones_formatted.append({
-                'titulo': notif.titulo,
-                'mensaje': notif.mensaje,
-                'fecha': notif.fecha_creacion,
-                'icono': icon_map.get(notif.tipo, 'bell'),
-                'url': notif.enlace or '#',
-                'leido': notif.leido,
-                'tipo': notif.tipo,
-            })
-        
-        return {
-            'notificaciones_count': notificaciones_count,
-            'notificaciones_recientes': notificaciones_formatted,
-        }
-
-    @staticmethod
-    def _execute_get_notificaciones_full_context(params: dict):
-        """Get full notifications list context for dashboard notifications page."""
-        user = params['user']
-        request_get_params = params.get('request_get_params')
-        from urllib.parse import parse_qs, urlencode, urlparse
-        from backend.apps.notificaciones.models import Notificacion
-
-        estado = (request_get_params.get('estado') if request_get_params else '') or ''
-        estado = estado.strip().lower()
-
-        queryset = Notificacion.objects.filter(destinatario=user).order_by('-fecha_creacion')
-
-        if estado == 'no_leidas':
-            queryset = queryset.filter(leido=False)
-        elif estado == 'leidas':
-            queryset = queryset.filter(leido=True)
-
-        icon_map = {
-            'calificacion': '⭐',
-            'asistencia': '✅',
-            'evaluacion': '📝',
-            'alerta': '⚠️',
-            'sistema': '⚙️',
-            'tarea_nueva': '📚',
-            'tarea_entregada': '📤',
-            'tarea_calificada': '🏅',
-            'anuncio_nuevo': '📢',
-            'mensaje_nuevo': '✉️',
-            'comunicado_nuevo': '📄',
-            'evento_nuevo': '📅',
-            'citacion_nueva': '👥',
-            'noticia_nueva': '📰',
-            'urgente_nuevo': '🚨',
-        }
-
-        notificaciones = []
-
-        def _normalize_notificacion_enlace(enlace: str) -> str:
-            if not enlace:
-                return '#'
-
-            if 'pagina=clase' not in enlace:
-                return enlace
-
-            parsed = urlparse(enlace)
-            query = parse_qs(parsed.query, keep_blank_values=True)
-            pagina = (query.get('pagina') or [''])[0]
-            clase_id = (query.get('id') or [''])[0]
-
-            if pagina != 'clase' or not clase_id:
-                return enlace
-
-            remaining_params = []
-            for key, values in query.items():
-                if key in ('pagina', 'id'):
-                    continue
-                for value in values:
-                    remaining_params.append((key, value))
-
-            extra_query = urlencode(remaining_params, doseq=True)
-            target = f'/estudiante/clase/{clase_id}/'
-            if extra_query:
-                return f'{target}?{extra_query}'
-            return target
-
-        for notif in queryset:
-            notificaciones.append({
-                'id': notif.id,
-                'titulo': notif.titulo,
-                'mensaje': notif.mensaje,
-                'fecha_creacion': notif.fecha_creacion,
-                'leido': notif.leido,
-                'tipo': notif.tipo,
-                'prioridad': notif.prioridad,
-                'enlace': _normalize_notificacion_enlace(notif.enlace or '#'),
-                'icono': icon_map.get(notif.tipo, '🔔'),
-            })
-
-        total = Notificacion.objects.filter(destinatario=user).count()
-        total_no_leidas = Notificacion.objects.filter(destinatario=user, leido=False).count()
-
-        return {
-            'notificaciones_todas': notificaciones,
-            'notificaciones_total': total,
-            'notificaciones_no_leidas': total_no_leidas,
-            'notificaciones_filtro_estado': estado,
-        }
-
-    @staticmethod
-    def _get_estudiante_tareas_context(user):
-        from backend.apps.academico.models import Tarea, EntregaTarea
-        from backend.apps.accounts.models import PerfilEstudiante
-        from django.utils import timezone
-
-        perfil = PerfilEstudiante.objects.filter(user=user).first()
-        if not perfil:
-            return {'tareas_pendientes': [], 'tareas_entregadas': []}
-
-        curso = DashboardContextService._resolve_estudiante_curso_actual(user)
-
-        if not curso:
-            return {'tareas_pendientes': [], 'tareas_entregadas': []}
-
-        # Obtenemos todas las tareas activas para el curso del estudiante
-        tareas_qb = Tarea.objects.filter(
-            clase__curso=curso,
-            activa=True,
-            es_publica=True
-        ).select_related('clase__asignatura').order_by('fecha_entrega')
-
-        hoy = timezone.now()
-        entregas_estudiante = EntregaTarea.objects.filter(estudiante=user)
-        ids_entregadas = set(entregas_estudiante.values_list('tarea_id', flat=True))
-
-        pendientes = []
-        entregadas = []
-
-        for tarea in tareas_qb:
-            info = {
-                'id': tarea.id_tarea,
-                'titulo': tarea.titulo,
-                'asignatura': tarea.clase.asignatura.nombre if tarea.clase.asignatura else 'Indefinida',
-                'fecha_entrega': tarea.fecha_entrega,
-                'vencida': tarea.esta_vencida(),
-            }
-
-            if tarea.id_tarea in ids_entregadas:
-                entrega = next((e for e in entregas_estudiante if e.tarea_id == tarea.id_tarea), None)
-                info['estado_entrega'] = entrega.get_estado_display() if entrega else 'Entregada'
-                info['calificacion'] = entrega.calificacion if entrega else None
-                info['retroalimentacion'] = entrega.retroalimentacion if entrega else None
-                entregadas.append(info)
-            else:
-                pendientes.append(info)
-
-        return {
-            'tareas_pendientes': pendientes,
-            'tareas_entregadas': entregadas,
-            'total_pendientes': len(pendientes)
         }
 
     @staticmethod

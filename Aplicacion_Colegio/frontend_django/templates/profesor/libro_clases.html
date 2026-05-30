@@ -160,7 +160,7 @@
                 <span class="icon">🖨️</span>
                 Imprimir
             </button>
-            <button type="button" class="btn-exportar btn-excel" onclick="alert('Funcionalidad de exportación a Excel próximamente')">
+            <button type="button" class="btn-exportar btn-excel" onclick="exportarExcel()">
                 <span class="icon">📊</span>
                 Exportar a Excel
             </button>
@@ -174,12 +174,79 @@
         </div>
         {% endif %}
 
-        {% else %}
-        <div class="mensaje-inicial">
-            <span class="icon">📖</span>
-            <p>Selecciona una clase para ver el libro de calificaciones.</p>
-        </div>
-        {% endif %}
-
     </div>
 </div>
+
+<script>
+function exportarExcel() {
+    const table = document.querySelector('.tabla-libro');
+    if (!table) return;
+    
+    let csv = [];
+    // Get headers
+    const headers = [];
+    const headerCols = table.querySelectorAll('thead th');
+    headerCols.forEach((col, idx) => {
+        if (idx === 0) {
+            headers.push('Nº');
+            return;
+        }
+        let text = '';
+        const evalHeader = col.querySelector('.eval-header');
+        if (evalHeader) {
+            const nombre = evalHeader.querySelector('.eval-nombre')?.textContent.trim() || '';
+            const fecha = evalHeader.querySelector('.eval-fecha')?.textContent.trim() || '';
+            const pond = evalHeader.querySelector('.eval-pond')?.textContent.trim() || '';
+            text = `${nombre} (${fecha} - ${pond})`;
+        } else {
+            text = col.textContent.trim();
+        }
+        headers.push('"' + text.replace(/"/g, '""') + '"');
+    });
+    csv.push(headers.join(';'));
+    
+    // Get body rows
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.classList.contains('fila-promedios')) {
+            const cells = [];
+            cells.push('Promedio por Evaluación');
+            cells.push('');
+            row.querySelectorAll('td.col-nota').forEach(td => {
+                cells.push(td.textContent.trim());
+            });
+            csv.push(cells.join(';'));
+            return;
+        }
+        
+        const cols = row.querySelectorAll('td');
+        const rowData = [];
+        cols.forEach((col, idx) => {
+            let val = col.textContent.trim();
+            if (col.classList.contains('col-nota') || col.classList.contains('col-promedio')) {
+                val = val.replace(/\s+/g, '');
+            }
+            rowData.push('"' + val.replace(/"/g, '""') + '"');
+        });
+        if (rowData.length > 0) {
+            csv.push(rowData.join(';'));
+        }
+    });
+    
+    const csvContent = "\ufeff" + csv.join("\n"); // Add BOM for Excel UTF-8 support
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const curso = '{{ clase_seleccionada.curso.nombre|escapejs }}';
+    const asig = '{{ clase_seleccionada.asignatura.nombre|escapejs }}';
+    const filename = `Libro_Clases_${curso.replace(/\s+/g, '_')}_${asig.replace(/\s+/g, '_')}.csv`;
+    
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>

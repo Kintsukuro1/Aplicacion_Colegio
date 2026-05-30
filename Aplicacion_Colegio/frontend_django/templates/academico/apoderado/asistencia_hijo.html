@@ -168,7 +168,7 @@
             
             <div class="registros-lista">
                 {% for registro in registros %}
-                <div class="registro-item">
+                <div class="registro-item cursor-pointer" onclick="verDetalleRegistro('{{ registro.id }}', '{{ registro.asignatura.nombre|escapejs }}', '{{ registro.fecha|date:'d/m/Y' }}', '{{ registro.get_estado_display|escapejs }}', '{{ registro.observacion|default_if_none:''|escapejs }}')" style="cursor: pointer; transition: background-color 0.2s;">
                     <div class="registro-asignatura">
                         <span class="asignatura-nombre">{{ registro.asignatura.nombre }}</span>
                         <span class="asignatura-horario">{{ registro.hora_inicio|time:"H:i" }} - {{ registro.hora_fin|time:"H:i" }}</span>
@@ -219,6 +219,47 @@
     <!-- Estado Vacío: Sin Estudiante Seleccionado -->
     {% include 'frontend/templates/common/components/empty_state.html' with icon='fas fa-user-graduate' title='Selecciona un hijo' message='Selecciona un estudiante del menú superior para visualizar su asistencia.' %}
     {% endif %}
+</div>
+
+<!-- Modal Detalle Asistencia -->
+<div id="modal-detalle-asistencia" class="modal-backdrop" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;">
+    <div class="modal-dialog" style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25); max-width: 500px; width: 90%; transform: scale(0.9); transition: transform 0.3s ease; padding: 24px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 class="modal-title" style="font-size: 1.35rem; font-weight: 700; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>📅</span> Detalle de Asistencia
+            </h3>
+            <button class="modal-close" onclick="cerrarModalDetalle()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b; transition: color 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="color: #334155;">
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Asignatura</label>
+                <div id="detalle-asignatura" style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 4px;"></div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Fecha</label>
+                    <div id="detalle-fecha" style="font-size: 1rem; font-weight: 600; color: #334155; margin-top: 4px;"></div>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Estado</label>
+                    <div style="margin-top: 4px;" id="detalle-estado-container">
+                        <span id="detalle-estado-badge" class="badge"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 16px; background: rgba(59, 130, 246, 0.05); border-radius: 8px; padding: 12px; border-left: 4px solid #3b82f6;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Observaciones / Comentario</label>
+                <p id="detalle-observacion" style="font-size: 0.95rem; color: #475569; margin: 4px 0 0 0; font-style: italic; line-height: 1.5;"></p>
+            </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; margin-top: 24px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 16px;">
+            <button class="btn btn-secondary" onclick="cerrarModalDetalle()" style="border-radius: 8px; padding: 8px 16px; font-weight: 600;">Cerrar</button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 

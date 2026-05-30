@@ -88,10 +88,15 @@ class DashboardApoderadoService:
             
             # Inicio/perfil page
             if pagina_solicitada in ['inicio', 'perfil']:
+                pendientes_count = 0
+                if hasattr(user, 'perfil_apoderado'):
+                    from backend.apps.core.services.apoderado_api_service import ApoderadoApiService
+                    pendientes, _ = ApoderadoApiService.list_firmas_apoderado(user.perfil_apoderado)
+                    pendientes_count = len(pendientes)
                 context.update({
                     'total_pupilos': len(estudiantes),
                     'comunicados_nuevos': 0,  # TODO: Implement real count
-                    'pendientes_firma': 0,  # TODO: Implement real count
+                    'pendientes_firma': pendientes_count,
                     'cuotas_pendientes': 0,  # TODO: Implement real count
                 })
             
@@ -345,6 +350,15 @@ class DashboardApoderadoService:
             
             # Group by fecha
             for registro in registros:
+                # Inyectar dinámicamente los campos requeridos en el template para evitar fallos silenciosos
+                registro.asignatura = registro.clase.asignatura
+                bloque = registro.clase.bloques_horario.filter(activo=True).order_by('hora_inicio').first()
+                if bloque:
+                    registro.hora_inicio = bloque.hora_inicio
+                    registro.hora_fin = bloque.hora_fin
+                else:
+                    registro.hora_inicio = None
+                    registro.hora_fin = None
                 registros_por_fecha[registro.fecha].append(registro)
             
             # Get asignaturas
@@ -404,30 +418,20 @@ class DashboardApoderadoService:
     @staticmethod
     def _get_apoderado_firmas_context(user):
         """Get firmas pendientes context for apoderado."""
-        from backend.apps.accounts.models import FirmaDigitalApoderado
+        from backend.apps.core.services.apoderado_api_service import ApoderadoApiService
 
         firmados = []
+        pendientes = []
 
         if hasattr(user, 'perfil_apoderado'):
             apoderado = user.perfil_apoderado
-            firmas_qs = FirmaDigitalApoderado.objects.filter(
-                apoderado=apoderado,
-            ).select_related('estudiante').order_by('-timestamp_firma')[:50]
-
-            for firma in firmas_qs:
-                firmados.append({
-                    'id': firma.id,
-                    'tipo': firma.get_tipo_documento_display(),
-                    'titulo': firma.titulo_documento,
-                    'estudiante_nombre': firma.estudiante.get_full_name() if firma.estudiante else '',
-                    'fecha_firma': firma.timestamp_firma,
-                    'valida': firma.firma_valida,
-                })
+            pendientes, firmados = ApoderadoApiService.list_firmas_apoderado(apoderado)
 
         return {
             'firmados': firmados,
             'total_firmados': len(firmados),
-            'pendientes_firma': [],  # TODO: implement detection of unsigned documents
+            'pendientes_firma': pendientes,
+            'total_pendientes': len(pendientes),
         }
 
     @staticmethod
@@ -533,7 +537,7 @@ class DashboardApoderadoService:
             for sol in solicitudes_qs:
                 contrato_data = None
                 try:
-                    if sol.estado == 'ACEPTADA' and hasattr(sol, 'contrato'):
+                    if sol.estado in ['ACEPTADA', 'FIRMADA'] and hasattr(sol, 'contrato'):
                         contrato_data = sol.contrato
                 except Exception:
                     pass
@@ -551,6 +555,7 @@ class DashboardApoderadoService:
                     'fecha_creacion': sol.fecha_creacion,
                     'tiene_contrato': contrato_data is not None,
                     'contrato': contrato_data,
+                    'estudiante_id': sol.estudiante_id,
                 })
             
             # 2. Obtener ciclo académico activo

@@ -128,6 +128,23 @@ export default function ApoderadoPage() {
   });
   const [saving, setSaving] = useState(false);
   const [confirmingComunicadoId, setConfirmingComunicadoId] = useState(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [selectedCuotaForPayment, setSelectedCuotaForPayment] = useState(null);
+  const [webpayCardNumber, setWebpayCardNumber] = useState('');
+  const [webpayExpiry, setWebpayExpiry] = useState('');
+  const [webpayCvv, setWebpayCvv] = useState('');
+  const [webpayProcessing, setWebpayProcessing] = useState(false);
+  const [selectedAttendanceItem, setSelectedAttendanceItem] = useState(null);
+  const [attendanceFilter, setAttendanceFilter] = useState('ALL');
+  const [justificationModalOpen, setJustificationModalOpen] = useState(false);
+  const [justificationForm, setJustificationForm] = useState({
+    fecha_ausencia: '',
+    motivo: '',
+    tipo: 'MEDICO',
+  });
+  const [submittingJustification, setSubmittingJustification] = useState(false);
+  const [calDate, setCalDate] = useState(new Date());
   const [admissionForm, setAdmissionForm] = useState({
     curso_id: '',
     ciclo_id: '',
@@ -259,6 +276,16 @@ export default function ApoderadoPage() {
     queryFn: () => apiClient.get(`/api/v1/apoderado/pupilo/${selectedPupilId}/anotaciones/`),
     enabled: detailEnabled && activeTab === 'calendario'
   });
+  const { data: estadoCuenta, isLoading: loadingEstadoCuenta } = useQuery({
+    queryKey: ['apoderado-estado-cuenta', selectedPupilId],
+    queryFn: () => apiClient.get(`/api/v1/estudiante/estado-cuenta/?estudiante_id=${selectedPupilId}`),
+    enabled: Boolean(selectedPupilId) && (activeTab === 'estado_cuenta' || activeTab === 'mis_pagos')
+  });
+  const { data: misPagos, isLoading: loadingMisPagos } = useQuery({
+    queryKey: ['apoderado-mis-pagos', selectedPupilId],
+    queryFn: () => apiClient.get(`/api/v1/estudiante/mis-pagos/?estudiante_id=${selectedPupilId}`),
+    enabled: Boolean(selectedPupilId) && (activeTab === 'estado_cuenta' || activeTab === 'mis_pagos')
+  });
 
   const notas = toArray(gradesData, ['notas', 'calificaciones', 'asignaturas']);
   const asistencias = toArray(attendanceData, ['asistencia', 'asistencias', 'registros']);
@@ -364,6 +391,75 @@ export default function ApoderadoPage() {
       toast.error(resolveError(err, 'No se pudo confirmar el comunicado.'));
     } finally {
       setConfirmingComunicadoId(null);
+    }
+  }
+
+  async function handleSendMessage(e) {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedConversationId) return;
+    setSendingMessage(true);
+    try {
+      await apiClient.post(`/api/v1/mensajeria/conversaciones/${selectedConversationId}/mensajes/`, {
+        contenido: newMessage.trim()
+      });
+      setNewMessage('');
+      toast.success('Mensaje enviado con éxito.');
+      await queryClient.invalidateQueries({ queryKey: ['apoderado-mensajes', selectedConversationId] });
+      await queryClient.invalidateQueries({ queryKey: ['apoderado-conversaciones'] });
+    } catch (err) {
+      toast.error(resolveError(err, 'No se pudo enviar el mensaje.'));
+    } finally {
+      setSendingMessage(false);
+    }
+  }
+
+  function handleOpenWebpay(cuota) {
+    setSelectedCuotaForPayment(cuota);
+    setWebpayCardNumber('4540 1234 5678 9012');
+    setWebpayExpiry('12/29');
+    setWebpayCvv('123');
+  }
+
+  async function handleProcessWebpay(e) {
+    e.preventDefault();
+    if (!selectedCuotaForPayment) return;
+    setWebpayProcessing(true);
+    try {
+      await apiClient.post('/api/v1/estudiante/pagos/crear/', {
+        cuota_id: selectedCuotaForPayment.id_cuota,
+        numero_transaccion: 'TX-WP-' + Math.floor(Math.random() * 10000000),
+        numero_comprobante: 'COM-' + Math.floor(Math.random() * 10000000)
+      });
+      toast.success('¡Pago procesado con éxito por Webpay Transbank!');
+      setSelectedCuotaForPayment(null);
+      await queryClient.invalidateQueries({ queryKey: ['apoderado-estado-cuenta', selectedPupilId] });
+      await queryClient.invalidateQueries({ queryKey: ['apoderado-mis-pagos', selectedPupilId] });
+    } catch (err) {
+      toast.error(resolveError(err, 'Ocurrió un error al procesar el pago.'));
+    } finally {
+      setWebpayProcessing(false);
+    }
+  }
+
+  async function handleSubmitJustification(e) {
+    e.preventDefault();
+    if (!justificationForm.fecha_ausencia || !justificationForm.motivo || !selectedPupilId) return;
+    setSubmittingJustification(true);
+    try {
+      await apiClient.post('/api/apoderado/justificativos/', {
+        estudiante_id: Number(selectedPupilId),
+        fecha_ausencia: justificationForm.fecha_ausencia,
+        motivo: justificationForm.motivo,
+        tipo: justificationForm.tipo
+      });
+      toast.success('Justificativo enviado correctamente.');
+      setJustificationForm({ fecha_ausencia: '', motivo: '', tipo: 'MEDICO' });
+      setJustificationModalOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['apoderado-justificativos'] });
+    } catch (err) {
+      toast.error(resolveError(err, 'No se pudo enviar el justificativo.'));
+    } finally {
+      setSubmittingJustification(false);
     }
   }
 
@@ -522,36 +618,236 @@ export default function ApoderadoPage() {
 
       {activeTab === 'asistencia' ? (
         <article className="card section-card">
-          <h3>Asistencia {selectedPupil ? `de ${getPupilName(selectedPupil)}` : ''}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h3 style={{ margin: 0 }}>Asistencia {selectedPupil ? `de ${getPupilName(selectedPupil)}` : ''}</h3>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {['ALL', 'P', 'A', 'T', 'J'].map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setAttendanceFilter(f)}
+                  className={`badge ${attendanceFilter === f ? 'badge-warning' : 'badge-inactive'}`}
+                  style={{ border: 'none', cursor: 'pointer', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                >
+                  {f === 'ALL' ? 'Todos' : f === 'P' ? 'Presentes' : f === 'A' ? 'Ausentes' : f === 'T' ? 'Atrasos' : 'Justificados'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {attendanceLoading ? (
             <TableLoadingState />
-          ) : asistencias.length === 0 ? (
-            <p>Sin registros de asistencia.</p>
           ) : (
-            <ul>
-              {asistencias.slice(0, 20).map((item, index) => (
-                <li key={item.id || item.id_asistencia || `${item.fecha}-${index}`}>
-                  {item.fecha || item.fecha_asistencia || 'Sin fecha'} - {item.estado || item.estado_display || 'Sin estado'}
-                </li>
-              ))}
-            </ul>
+            <>
+              {attendanceData?.resumen && (
+                <div className="summary-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                  <article className="summary-tile" style={{ padding: '0.75rem' }}>
+                    <small>Asistencia</small>
+                    <strong style={{ fontSize: '1.5rem', color: attendanceData.resumen.porcentaje_asistencia >= 85 ? '#10b981' : '#ef4444' }}>
+                      {attendanceData.resumen.porcentaje_asistencia}%
+                    </strong>
+                    <span>Tasa de asistencia</span>
+                  </article>
+                  <article className="summary-tile" style={{ padding: '0.75rem' }}>
+                    <small>Presentes</small>
+                    <strong style={{ fontSize: '1.5rem' }}>{attendanceData.resumen.presentes}</strong>
+                    <span>Clases asistidas</span>
+                  </article>
+                  <article className="summary-tile" style={{ padding: '0.75rem' }}>
+                    <small>Ausentes</small>
+                    <strong style={{ fontSize: '1.5rem', color: '#ef4444' }}>{attendanceData.resumen.ausentes}</strong>
+                    <span>Clases inasistentes</span>
+                  </article>
+                  <article className="summary-tile" style={{ padding: '0.75rem' }}>
+                    <small>Atrasos</small>
+                    <strong style={{ fontSize: '1.5rem', color: '#f59e0b' }}>{attendanceData.resumen.tardanzas}</strong>
+                    <span>Llegadas tarde</span>
+                  </article>
+                </div>
+              )}
+
+              {asistencias.length === 0 ? (
+                <p>Sin registros de asistencia.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Asignatura</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {asistencias
+                        .filter(item => attendanceFilter === 'ALL' || item.estado === attendanceFilter)
+                        .slice(0, 20)
+                        .map((item, index) => {
+                          const statusColor = item.estado === 'P' ? '#10b981' : item.estado === 'A' ? '#ef4444' : item.estado === 'T' ? '#f59e0b' : '#3b82f6';
+                          return (
+                            <tr key={item.id || item.id_asistencia || `${item.fecha}-${index}`}>
+                              <td>{formatShortDate(item.fecha || item.fecha_asistencia, '-')}</td>
+                              <td>{item.asignatura || 'Clase'}</td>
+                              <td>
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '999px',
+                                  background: `${statusColor}1c`,
+                                  color: statusColor,
+                                  border: `1px solid ${statusColor}40`
+                                }}>
+                                  {item.estado_display || item.estado}
+                                </span>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedAttendanceItem(item)}
+                                  className="badge badge-inactive"
+                                  style={{ border: 'none', cursor: 'pointer' }}
+                                >
+                                  🔍 Ver Detalle
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </article>
       ) : null}
 
       {activeTab === 'calendario' ? (
         <article className="card section-card">
-          <h3>Calendario</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3>Calendario de Eventos y Anotaciones</h3>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="badge badge-inactive"
+                style={{ border: 'none', cursor: 'pointer' }}
+                onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))}
+              >
+                ‹ Anterior
+              </button>
+              <strong style={{ fontSize: '1rem', minWidth: '150px', textAlign: 'center' }}>
+                {calDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}
+              </strong>
+              <button
+                type="button"
+                className="badge badge-inactive"
+                style={{ border: 'none', cursor: 'pointer' }}
+                onClick={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))}
+              >
+                Siguiente ›
+              </button>
+            </div>
+          </div>
+
           {annotationsLoading ? (
             <TableLoadingState />
-          ) : anotaciones.length === 0 ? (
-            <p>Sin eventos o anotaciones recientes.</p>
           ) : (
-            <ul>
-              {anotaciones.slice(0, 20).map((item, index) => (
-                <li key={item.id || index}>{item.fecha || ''} {item.descripcion || item.contenido || item.tipo || 'Registro'}</li>
-              ))}
-            </ul>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: '4px',
+                border: '1px solid rgba(148, 163, 184, 0.1)',
+                borderRadius: '8px',
+                padding: '4px',
+                background: 'rgba(255,255,255,0.01)'
+              }}>
+                {['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '0.75rem', padding: '0.5rem 0', color: 'var(--muted)' }}>{d}</div>
+                ))}
+                {(() => {
+                  const days = [];
+                  const year = calDate.getFullYear();
+                  const month = calDate.getMonth();
+                  const firstDay = new Date(year, month, 1);
+                  const lastDay = new Date(year, month + 1, 0);
+                  const startDay = firstDay.getDay();
+                  const totalDays = lastDay.getDate();
+
+                  for (let i = 0; i < startDay; i++) {
+                    days.push(<div key={`empty-${i}`} style={{ minHeight: '60px', background: 'transparent' }} />);
+                  }
+
+                  for (let day = 1; day <= totalDays; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const items = anotaciones.filter(item => (item.fecha || '').startsWith(dateStr));
+                    const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+
+                    days.push(
+                      <div key={day} style={{
+                        minHeight: '60px',
+                        border: '1px solid rgba(148, 163, 184, 0.08)',
+                        borderRadius: '6px',
+                        padding: '4px',
+                        background: isToday ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        cursor: items.length > 0 ? 'pointer' : 'default',
+                        boxShadow: isToday ? '0 0 10px rgba(59,130,246,0.2)' : undefined
+                      }} onClick={() => items.length > 0 && setSelectedAttendanceItem({ ...items[0], type: 'ANOTACION' })}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: isToday ? '#3b82f6' : 'inherit' }}>{day}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {items.slice(0, 2).map((item, idx) => {
+                            const isPositive = item.tipo === 'P' || item.gravedad === 'LEVE';
+                            return (
+                              <div key={idx} style={{
+                                fontSize: '0.65rem',
+                                padding: '2px 4px',
+                                borderRadius: '3px',
+                                background: isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: isPositive ? '#10b981' : '#ef4444',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap'
+                              }} title={item.descripcion || item.contenido}>
+                                {item.tipo_display || item.tipo || 'Anotación'}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return days;
+                })()}
+              </div>
+
+              <div>
+                <h4 style={{ marginBottom: '0.75rem' }}>Listado de Anotaciones</h4>
+                {anotaciones.length === 0 ? (
+                  <p>Sin anotaciones registradas.</p>
+                ) : (
+                  <ul className="compact-list">
+                    {anotaciones.slice(0, 10).map((item, index) => {
+                      const isPositive = item.tipo === 'P' || item.gravedad === 'LEVE';
+                      return (
+                        <li key={item.id || index} style={{ borderLeft: `4px solid ${isPositive ? '#10b981' : '#ef4444'}`, paddingLeft: '1rem', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
+                            <strong>{item.tipo_display || item.tipo || 'Anotación de Convivencia'}</strong>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{formatShortDate(item.fecha, '-')}</span>
+                          </div>
+                          <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>{item.descripcion || item.contenido}</p>
+                          <small style={{ color: 'var(--muted)' }}>Registrado por: {item.registrado_por || 'Establecimiento'}</small>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
           )}
         </article>
       ) : null}
@@ -620,21 +916,40 @@ export default function ApoderadoPage() {
 
               {messagesLoading ? (
                 <TableLoadingState />
-              ) : mensajes.length === 0 ? (
-                <p>Sin mensajes para esta conversacion.</p>
               ) : (
-                <ul className="compact-list" style={{ marginTop: '1rem' }}>
-                  {mensajes.slice(-15).map((item) => (
-                    <li key={item.id_mensaje || item.id}>
-                      <strong>{item.emisor_nombre || 'Usuario'}</strong>
-                      <span> - {formatShortDate(item.fecha_envio, '-')}</span>
-                      <p style={{ margin: '0.35rem 0 0' }}>{item.contenido || 'Sin contenido'}</p>
-                      {item.archivo_adjunto ? (
-                        <a href={item.archivo_adjunto} target="_blank" rel="noreferrer">Ver adjunto</a>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {mensajes.length === 0 ? (
+                    <p>Sin mensajes para esta conversacion.</p>
+                  ) : (
+                    <ul className="compact-list" style={{ marginTop: '1rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                      {mensajes.slice(-15).map((item) => (
+                        <li key={item.id_mensaje || item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.75rem', padding: '0.5rem', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.02)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>{item.emisor_nombre || 'Usuario'}</strong>
+                            <small style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>{formatShortDate(item.fecha_envio, '-')}</small>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--foreground)' }}>{item.contenido || 'Sin contenido'}</p>
+                          {item.archivo_adjunto ? (
+                            <a href={item.archivo_adjunto} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '0.25rem' }}>📎 Ver adjunto</a>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <form onSubmit={handleSendMessage} style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="text"
+                      placeholder="Escribe un mensaje..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      disabled={sendingMessage}
+                      style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', background: 'rgba(255, 255, 255, 0.05)', color: 'inherit' }}
+                    />
+                    <button type="submit" disabled={sendingMessage || !newMessage.trim()} className="badge badge-warning" style={{ border: 'none', cursor: 'pointer', padding: '0 1.25rem' }}>
+                      {sendingMessage ? 'Enviando...' : 'Enviar'}
+                    </button>
+                  </form>
+                </>
               )}
             </>
           )}
@@ -847,40 +1162,119 @@ export default function ApoderadoPage() {
 
       {activeTab === 'estado_cuenta' ? (
         <article className="card section-card">
-          <h3>Estado de cuenta</h3>
-          {pagosLoading ? (
+          <h3>Estado de cuenta {selectedPupil ? `de ${getPupilName(selectedPupil)}` : ''}</h3>
+          {loadingEstadoCuenta ? (
             <TableLoadingState />
           ) : pagosError ? (
             <div className="error-box" role="alert" aria-live="assertive">{pagosError}</div>
-          ) : pagosPupilos.length === 0 ? (
+          ) : !estadoCuenta?.totales ? (
             <p>Sin estado de cuenta disponible.</p>
           ) : (
             <>
-              <div className="summary-grid" style={{ marginBottom: '1rem' }}>
+              <div className="summary-grid" style={{ marginBottom: '1.5rem' }}>
                 <article className="summary-tile">
-                  <small>Total deuda</small>
-                  <strong>{formatNumber(pagosResumen?.total_deuda, '0')}</strong>
-                  <span>Deuda acumulada</span>
+                  <small>Total arancel</small>
+                  <strong>{formatNumber(estadoCuenta.totales.total_arancel, '0')}</strong>
+                  <span>Arancel del ciclo</span>
+                </article>
+                <article className="summary-tile">
+                  <small>Descuentos</small>
+                  <strong>{formatNumber(estadoCuenta.totales.total_descuentos, '0')}</strong>
+                  <span>Beneficios aplicados</span>
+                </article>
+                <article className="summary-tile">
+                  <small>Total a pagar</small>
+                  <strong>{formatNumber(estadoCuenta.totales.total_a_pagar, '0')}</strong>
+                  <span>Monto neto</span>
                 </article>
                 <article className="summary-tile">
                   <small>Total pagado</small>
-                  <strong>{formatNumber(pagosResumen?.total_pagado, '0')}</strong>
-                  <span>Pagos registrados</span>
+                  <strong>{formatNumber(estadoCuenta.totales.total_pagado, '0')}</strong>
+                  <span>Abonos</span>
                 </article>
-                <article className="summary-tile">
-                  <small>Saldo pendiente</small>
-                  <strong>{formatNumber(pagosResumen?.saldo_pendiente, '0')}</strong>
+                <article className="summary-tile" style={{ background: estadoCuenta.totales.saldo_pendiente > 0 ? 'rgba(239, 68, 68, 0.08)' : undefined }}>
+                  <small style={{ color: estadoCuenta.totales.saldo_pendiente > 0 ? '#ef4444' : undefined }}>Saldo pendiente</small>
+                  <strong style={{ color: estadoCuenta.totales.saldo_pendiente > 0 ? '#ef4444' : undefined }}>{formatNumber(estadoCuenta.totales.saldo_pendiente, '0')}</strong>
                   <span>Saldo por regularizar</span>
                 </article>
               </div>
-              <ul className="compact-list">
-                {pagosPupilos.map((item) => (
-                  <li key={item.student_id || item.id}>
-                    <strong>{item.nombre_completo || 'Pupilo'}</strong>
-                    <span> - Saldo: {formatNumber(item.saldo_pendiente, '0')}</span>
-                  </li>
-                ))}
-              </ul>
+
+              <div style={{ marginTop: '0.5rem' }}>
+                <h4 style={{ marginBottom: '1rem' }}>Detalle de Cuotas</h4>
+                {(!estadoCuenta.cuotas || estadoCuenta.cuotas.length === 0) ? (
+                  <p>No hay cuotas registradas.</p>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Cuota</th>
+                          <th>Año/Mes</th>
+                          <th>Monto Final</th>
+                          <th>Pagado</th>
+                          <th>Saldo Pendiente</th>
+                          <th>Vencimiento</th>
+                          <th>Estado</th>
+                          <th>Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {estadoCuenta.cuotas.map((cuota) => {
+                          const colorMap = {
+                            PAGADA: '#10b981',
+                            PENDIENTE: '#6b7280',
+                            VENCIDA: '#ef4444',
+                            PAGADA_PARCIAL: '#f59e0b',
+                          };
+                          const color = colorMap[cuota.estado] || '#6b7280';
+                          return (
+                            <tr key={cuota.id_cuota}>
+                              <td>Cuota #{cuota.numero_cuota}</td>
+                              <td>{cuota.anio} / {String(cuota.mes).padStart(2, '0')}</td>
+                              <td>${formatNumber(cuota.monto_final, '0')}</td>
+                              <td>${formatNumber(cuota.monto_pagado, '0')}</td>
+                              <td>
+                                <strong style={{ color: cuota.saldo_pendiente > 0 ? '#ef4444' : undefined }}>
+                                  ${formatNumber(cuota.saldo_pendiente, '0')}
+                                </strong>
+                              </td>
+                              <td>{cuota.fecha_vencimiento ? new Date(cuota.fecha_vencimiento + 'T00:00:00').toLocaleDateString() : '-'}</td>
+                              <td>
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '999px',
+                                  background: `${color}1c`,
+                                  color,
+                                  border: `1px solid ${color}40`,
+                                  display: 'inline-block'
+                                }}>
+                                  {cuota.estado}
+                                </span>
+                              </td>
+                              <td>
+                                {cuota.saldo_pendiente > 0 && cuota.estado !== 'PAGADA' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenWebpay(cuota)}
+                                    className="badge badge-warning"
+                                    style={{ border: 'none', cursor: 'pointer' }}
+                                  >
+                                    💳 Pagar
+                                  </button>
+                                ) : (
+                                  <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}>✓ Pagado</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </article>
@@ -888,24 +1282,85 @@ export default function ApoderadoPage() {
 
       {activeTab === 'mis_pagos' ? (
         <article className="card section-card">
-          <h3>Mis pagos</h3>
-          {pagosLoading ? (
+          <h3>Historial de Pagos de {selectedPupil ? getPupilName(selectedPupil) : ''}</h3>
+          {loadingMisPagos ? (
             <TableLoadingState />
           ) : pagosError ? (
             <div className="error-box" role="alert" aria-live="assertive">{pagosError}</div>
-          ) : pagosPupilos.length === 0 ? (
+          ) : !misPagos ? (
             <p>Sin pagos registrados.</p>
           ) : (
-            <ul className="compact-list">
-              {pagosPupilos.map((item) => (
-                <li key={item.student_id || item.id}>
-                  <strong>{item.nombre_completo || 'Pupilo'}</strong>
-                  <span> - Pagado: {formatNumber(item.total_pagado, '0')} | Pendiente: {formatNumber(item.saldo_pendiente, '0')}</span>
-                </li>
-              ))}
-            </ul>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="summary-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <article className="summary-tile" style={{ maxWidth: '300px' }}>
+                  <small>Monto Total Pagado</small>
+                  <strong style={{ color: '#10b981' }}>${formatNumber(misPagos.total_pagado, '0')}</strong>
+                  <span>Total de abonos a la fecha</span>
+                </article>
+              </div>
+
+              <div style={{ marginTop: '0.5rem' }}>
+                <h4 style={{ marginBottom: '1rem' }}>Pagos Registrados</h4>
+                {(!misPagos.pagos || misPagos.pagos.length === 0) ? (
+                  <p>Aún no registra abonos o pagos asociados.</p>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Comprobante</th>
+                          <th>Fecha</th>
+                          <th>Monto</th>
+                          <th>Método de Pago</th>
+                          <th>Transacción</th>
+                          <th>Estado</th>
+                          <th>Archivo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {misPagos.pagos.map((pago) => {
+                          const isSuccess = pago.estado === 'APROBADO' || pago.estado === 'PROCESADO' || pago.estado === 'COMPLETADO' || pago.estado === 'Aprobado';
+                          const color = isSuccess ? '#10b981' : '#6b7280';
+                          return (
+                            <tr key={pago.id_pago}>
+                              <td>#{pago.numero_comprobante || pago.id_pago}</td>
+                              <td>{pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleString() : '-'}</td>
+                              <td>
+                                <strong style={{ color: '#10b981' }}>${formatNumber(pago.monto, '0')}</strong>
+                              </td>
+                              <td>{pago.metodo_pago || 'N/A'}</td>
+                              <td>{pago.numero_transaccion || '-'}</td>
+                              <td>
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '999px',
+                                  background: `${color}1c`,
+                                  color,
+                                  border: `1px solid ${color}40`,
+                                  display: 'inline-block'
+                                }}>
+                                  {pago.estado || 'Aprobado'}
+                                </span>
+                              </td>
+                              <td>
+                                {pago.comprobante ? (
+                                  <a href={`${apiClient.baseUrl}${pago.comprobante}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: 'var(--primary)' }}>
+                                    📄 Ver Documento
+                                  </a>
+                                ) : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
-          <p style={{ marginTop: '0.75rem', color: 'var(--muted)' }}>Para el detalle completo de pagos y comprobantes, consulta con el area administrativa del colegio.</p>
         </article>
       ) : null}
 
@@ -961,18 +1416,47 @@ export default function ApoderadoPage() {
       <>
       <div className="grid-2">
         <article className="card section-card">
-          <h3>Justificativos ({justificativos.length})</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3>Justificativos ({justificativos.length})</h3>
+            {selectedPupilId && (
+              <button
+                type="button"
+                onClick={() => setJustificationModalOpen(true)}
+                className="badge badge-warning"
+                style={{ border: 'none', cursor: 'pointer' }}
+              >
+                + Nuevo Justificativo
+              </button>
+            )}
+          </div>
           {loading ? (
             <TableLoadingState />
           ) : justificativos.length === 0 ? (
             <p>Sin justificativos.</p>
           ) : (
-            <ul>
-              {justificativos.slice(0, 10).map((item) => (
-                <li key={item.id || item.id_justificativo}>
-                  {item.fecha_ausencia || item.fecha || 'Sin fecha'} - {item.estado || 'Pendiente'}
-                </li>
-              ))}
+            <ul className="compact-list">
+              {justificativos.slice(0, 10).map((item) => {
+                const color = item.estado === 'APROBADO' ? '#10b981' : item.estado === 'RECHAZADO' ? '#ef4444' : '#6b7280';
+                return (
+                  <li key={item.id || item.id_justificativo}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>📅 {formatShortDate(item.fecha_ausencia || item.fecha, '-')}</strong>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: '600',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '999px',
+                        background: `${color}1c`,
+                        color,
+                        border: `1px solid ${color}40`
+                      }}>
+                        {item.estado}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>{item.motivo}</p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </article>
@@ -1027,6 +1511,383 @@ export default function ApoderadoPage() {
       </form>
       </>
       ) : null}
+      {/* Modales Apoderado */}
+      {selectedAttendanceItem && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            color: '#f8fafc'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>
+                {selectedAttendanceItem.type === 'ANOTACION' ? '📋 Detalle de Anotación' : '📅 Detalle de Asistencia'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelectedAttendanceItem(null)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+            {selectedAttendanceItem.type === 'ANOTACION' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p><strong>Categoría:</strong> {selectedAttendanceItem.categoria || 'Convivencia'}</p>
+                <p><strong>Gravedad:</strong> {selectedAttendanceItem.gravedad || 'Leve'}</p>
+                <p><strong>Fecha:</strong> {formatShortDate(selectedAttendanceItem.fecha, '-')}</p>
+                <p><strong>Descripción:</strong> {selectedAttendanceItem.descripcion}</p>
+                <p><strong>Registrado por:</strong> {selectedAttendanceItem.registrado_por || 'Colegio'}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p><strong>Fecha:</strong> {formatShortDate(selectedAttendanceItem.fecha || selectedAttendanceItem.fecha_asistencia, '-')}</p>
+                <p><strong>Asignatura:</strong> {selectedAttendanceItem.asignatura || 'Clase'}</p>
+                <p><strong>Estado:</strong> {selectedAttendanceItem.estado_display || selectedAttendanceItem.estado}</p>
+                <p><strong>Tipo:</strong> {selectedAttendanceItem.tipo_asistencia || 'Normal'}</p>
+                <p><strong>Observaciones:</strong> {selectedAttendanceItem.observaciones || 'Sin observaciones.'}</p>
+              </div>
+            )}
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="badge badge-inactive"
+                onClick={() => setSelectedAttendanceItem(null)}
+                style={{ border: 'none', cursor: 'pointer', padding: '0.5rem 1.5rem' }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {justificationModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            color: '#f8fafc'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>📋 Presentar Justificativo</h3>
+              <button
+                type="button"
+                onClick={() => setJustificationModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleSubmitJustification} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Fecha de Inasistencia</label>
+                <input
+                  type="date"
+                  required
+                  disabled={submittingJustification}
+                  value={justificationForm.fecha_ausencia}
+                  onChange={(e) => setJustificationForm(prev => ({ ...prev, fecha_ausencia: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#f8fafc',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Tipo de Inasistencia</label>
+                <select
+                  disabled={submittingJustification}
+                  value={justificationForm.tipo}
+                  onChange={(e) => setJustificationForm(prev => ({ ...prev, tipo: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#f8fafc',
+                    fontSize: '1rem'
+                  }}
+                >
+                  <option value="MEDICO">Médica / Salud</option>
+                  <option value="PERSONAL">Familiar / Personal</option>
+                  <option value="FUERZA_MAYOR">Fuerza Mayor</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Motivo detallado</label>
+                <textarea
+                  required
+                  disabled={submittingJustification}
+                  value={justificationForm.motivo}
+                  onChange={(e) => setJustificationForm(prev => ({ ...prev, motivo: e.target.value }))}
+                  placeholder="Detalla la justificación de la ausencia..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#f8fafc',
+                    fontSize: '1rem',
+                    height: '100px',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setJustificationModalOpen(false)}
+                  disabled={submittingJustification}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'transparent',
+                    color: '#94a3b8',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingJustification}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }}
+                >
+                  {submittingJustification ? 'Enviando...' : 'Enviar Justificativo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {selectedCuotaForPayment && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+            color: '#f8fafc'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>💳</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>webpay<span style={{ color: '#3b82f6' }}>plus</span></h3>
+                  <small style={{ color: '#94a3b8', fontSize: '0.7rem' }}>Transacción Segura de Transbank</small>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCuotaForPayment(null)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#94a3b8' }}>
+                Comercio: <strong style={{ color: '#f1f5f9' }}>Colegio Kintsugi Academy</strong>
+              </p>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#94a3b8' }}>
+                Cuota: <strong style={{ color: '#f1f5f9' }}>Cuota #{selectedCuotaForPayment.numero_cuota} ({selectedCuotaForPayment.anio}/{String(selectedCuotaForPayment.mes).padStart(2, '0')})</strong>
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 600 }}>Monto a pagar:</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>
+                  ${formatNumber(selectedCuotaForPayment.saldo_pendiente, '0')}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleProcessWebpay} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Número de Tarjeta</label>
+                <input
+                  type="text"
+                  value={webpayCardNumber}
+                  onChange={(e) => setWebpayCardNumber(e.target.value)}
+                  required
+                  disabled={webpayProcessing}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#f8fafc',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Vencimiento</label>
+                  <input
+                    type="text"
+                    value={webpayExpiry}
+                    onChange={(e) => setWebpayExpiry(e.target.value)}
+                    required
+                    disabled={webpayProcessing}
+                    placeholder="MM/AA"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(15, 23, 42, 0.6)',
+                      color: '#f8fafc',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.35rem' }}>CVV</label>
+                  <input
+                    type="password"
+                    value={webpayCvv}
+                    onChange={(e) => setWebpayCvv(e.target.value)}
+                    required
+                    disabled={webpayProcessing}
+                    maxLength={4}
+                    placeholder="•••"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(15, 23, 42, 0.6)',
+                      color: '#f8fafc',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCuotaForPayment(null)}
+                  disabled={webpayProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'transparent',
+                    color: '#94a3b8',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={webpayProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(90deg, #ef4444, #e11d48)',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {webpayProcessing ? 'Procesando...' : 'Pagar con Webpay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

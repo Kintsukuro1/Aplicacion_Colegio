@@ -33,23 +33,39 @@ function calificarEvaluacion(evaluacionId) {
 }
 
 // Editar evaluación
-function editarEvaluacion(evaluacionId) {
-    // TODO: Abrir modal de edición con datos precargados
-    if (typeof ToastManager !== 'undefined') {
-        ToastManager.info('Función de edición en desarrollo');
+function editarEvaluacion(evaluacionId, nombre, fecha, ponderacion) {
+    document.getElementById('editar_evaluacion_id').value = evaluacionId;
+    document.getElementById('editar_nombre_evaluacion').value = nombre;
+    document.getElementById('editar_fecha_evaluacion').value = fecha;
+    document.getElementById('editar_ponderacion').value = ponderacion;
+    document.getElementById('modal-editar-evaluacion').style.display = 'flex';
+}
+
+// Cerrar modal editar evaluación
+function cerrarModalEditarEvaluacion() {
+    document.getElementById('modal-editar-evaluacion').style.display = 'none';
+    document.getElementById('form-editar-evaluacion').reset();
+}
+
+// Submit editar evaluación
+function submitEditarEvaluacion() {
+    const form = document.getElementById('form-editar-evaluacion');
+    if (form.checkValidity()) {
+        form.submit();
+    } else {
+        form.reportValidity();
     }
 }
 
 // Eliminar evaluación
 function eliminarEvaluacion(evaluacionId) {
     if (confirm('¿Estás seguro de eliminar esta evaluación? Se eliminarán todas las calificaciones asociadas.')) {
-        // TODO: Enviar solicitud de eliminación
         const form = document.createElement('form');
         form.method = 'POST';
         form.innerHTML = `
             <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
             <input type="hidden" name="accion" value="eliminar_evaluacion">
-            <input type="hidden" name="evaluacion_id" value="${evaluacionId}">
+            <input type="hidden" name="id" value="${evaluacionId}">
         `;
         document.body.appendChild(form);
         form.submit();

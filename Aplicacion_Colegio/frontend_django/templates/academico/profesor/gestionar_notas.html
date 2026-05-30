@@ -129,7 +129,7 @@
                                 <button class="btn btn-sm btn-outline" onclick="calificarEvaluacion({{ evaluacion.id_evaluacion }})" title="Calificar">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline" onclick="editarEvaluacion({{ evaluacion.id_evaluacion }})" title="Editar">
+                                <button class="btn btn-sm btn-outline" onclick="editarEvaluacion({{ evaluacion.id_evaluacion }}, '{{ evaluacion.nombre|escapejs }}', '{{ evaluacion.fecha_evaluacion|date:'Y-m-d' }}', {{ evaluacion.ponderacion }})" title="Editar">
                                     <i class="fas fa-cog"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline btn-error" onclick="eliminarEvaluacion({{ evaluacion.id_evaluacion }})" title="Eliminar">
@@ -197,6 +197,54 @@
             <button class="btn btn-outline" onclick="cerrarModalCrearEvaluacion()">Cancelar</button>
             <button class="btn btn-primary" onclick="submitCrearEvaluacion()">
                 <i class="fas fa-save"></i> Crear Evaluación
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Evaluación -->
+<div id="modal-editar-evaluacion" class="modal-backdrop d-none">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 class="modal-title">Editar Evaluación</h3>
+            <button class="modal-close" onclick="cerrarModalEditarEvaluacion()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="form-editar-evaluacion" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_evaluacion">
+                <input type="hidden" id="editar_evaluacion_id" name="id" value="">
+                <input type="hidden" name="clase_id" value="{{ clase_seleccionada.id }}">
+                
+                <div class="form-group">
+                    <label class="form-label form-label-required" for="editar_nombre_evaluacion">Nombre de la Evaluación</label>
+                    <input type="text" id="editar_nombre_evaluacion" name="nombre" class="form-control" required maxlength="100" placeholder="Ej: Prueba Unidad 3">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                    <div class="form-group">
+                        <label class="form-label form-label-required" for="editar_fecha_evaluacion">Fecha</label>
+                        <input type="date" id="editar_fecha_evaluacion" name="fecha" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label form-label-required" for="editar_ponderacion">Ponderación (%)</label>
+                        <input type="number" id="editar_ponderacion" name="ponderacion" class="form-control" required min="1" max="100" value="20">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="editar_descripcion_evaluacion">Descripción (opcional)</label>
+                    <textarea id="editar_descripcion_evaluacion" name="descripcion" class="form-control" rows="3" placeholder="Contenidos evaluados, instrucciones, etc."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalEditarEvaluacion()">Cancelar</button>
+            <button class="btn btn-primary" onclick="submitEditarEvaluacion()">
+                <i class="fas fa-save"></i> Guardar Cambios
             </button>
         </div>
     </div>

@@ -71,14 +71,29 @@ def lista_comunicados(request):
     ComunicadosService.mark_comunicados_as_read_for_user(request.user, comunicados)
 
     # Dashboard context variables (required by dashboard.html template)
+    shell_context = _build_dashboard_shell_context(request)
     context = {
         'comunicados': comunicados,
         'tipo_filtro': tipo_filtro,
         'tipos': Comunicado.TIPOS,
-        **_build_dashboard_shell_context(request),
+        **shell_context,
     }
 
-    return render(request, 'comunicados/lista_comunicados.html', context)
+    # Resolve template dynamically based on role
+    from backend.common.template_mapping import get_template_for_role
+    from django.template import TemplateDoesNotExist
+    from django.template.loader import get_template
+    
+    rol = shell_context.get('rol', 'estudiante')
+    try:
+        mapped_path = get_template_for_role('comunicados', rol)
+        # Strip 'frontend/templates/' prefix for Django's template engine
+        template_name = mapped_path.replace('frontend/templates/', '')
+        get_template(template_name)  # Verify template exists on disk
+    except (TemplateDoesNotExist, Exception):
+        template_name = 'comunicados/lista_comunicados.html'
+
+    return render(request, template_name, context)
 
 
 @login_required

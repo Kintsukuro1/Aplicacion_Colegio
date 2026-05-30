@@ -139,8 +139,8 @@ function exportarNotasPDF() {
         return;
     }
     
-    // TODO: Implementar exportación real
-    window.location.href = `/api/academico/notas/pdf/?estudiante_id=${estudianteId}`;
+    // Abrir descarga real del certificado de notas en PDF (ReportLab)
+    window.open('/pdf/certificado-notas/' + estudianteId + '/', '_blank');
 }
 
 /**

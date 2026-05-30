@@ -130,8 +130,46 @@ class ApoderadoApiService:
                 'valida': firma.firma_valida,
             })
 
-        # TODO: Implement pending document detection
-        return [], firmados
+        # 1. Obtener IDs de estudiantes vinculados al apoderado activo
+        from backend.apps.accounts.models import RelacionApoderadoEstudiante
+        from backend.apps.core.models import CitacionApoderado
+
+        estudiante_ids = list(
+            RelacionApoderadoEstudiante.objects.filter(
+                apoderado=apoderado,
+                activa=True,
+            ).values_list('estudiante_id', flat=True)
+        )
+
+        # 2. Obtener IDs de citaciones ya firmadas por este apoderado
+        firmadas_citacion_ids = list(
+            FirmaDigitalApoderado.objects.filter(
+                apoderado=apoderado,
+                tipo_documento='citacion',
+                documento_id__isnull=False
+            ).values_list('documento_id', flat=True)
+        )
+
+        # 3. Buscar citaciones pendientes (estado='PENDIENTE' y estudiante en estudiante_ids y no firmadas)
+        citaciones_pendientes = CitacionApoderado.objects.filter(
+            estudiante_id__in=estudiante_ids,
+            estado='PENDIENTE'
+        ).exclude(
+            id_citacion__in=firmadas_citacion_ids
+        ).select_related('estudiante', 'solicitado_por')
+
+        pendientes = []
+        for cit in citaciones_pendientes:
+            pendientes.append({
+                'id': cit.id_citacion,
+                'tipo': 'Citación',
+                'titulo': f"Citación - {cit.estudiante.get_full_name()} ({cit.fecha_citacion.strftime('%d/%m/%Y')})",
+                'estudiante_nombre': cit.estudiante.get_full_name(),
+                'fecha_citacion': cit.fecha_citacion.strftime('%d/%m/%Y %H:%M'),
+                'motivo': cit.motivo,
+            })
+
+        return pendientes, firmados
 
     @staticmethod
     def firmar_documento(*, apoderado, tipo_documento: str, titulo: str, contenido: str,

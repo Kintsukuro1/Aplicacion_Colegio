@@ -191,14 +191,81 @@ function filtrarPorRangoFecha(fechaInicio, fechaFin) {
 }
 
 /**
- * Muestra detalles de un registro de asistencia
- * @param {number} registroId - ID del registro
+ * Muestra detalles de un registro de asistencia en un modal premium
+ * @param {string} id - ID del registro
+ * @param {string} asignatura - Nombre de la asignatura
+ * @param {string} fecha - Fecha del registro
+ * @param {string} estado - Estado en texto (Presente, Ausente, etc.)
+ * @param {string} observacion - Comentarios u observaciones del docente
  */
-function verDetalleRegistro(registroId) {
-    // TODO: Implementar modal de detalles
-    console.log('Ver detalle del registro:', registroId);
-    showToast('Funcionalidad en desarrollo', 'info');
+function verDetalleRegistro(id, asignatura, fecha, estado, observacion) {
+    document.getElementById('detalle-asignatura').textContent = asignatura;
+    document.getElementById('detalle-fecha').textContent = fecha;
+    
+    const badge = document.getElementById('detalle-estado-badge');
+    badge.textContent = estado;
+    
+    // Limpiar y aplicar clases correctas de color al badge
+    badge.className = 'badge';
+    const estLower = estado.toLowerCase();
+    if (estLower.includes('pres')) {
+        badge.classList.add('badge-success');
+    } else if (estLower.includes('aus')) {
+        badge.classList.add('badge-danger');
+    } else if (estLower.includes('atr') || estLower.includes('tard')) {
+        badge.classList.add('badge-warning');
+    } else if (estLower.includes('jus')) {
+        badge.classList.add('badge-info');
+    }
+    
+    const obsElement = document.getElementById('detalle-observacion');
+    if (observacion && observacion.trim() !== '') {
+        obsElement.textContent = observacion;
+    } else {
+        obsElement.textContent = 'Sin observaciones o comentarios registrados para este bloque.';
+    }
+    
+    const modal = document.getElementById('modal-detalle-asistencia');
+    const dialog = modal.querySelector('.modal-dialog');
+    
+    modal.style.display = 'flex';
+    // Forzar reflow para la animación
+    modal.offsetHeight;
+    
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    if (dialog) {
+        dialog.style.transform = 'scale(1)';
+    }
 }
+
+/**
+ * Cierra el modal de detalle de asistencia con transiciones suaves
+ */
+function cerrarModalDetalle() {
+    const modal = document.getElementById('modal-detalle-asistencia');
+    const dialog = modal.querySelector('.modal-dialog');
+    
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'none';
+    if (dialog) {
+        dialog.style.transform = 'scale(0.9)';
+    }
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+// Escuchar tecla escape para cerrar el modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modal-detalle-asistencia');
+        if (modal && modal.style.display === 'flex') {
+            cerrarModalDetalle();
+        }
+    }
+});
 
 /**
  * Calcula y muestra estadísticas personalizadas

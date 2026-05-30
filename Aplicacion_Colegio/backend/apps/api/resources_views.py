@@ -33,6 +33,7 @@ from backend.apps.api.services.dashboard_api_service import DashboardApiService
 from backend.apps.api.services.matricula_api_service import MatriculaApiService
 from backend.apps.api.services.student_api_service import StudentApiService
 from backend.apps.api.services.student_portal_api_service import StudentPortalApiService
+from backend.apps.matriculas.services import MatriculasService
 from backend.apps.api.resources_serializers import (
     ApoderadoListSerializer,
     ApoderadoCreateUpdateSerializer,
@@ -872,3 +873,190 @@ def student_my_attendance(request):
         fecha_hasta=request.query_params.get('fecha_hasta'),
     )
     return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_my_tasks(request):
+    forbid_without_cap(request.user, 'CLASS_VIEW')
+    can_manage = has_cap(request.user, 'CLASS_EDIT') or has_cap(request.user, 'CLASS_TAKE_ATTENDANCE')
+    if can_manage:
+        return Response({'detail': 'No tienes permisos de estudiante.'}, status=status.HTTP_403_FORBIDDEN)
+
+    payload = StudentPortalApiService.serialize_my_tasks(user=request.user)
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_estado_cuenta(request):
+    if not (has_cap(request.user, 'FINANCE_VIEW') or has_cap(request.user, 'PORTAL_ESTUDIANTE')):
+        raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+    estudiante_id = request.query_params.get('estudiante_id')
+    estudiante_obj = None
+    if estudiante_id:
+        try:
+            from backend.apps.accounts.models import User
+            estudiante_obj = User.objects.get(id=estudiante_id)
+            if hasattr(request.user, 'perfil_apoderado'):
+                from backend.apps.accounts.models import RelacionApoderadoEstudiante
+                if not RelacionApoderadoEstudiante.objects.filter(apoderado__user=request.user, estudiante=estudiante_obj, activa=True).exists():
+                    raise PermissionDenied("No tiene relación de apoderado activa con este estudiante.")
+            elif request.user != estudiante_obj:
+                raise PermissionDenied("No tiene acceso a las cuotas de este estudiante.")
+        except User.DoesNotExist:
+            return Response({'detail': 'Estudiante no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    result = MatriculasService.get_estado_cuenta_data(request.user, estudiante_obj)
+    if 'error' in result:
+        return Response({'detail': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+
+    estudiante = result.get('estudiante') or estudiante_obj or request.user
+    cuotas_payload = []
+    for cuota in result.get('cuotas', []) or []:
+        cuotas_payload.append(
+            {
+                'id_cuota': cuota.id,
+                'anio': cuota.anio,
+                'mes': cuota.mes,
+                'numero_cuota': cuota.numero_cuota,
+                'monto_original': float(cuota.monto_original),
+                'monto_descuento': float(cuota.monto_descuento),
+                'monto_final': float(cuota.monto_final),
+                'monto_pagado': float(cuota.monto_pagado),
+                'saldo_pendiente': float(cuota.saldo_pendiente()),
+                'estado': cuota.estado,
+                'fecha_vencimiento': cuota.fecha_vencimiento.isoformat() if cuota.fecha_vencimiento else None,
+            }
+        )
+
+    totales = result.get('totales', {})
+    payload = {
+        'estudiante': {
+            'id': estudiante.id,
+            'nombre': estudiante.get_full_name(),
+        },
+        'totales': {
+            'total_arancel': float(totales.get('total_arancel') or 0),
+            'total_descuentos': float(totales.get('total_descuentos') or 0),
+            'total_a_pagar': float(totales.get('total_a_pagar') or 0),
+            'total_pagado': float(totales.get('total_pagado') or 0),
+            'saldo_pendiente': float(totales.get('saldo_pendiente') or 0),
+            'cuotas_vencidas': int(totales.get('cuotas_vencidas') or 0),
+        },
+        'cuotas': cuotas_payload,
+    }
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_mis_pagos(request):
+    if not (has_cap(request.user, 'FINANCE_VIEW') or has_cap(request.user, 'PORTAL_ESTUDIANTE')):
+        raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+    estudiante_id = request.query_params.get('estudiante_id')
+    estudiante_obj = None
+    if estudiante_id:
+        try:
+            from backend.apps.accounts.models import User
+            estudiante_obj = User.objects.get(id=estudiante_id)
+            if hasattr(request.user, 'perfil_apoderado'):
+                from backend.apps.accounts.models import RelacionApoderadoEstudiante
+                if not RelacionApoderadoEstudiante.objects.filter(apoderado__user=request.user, estudiante=estudiante_obj, activa=True).exists():
+                    raise PermissionDenied("No tiene relación de apoderado activa con este estudiante.")
+            elif request.user != estudiante_obj:
+                raise PermissionDenied("No tiene acceso a los pagos de este estudiante.")
+        except User.DoesNotExist:
+            return Response({'detail': 'Estudiante no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    result = MatriculasService.get_pagos_data(request.user, estudiante_obj)
+    if 'error' in result:
+        return Response({'detail': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+
+    estudiante = result.get('estudiante') or estudiante_obj or request.user
+    pagos_payload = []
+    for pago in result.get('pagos', []) or []:
+        pagos_payload.append(
+            {
+                'id_pago': pago.id,
+                'monto': float(pago.monto),
+                'metodo_pago': pago.metodo_pago,
+                'estado': pago.estado,
+                'fecha_pago': pago.fecha_pago.isoformat() if pago.fecha_pago else None,
+                'numero_comprobante': pago.numero_comprobante,
+                'numero_transaccion': pago.numero_transaccion,
+                'comprobante': pago.comprobante.url if pago.comprobante else None,
+            }
+        )
+
+    payload = {
+        'estudiante': {
+            'id': estudiante.id,
+            'nombre': estudiante.get_full_name(),
+        },
+        'total_pagado': float(result.get('total_pagado') or 0),
+        'pagos': pagos_payload,
+    }
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def student_crear_pago(request):
+    if not (has_cap(request.user, 'FINANCE_VIEW') or has_cap(request.user, 'PORTAL_ESTUDIANTE')):
+        raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+    cuota_id = request.data.get('cuota_id')
+    if not cuota_id:
+        return Response({'detail': 'Falta el parámetro cuota_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        from backend.apps.matriculas.models import Cuota, Pago
+        cuota = Cuota.objects.get(id=cuota_id)
+    except Cuota.DoesNotExist:
+        return Response({'detail': 'La cuota especificada no existe.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if hasattr(request.user, 'perfil_estudiante') or request.user.role.nombre.lower() in ['estudiante', 'alumno']:
+        if cuota.matricula.estudiante != request.user:
+            return Response({'detail': 'No tiene acceso a esta cuota.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if hasattr(request.user, 'perfil_apoderado'):
+        from backend.apps.accounts.models import RelacionApoderadoEstudiante
+        if not RelacionApoderadoEstudiante.objects.filter(apoderado__user=request.user, estudiante=cuota.matricula.estudiante, activa=True).exists():
+            return Response({'detail': 'No tiene relación de apoderado activa con este estudiante.'}, status=status.HTTP_403_FORBIDDEN)
+
+    monto_a_pagar = cuota.saldo_pendiente()
+    if monto_a_pagar <= 0:
+        return Response({'detail': 'Esta cuota ya está pagada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.utils import timezone
+    with transaction.atomic():
+        pago = Pago.objects.create(
+            cuota=cuota,
+            estudiante=cuota.matricula.estudiante,
+            monto=monto_a_pagar,
+            metodo_pago='WEBPAY',
+            estado='APROBADO',
+            numero_transaccion=request.data.get('numero_transaccion', 'TX-MOCK-12345'),
+            numero_comprobante=request.data.get('numero_comprobante', 'REC-MOCK-98765'),
+            observaciones='Pago simulado desde portal Webpay React'
+        )
+
+        cuota.monto_pagado += monto_a_pagar
+        cuota.estado = 'PAGADA'
+        cuota.fecha_pago_completo = timezone.now()
+        cuota.save()
+
+    return Response({
+        'success': True,
+        'message': 'Pago simulado con éxito.',
+        'pago': {
+            'id_pago': pago.id,
+            'monto': float(pago.monto),
+            'metodo_pago': pago.metodo_pago,
+            'estado': pago.estado,
+            'numero_transaccion': pago.numero_transaccion
+        }
+    }, status=status.HTTP_201_CREATED)
