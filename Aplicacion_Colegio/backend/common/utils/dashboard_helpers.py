@@ -19,12 +19,14 @@ def build_dashboard_context(request, pagina_actual: str, content_template: str):
     user_context = DashboardAuthService.get_user_context(request.user, request.session)
     if user_context is None:
         is_apoderado_scope = hasattr(request.user, 'perfil_apoderado')
-        if not is_apoderado_scope:
+        if not is_apoderado_scope and not hasattr(request.user, 'perfil_profesor'):
+            # Fix: profesor con STUDENT_VIEW no debe entrar al flujo de apoderado.
             has_guardian_scope = (
                 PolicyService.has_capability(request.user, 'DASHBOARD_VIEW_SELF')
                 and PolicyService.has_capability(request.user, 'STUDENT_VIEW')
                 and not PolicyService.has_capability(request.user, 'SYSTEM_CONFIGURE')
                 and not PolicyService.has_capability(request.user, 'SYSTEM_ADMIN')
+                and not PolicyService.has_capability(request.user, 'CLASS_VIEW')
             )
             is_apoderado_scope = has_guardian_scope
 
@@ -40,12 +42,14 @@ def build_dashboard_context(request, pagina_actual: str, content_template: str):
         rol = user_context_data['rol']
 
     is_apoderado_scope = hasattr(request.user, 'perfil_apoderado')
-    if not is_apoderado_scope:
+    if not is_apoderado_scope and not hasattr(request.user, 'perfil_profesor'):
+        # Fix: misma exclusión de profesor que arriba al resolver scope apoderado.
         is_apoderado_scope = (
             PolicyService.has_capability(request.user, 'DASHBOARD_VIEW_SELF')
             and PolicyService.has_capability(request.user, 'STUDENT_VIEW')
             and not PolicyService.has_capability(request.user, 'SYSTEM_CONFIGURE')
             and not PolicyService.has_capability(request.user, 'SYSTEM_ADMIN')
+            and not PolicyService.has_capability(request.user, 'CLASS_VIEW')
         )
 
     if user_context is not None:
@@ -89,5 +93,8 @@ def build_dashboard_context(request, pagina_actual: str, content_template: str):
             'estudiantes': estudiantes,
             'estudiante_seleccionado': None,  # Will be set by specific views if needed
         })
+        # Fix: forzar portal apoderado; evita sidebar de estudiante al ir a Mensajes u otras vistas.
+        context['rol'] = 'apoderado'
+        context['sidebar_template'] = DashboardAuthService.get_sidebar_template('apoderado')
 
     return context, None

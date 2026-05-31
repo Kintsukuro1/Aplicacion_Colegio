@@ -602,12 +602,27 @@ class DashboardContextService:
                         'progreso': progreso
                     })
 
+            evaluaciones_proximas = []
+            if curso_actual:
+                # Fix: inicio estudiante necesita evaluaciones reales (evita placeholders del template).
+                from backend.apps.academico.models import Evaluacion
+                evaluaciones_proximas = list(
+                    Evaluacion.objects.filter(
+                        clase__curso=curso_actual,
+                        activa=True,
+                        fecha_evaluacion__gte=date.today(),
+                    )
+                    .select_related('clase__asignatura')
+                    .order_by('fecha_evaluacion')[:8]
+                )
+
             return {
                 'clases_hoy': clases_hoy,
                 'tareas_pendientes': tareas_pendientes,
                 'promedio_general': promedio_general,
                 'porcentaje_asistencia': porcentaje_asistencia,
                 'clases_activas': clases_activas,
+                'evaluaciones_proximas': evaluaciones_proximas,
                 'sin_datos': curso_actual is None  # Flag: True si no tiene curso asignado
             }
 
@@ -618,6 +633,7 @@ class DashboardContextService:
                 'promedio_general': 0.0,
                 'porcentaje_asistencia': 100,
                 'clases_activas': [],
+                'evaluaciones_proximas': [],
                 'sin_datos': True  # Flag: no existe perfil de estudiante
             }
 
@@ -1620,6 +1636,182 @@ class DashboardContextService:
             # Estadísticas generales para dashboard
             'total_evaluaciones': total_evaluaciones,
             'total_calificaciones': total_calificaciones_general,
+            'promedio_general': promedio_general,  # Fix: KPI del dashboard de notas del profesor.
+        }
+
+    # --- Contextos profesor restaurados (libro_clases, reportes, disponibilidad) ---
+    # Antes faltaban y ?pagina=... lanzaba AttributeError en _execute_get_profesor_context.
+
+    @staticmethod
+    def _get_profesor_libro_clases_context(request_get_params, user, colegio):
+        """Contexto del libro de clases para el dashboard Django del profesor."""
+        from backend.apps.academico.services.grades_service import GradesService
+
+        clases = GradesService.get_teacher_classes_for_gradebook(user, colegio)
+        filtro_clase_id = request_get_params.get('clase_id', '')
+
+        clase_seleccionada = None
+        evaluaciones = []
+        matriz_calificaciones = []
+        promedios_evaluaciones = []
+        total_evaluaciones = 0
+        total_estudiantes = 0
+        promedio_general = 0
+
+        if filtro_clase_id:
+            try:
+                clase_seleccionada = clases.filter(id=int(filtro_clase_id)).first()
+                if clase_seleccionada:
+                    gradebook = GradesService.build_gradebook_matrix(colegio, clase_seleccionada)
+                    evaluaciones = gradebook['evaluaciones']
+                    matriz_calificaciones = gradebook['matriz_calificaciones']
+                    promedios_evaluaciones = gradebook['promedios_evaluaciones']
+                    total_evaluaciones = gradebook['total_evaluaciones']
+                    total_estudiantes = gradebook['total_estudiantes']
+                    promedio_general = gradebook['promedio_general']
+            except (ValueError, TypeError):
+                pass
+
+        return {
+            'clases': clases,
+            'filtro_clase_id': filtro_clase_id,
+            'clase_seleccionada': clase_seleccionada,
+            'evaluaciones': evaluaciones,
+            'matriz_calificaciones': matriz_calificaciones,
+            'promedios_evaluaciones': promedios_evaluaciones,
+            'total_evaluaciones': total_evaluaciones,
+            'total_estudiantes': total_estudiantes,
+            'promedio_general': promedio_general,
+        }
+
+    @staticmethod
+    def _get_profesor_reportes_context(request_get_params, user, colegio):
+        """Contexto de reportes académicos para el dashboard Django del profesor."""
+        from backend.apps.academico.services.academic_reports_service import AcademicReportsService
+
+        clases = AcademicReportsService.get_classes_for_reports(user, colegio)
+        tipo_reporte = request_get_params.get('tipo', 'asistencia')
+        filtro_clase_id = request_get_params.get('clase_id', '')
+        fecha_inicio = request_get_params.get('fecha_inicio', '')
+        fecha_fin = request_get_params.get('fecha_fin', '')
+
+        reporte_data = None
+        clase_seleccionada = None
+
+        if filtro_clase_id:
+            try:
+                clase_id = int(filtro_clase_id)
+                clase_seleccionada = clases.filter(id=clase_id).first()
+
+                if clase_seleccionada:
+                    fecha_inicio_parsed, fecha_fin_parsed = AcademicReportsService.parse_report_filters(
+                        fecha_inicio, fecha_fin
+                    )
+                    if tipo_reporte == 'asistencia':
+                        reporte_data = AcademicReportsService.generate_class_attendance_report(
+                            user, clase_seleccionada, fecha_inicio_parsed, fecha_fin_parsed
+                        )
+                    elif tipo_reporte == 'academico':
+                        reporte_data = AcademicReportsService.generate_class_performance_report(
+                            user, clase_seleccionada
+                        )
+            except (ValueError, TypeError):
+                pass
+
+        return {
+            'clases': clases,
+            'tipo_reporte': tipo_reporte,
+            'filtro_clase_id': filtro_clase_id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'reporte_data': reporte_data,
+            'clase_seleccionada': clase_seleccionada,
+            'can_export_superintendencia': PolicyService.has_capability(
+                user,
+                'REPORT_EXPORT_SUPERINTENDENCIA',
+                school_id=colegio.rbd,
+            ),
+        }
+
+    @staticmethod
+    def _get_profesor_disponibilidad_context(user, colegio):
+        """Contexto de disponibilidad horaria para el dashboard Django del profesor."""
+        from backend.apps.accounts.models import DisponibilidadProfesor
+        from backend.apps.cursos.models import BloqueHorario, Clase
+
+        bloques_qs = BloqueHorario.objects.filter(
+            colegio=colegio, activo=True
+        ).order_by('bloque_numero', 'hora_inicio')
+
+        bloques_horarios = []
+        seen = set()
+        for bloque in bloques_qs:
+            if bloque.bloque_numero not in seen:
+                bloques_horarios.append({
+                    'numero': bloque.bloque_numero,
+                    'hora_inicio': bloque.hora_inicio,
+                    'hora_fin': bloque.hora_fin,
+                    'nombre': (
+                        f"{bloque.hora_inicio.strftime('%H:%M')}-"
+                        f"{bloque.hora_fin.strftime('%H:%M')}"
+                    ),
+                })
+                seen.add(bloque.bloque_numero)
+
+        clases_asignadas = Clase.objects.filter(
+            profesor=user, colegio=colegio, activo=True
+        ).select_related('curso', 'asignatura')
+
+        matriz_disponibilidad = []
+        dias = [
+            {'numero': 1, 'nombre': 'Lunes'},
+            {'numero': 2, 'nombre': 'Martes'},
+            {'numero': 3, 'nombre': 'Miércoles'},
+            {'numero': 4, 'nombre': 'Jueves'},
+            {'numero': 5, 'nombre': 'Viernes'},
+        ]
+
+        for dia in dias:
+            fila = {'dia': dia['nombre'], 'dia_numero': dia['numero'], 'bloques': []}
+            for bloque in bloques_horarios:
+                disponible = DisponibilidadProfesor.objects.filter(
+                    profesor=user,
+                    dia_semana=dia['numero'],
+                    bloque_numero=bloque['numero'],
+                    disponible=True,
+                ).exists()
+                fila['bloques'].append({
+                    'numero': bloque['numero'],
+                    'hora_inicio': bloque['hora_inicio'],
+                    'hora_fin': bloque['hora_fin'],
+                    'disponible': disponible,
+                })
+            matriz_disponibilidad.append(fila)
+
+        total_bloques = len(dias) * len(bloques_horarios)
+        bloques_disponibles = DisponibilidadProfesor.objects.filter(
+            profesor=user, disponible=True
+        ).count()
+        bloques_con_clases = BloqueHorario.objects.filter(
+            clase__profesor=user, clase__colegio=colegio, activo=True
+        ).count()
+        bloques_libres = total_bloques - bloques_con_clases
+        porcentaje_disponibilidad = round(
+            (bloques_disponibles / total_bloques * 100) if total_bloques > 0 else 0,
+            1,
+        )
+
+        return {
+            'bloques_horarios': list(bloques_horarios),
+            'matriz_disponibilidad': matriz_disponibilidad,
+            'clases_asignadas': list(clases_asignadas),
+            'estadisticas': {
+                'total_bloques': total_bloques,
+                'bloques_disponibles': bloques_disponibles,
+                'bloques_con_clases': bloques_con_clases,
+                'bloques_libres': bloques_libres,
+                'porcentaje_disponibilidad': porcentaje_disponibilidad,
+            },
         }
 
     @staticmethod

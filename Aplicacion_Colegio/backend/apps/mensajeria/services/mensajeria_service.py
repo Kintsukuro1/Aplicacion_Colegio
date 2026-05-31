@@ -80,6 +80,16 @@ class MensajeriaService:
         if clase.profesor_id == user.id:
             return True
 
+        if hasattr(user, 'perfil_apoderado'):
+            # Fix: apoderado puede abrir chat en clases donde tiene pupilos matriculados.
+            from backend.apps.cursos.models import ClaseEstudiante
+
+            return ClaseEstudiante.objects.filter(
+                clase=clase,
+                activo=True,
+                estudiante__apoderados__user=user,
+            ).exists()
+
         # Si es estudiante activo del curso
         perfil = PerfilEstudiante.objects.filter(user=user).first()
         if not perfil:

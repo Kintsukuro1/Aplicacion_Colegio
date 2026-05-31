@@ -108,7 +108,7 @@ def _build_item_tarea(tarea):
 def gestionar_tareas_profesor(request, clase_id):
     """Vista para que el profesor gestione tareas de una clase."""
     try:
-        clase = ORMAccessService.get(Clase, id_curso=clase_id)
+        clase = ORMAccessService.get(Clase, id=clase_id)  # Fix: Clase.pk es id, no id_curso (Curso).
     except Exception:
         messages.error(request, 'No se encontró la clase solicitada.')
         return redirect('dashboard')

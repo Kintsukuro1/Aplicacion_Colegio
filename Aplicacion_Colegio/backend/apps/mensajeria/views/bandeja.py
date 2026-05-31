@@ -7,15 +7,38 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect, render
 
+from backend.apps.core.services.dashboard_auth_service import DashboardAuthService
 from backend.apps.cursos.models import Clase, ClaseEstudiante
 from backend.apps.mensajeria.services import MensajeriaService
+from backend.common.utils.auth_helpers import es_apoderado, es_estudiante, es_profesor
 from backend.common.utils.dashboard_helpers import build_dashboard_context
 
 
+def _resolve_mensajeria_rol(user) -> str:
+    """Rol efectivo para mensajería (prioriza apoderado sobre otros perfiles)."""
+    # Fix: antes se usaba solo hasattr(perfil_*); apoderado/profesor podían caer en UI de estudiante.
+    if es_apoderado(user):
+        return 'apoderado'
+    if es_profesor(user):
+        return 'profesor'
+    if es_estudiante(user):
+        return 'estudiante'
+    return DashboardAuthService._resolve_dashboard_role(user) or 'estudiante'
+
+
 def _mensajeria_content_template(user) -> str:
-    if hasattr(user, 'perfil_apoderado'):
+    # Fix: apoderado tiene plantilla propia (sidebar verde); el resto comparte la bandeja MM.
+    if _resolve_mensajeria_rol(user) == 'apoderado':
         return 'apoderado/mensajeria.html'
     return 'estudiante/mensajeria.html'
+
+
+def _apply_mensajeria_shell(context: dict, user) -> None:
+    """Alinea rol y sidebar con el perfil real (evita UI de estudiante en apoderado/profesor)."""
+    # Fix: build_dashboard_context a veces dejaba rol distinto al perfil activo en mensajería.
+    mensajeria_rol = _resolve_mensajeria_rol(user)
+    context['rol'] = mensajeria_rol
+    context['sidebar_template'] = DashboardAuthService.get_sidebar_template(mensajeria_rol)
 
 
 def _pupilo_nombre_por_clase(user, clase_id) -> str:
@@ -44,7 +67,8 @@ def _clases_con_pupilo(user, clases) -> list[dict]:
 
 
 def enrich_apoderado_mensajeria_context(user, context: dict) -> None:
-    if not hasattr(user, 'perfil_apoderado'):
+    # Fix: usar rol resuelto, no solo perfil_apoderado, para datos de pupilos en la bandeja.
+    if _resolve_mensajeria_rol(user) != 'apoderado':
         return
     clases = context.get('clases') or []
     context['clases_contacto'] = _clases_con_pupilo(user, clases)
@@ -67,10 +91,13 @@ def enrich_apoderado_mensajeria_context(user, context: dict) -> None:
 
 def _get_clases_for_user(user):
     """Obtener clases accesibles por el usuario."""
-    if hasattr(user, 'perfil_estudiante'):
+    # Fix: el orden importa; antes estudiante ganaba y un apoderado veía clases de alumno.
+    rol = _resolve_mensajeria_rol(user)
+
+    if rol == 'apoderado':
         return (
             Clase.objects.filter(
-                estudiantes__estudiante=user,
+                estudiantes__estudiante__apoderados__user=user,
                 estudiantes__activo=True,
                 activo=True,
             )
@@ -79,17 +106,17 @@ def _get_clases_for_user(user):
             .order_by('asignatura__nombre', 'curso__nombre')
         )
 
-    if hasattr(user, 'perfil_profesor'):
+    if rol == 'profesor':
         return (
             Clase.objects.filter(profesor=user, activo=True)
             .select_related('curso', 'asignatura', 'profesor')
             .order_by('asignatura__nombre', 'curso__nombre')
         )
 
-    if hasattr(user, 'perfil_apoderado'):
+    if rol == 'estudiante':
         return (
             Clase.objects.filter(
-                estudiantes__estudiante__apoderados__user=user,
+                estudiantes__estudiante=user,
                 estudiantes__activo=True,
                 activo=True,
             )
@@ -149,11 +176,13 @@ def bandeja_mensajes(request):
     if redirect_response:
         return redirect_response
 
+    # Fix: corrige sidebar y plantilla embebida según apoderado / profesor / estudiante.
+    _apply_mensajeria_shell(context, request.user)
+
     clases = list(_get_clases_for_user(request.user))
-    uses_mm_bandeja = (
-        hasattr(request.user, 'perfil_estudiante')
-        or hasattr(request.user, 'perfil_apoderado')
-    )
+    mensajeria_rol = context['rol']
+    # Fix: bandeja MM compartida por los tres roles del portal SSR (no solo por hasattr de perfil).
+    uses_mm_bandeja = mensajeria_rol in {'estudiante', 'apoderado', 'profesor'}
 
     if uses_mm_bandeja:
         context.update(

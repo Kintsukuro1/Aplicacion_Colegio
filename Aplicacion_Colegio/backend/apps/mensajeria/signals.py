@@ -18,6 +18,7 @@ def notificar_mensaje_recibido(sender, instance, created, **kwargs):
         tipo='mensaje_nuevo',
         titulo=f'Nuevo mensaje de {instance.emisor.get_full_name()}',
         mensaje=instance.contenido[:200],
-        enlace=f'/dashboard/?pagina=mensajeria&conversacion={instance.conversacion_id}',
+        # Fix: enlace directo a conversación; ?pagina=mensajes no existe en el dashboard.
+        enlace=f'/mensajeria/conversacion/{instance.conversacion_id}/',
         prioridad='normal',
     )

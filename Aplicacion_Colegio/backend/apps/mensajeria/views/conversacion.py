@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from backend.apps.mensajeria.services import MensajeriaService
 from backend.apps.mensajeria.views.bandeja import (
+    _apply_mensajeria_shell,
     _get_clases_for_user,
     _mensajeria_content_template,
     enrich_apoderado_mensajeria_context,
@@ -55,11 +56,11 @@ def ver_conversacion(request, id_conversacion: int):
     if redirect_response:
         return redirect_response
 
+    # Fix: misma corrección de rol/sidebar que en bandeja_mensajes.
+    _apply_mensajeria_shell(context, request.user)
+
     otro = conversacion.get_otro_participante(request.user)
-    uses_mm_bandeja = (
-        hasattr(request.user, 'perfil_estudiante')
-        or hasattr(request.user, 'perfil_apoderado')
-    )
+    uses_mm_bandeja = context['rol'] in {'estudiante', 'apoderado', 'profesor'}
 
     if uses_mm_bandeja:
         context.update(

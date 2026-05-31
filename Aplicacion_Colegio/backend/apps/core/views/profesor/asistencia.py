@@ -133,7 +133,7 @@ def registro_asistencia_clase(request, clase_id):
     from django.contrib.auth.decorators import login_required
 
     try:
-        clase = ORMAccessService.get(Clase, id_curso=clase_id)
+        clase = ORMAccessService.get(Clase, id=clase_id)  # Fix: Clase.pk es id, no id_curso (Curso).
     except Exception:
         messages.error(request, 'Clase no encontrada.')
         return redirect('dashboard')
@@ -173,7 +173,7 @@ def reporte_asistencia_clase(request, clase_id):
     from django.contrib.auth.decorators import login_required
 
     try:
-        clase = ORMAccessService.get(Clase, id_curso=clase_id)
+        clase = ORMAccessService.get(Clase, id=clase_id)  # Fix: Clase.pk es id, no id_curso (Curso).
     except Exception:
         messages.error(request, 'Clase no encontrada.')
         return redirect('dashboard')

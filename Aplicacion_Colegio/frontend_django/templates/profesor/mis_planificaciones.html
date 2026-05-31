@@ -123,11 +123,12 @@
                 <!-- Acciones -->
                 <div class="plan-acciones" style="display: flex; justify-content: space-between; align-items: center; padding-top: 1.2rem; border-top: 1px solid #f1f5f9; flex-wrap: wrap; gap: 1rem;">
                     <div style="display: flex; gap: 0.8rem;">
-                        <button onclick="previsualizarPlan({{ plan|json_script:'plan-data'|default:'{}' }})" class="btn-meta" style="padding: 0.6rem 1.2rem; border: 1px solid #cbd5e1; background: #fff; color: #475569; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                        {# Fix: onclick recibe plan.id; el JSON vive en #plan-data-{{ plan.id }} #}
+                        <button onclick="previsualizarPlan({{ plan.id }})" class="btn-meta" style="padding: 0.6rem 1.2rem; border: 1px solid #cbd5e1; background: #fff; color: #475569; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
                             👁️ Previsualizar
                         </button>
                         {% if plan.estado == 'BORRADOR' or plan.estado == 'RECHAZADA' %}
-                        <button onclick='editarPlanificacion({{ plan|json_script:"edit-data"|default:"{}" }})' class="btn-meta" style="padding: 0.6rem 1.2rem; border: 1px solid #bfdbfe; background: #f0f7ff; color: #1d4ed8; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                        <button onclick="editarPlanificacion({{ plan.id }})" class="btn-meta" style="padding: 0.6rem 1.2rem; border: 1px solid #bfdbfe; background: #f0f7ff; color: #1d4ed8; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
                             ✏️ Editar
                         </button>
                         {% endif %}
@@ -151,6 +152,7 @@
                         "id": {{ plan.id }},
                         "titulo": "{{ plan.titulo|escapejs }}",
                         "clase": "{{ plan.clase|escapejs }}",
+                        "clase_id": {{ plan.clase_id }},
                         "objetivo_general": "{{ plan.objetivo_general|escapejs }}",
                         "fecha_inicio": "{{ plan.fecha_inicio }}",
                         "fecha_fin": "{{ plan.fecha_fin }}",
