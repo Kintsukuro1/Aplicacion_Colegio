@@ -136,6 +136,32 @@ class ComunicadosService:
                     (Q(destinatario='curso_especifico') & Q(cursos_destinatarios=curso_actual))
                 )
             ).distinct()
+        elif ComunicadosService._has_profile(user, 'perfil_apoderado'):
+            # Fix: la rama else solo mostraba destinatario='todos' y ocultaba comunicados al apoderado.
+            from backend.apps.matriculas.models import Matricula
+
+            apoderado = getattr(user, 'perfil_apoderado', None)
+            pupil_ids = list(apoderado.estudiantes.values_list('id', flat=True)) if apoderado else []
+            course_ids = list(
+                Matricula.objects.filter(
+                    estudiante_id__in=pupil_ids,
+                    estado='ACTIVA',
+                )
+                .exclude(curso_id__isnull=True)
+                .values_list('curso_id', flat=True)
+            )
+
+            comunicados = Comunicado.objects.filter(
+                base_filters &
+                (
+                    Q(destinatario='todos') |
+                    Q(destinatario='apoderados') |
+                    (
+                        Q(destinatario='curso_especifico') &
+                        Q(cursos_destinatarios__in=course_ids)
+                    )
+                )
+            ).distinct()
         else:
             # Para otros roles, solo comunicados generales
             comunicados = Comunicado.objects.filter(

@@ -417,8 +417,11 @@
                             {% if es_profesor and not ver_como_alumno %}
                             <div class="anuncio-actions">
                                 <button onclick="editarAnuncio({{ anuncio.id_anuncio }})" class="anuncio-btn anuncio-btn-edit">✏️ Editar</button>
-                                <form method="post" action="{% url 'eliminar_anuncio' anuncio.id_anuncio %}" class="d-inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este anuncio?')">
+                                {# Fix: POST a ver_detalle_clase; no existía la URL eliminar_anuncio #}
+                                <form method="post" action="{% url 'ver_detalle_clase' clase.id %}" class="d-inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este anuncio?')">
                                     {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_anuncio">
+                                    <input type="hidden" name="anuncio_id" value="{{ anuncio.id_anuncio }}">
                                     <button type="submit" class="anuncio-btn anuncio-btn-delete">🗑️ Eliminar</button>
                                 </form>
                             </div>
@@ -2922,6 +2925,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Fix: notificaciones usan ?tab=entregas (y similares) en la URL de detalle de clase.
+    const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
+    if (tabFromUrl) {
+        const targetButton = document.querySelector(`.tab-button[data-tab="${tabFromUrl}"]`);
+        if (targetButton) {
+            targetButton.click();
+        }
+    }
 });
 
 // Funciones para modal de subir material

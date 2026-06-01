@@ -1,7 +1,8 @@
 {% load static %}
+{# Fix: cada rol usa su layout; profesor no lleva sidebar de estudiante embebido. #}
 {% if rol == 'apoderado' %}
 {% include 'apoderado/_apoderado_wrap_start.html' %}
-{% else %}
+{% elif rol == 'estudiante' %}
 {% include 'estudiante/_alumno_wrap_start.html' %}
 {% endif %}
 <link rel="stylesheet" href="{% static 'css/estudiante/mensajeria.css' %}?v=20260618">
@@ -9,6 +10,9 @@
 <div class="mm-page" id="mmPage">
     {% if rol == 'apoderado' %}
     {% include 'apoderado/_apoderado_hero.html' with hero_title="Mensajería Institucional" hero_subtitle="Comunicación directa con profesores y administración de tus pupilos." hero_aria="Mensajería apoderado" metrics_aria="Resumen de mensajería" m1_value=no_leidos_count|default:"0" m1_label="No leídos" m1_mod="firmas" m2_value=conversaciones_count|default:"0" m2_label="Conversaciones" m2_mod="comunicados" m3_value=con_profesores_count|default:"0" m3_label="Con docentes" m3_mod="pupilos" m4_value=total_mensajes_count|default:"0" m4_label="Mensajes" m4_mod="cuotas" %}
+    {% elif rol == 'profesor' %}
+    {# Fix: profesor reutiliza bandeja MM pero con textos de docente, sin layout alumno. #}
+    {% include 'estudiante/_alumno_hero.html' with hero_title="Mensajes" hero_subtitle="Comunícate con apoderados y estudiantes de tus clases." hero_aria="Mensajes profesor" metrics_aria="Resumen de mensajería" m1_value=no_leidos_count|default:"0" m1_label="No leídos" m1_mod="tareas" m2_value=conversaciones_count|default:"0" m2_label="Conversaciones" m2_mod="clases" m3_value=con_profesores_count|default:"0" m3_label="Familias" m3_mod="tareas" m4_value=total_mensajes_count|default:"0" m4_label="Mensajes" m4_mod="asistencia" %}
     {% else %}
     {% include 'estudiante/_alumno_hero.html' with hero_title="Mensajes" hero_subtitle=hero_subtitle_mensajes|default:"Comunícate con profesores y la administración del colegio" hero_aria="Mensajes" metrics_aria="Resumen de mensajería" m1_value=no_leidos_count|default:"0" m1_label="No leídos" m1_mod="tareas" m2_value=conversaciones_count|default:"0" m2_label="Conversaciones" m2_mod="clases" m3_value=con_profesores_count|default:"0" m3_label="Con profesores" m3_mod="tareas" m4_value=total_mensajes_count|default:"0" m4_label="Mensajes" m4_mod="asistencia" %}
     {% endif %}
@@ -389,6 +393,7 @@
 
 {% if rol == 'apoderado' %}
 {% include 'apoderado/_apoderado_wrap_end.html' %}
-{% else %}
+{% elif rol == 'estudiante' %}
+{# Fix: profesor cierra sin wrap alumno; mantiene sidebar del dashboard docente. #}
 {% include 'estudiante/_alumno_wrap_end.html' %}
 {% endif %}

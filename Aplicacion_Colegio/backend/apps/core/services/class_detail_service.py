@@ -78,6 +78,25 @@ class ClassDetailService:
                 except Exception as e:
                     messages.error(request, f'Error al eliminar material: {str(e)}')
 
+            elif accion == 'eliminar_anuncio':
+                # Fix: el template ya no usa la URL inexistente 'eliminar_anuncio'; POST aquí mismo.
+                try:
+                    anuncio_id = request.POST.get('anuncio_id')
+                    anuncio = Anuncio.objects.get(
+                        id_anuncio=anuncio_id,
+                        clase_id=clase_id,
+                        autor=user,
+                    )
+                    anuncio.delete()
+                    messages.success(request, '✓ Anuncio eliminado correctamente.')
+                    return redirect(f'/estudiante/clase/{clase_id}/?tab=anuncios')
+                except Anuncio.DoesNotExist:
+                    messages.error(request, 'No se encontró el anuncio o no tienes permiso para eliminarlo.')
+                    return redirect(f'/estudiante/clase/{clase_id}/')
+                except Exception as e:
+                    messages.error(request, f'Error al eliminar anuncio: {str(e)}')
+                    return redirect(f'/estudiante/clase/{clase_id}/')
+
             elif accion == 'cambiar_visibilidad':
                 try:
                     material_id = request.POST.get('material_id')

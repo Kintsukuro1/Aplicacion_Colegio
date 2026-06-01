@@ -400,9 +400,10 @@
         {% endif %}
 
         {% else %}
-        <div class="mensaje-inicial">
-            <span class="icon">📖</span>
-            <p>Seleccione una clase para comenzar a ver el libro de clases.</p>
+        {# Fix: cierre de {% if clase_seleccionada %} — antes causaba TemplateSyntaxError #}
+        <div class="mensaje-vacio">
+            <span class="icon">📚</span>
+            <p>Selecciona una clase para ver el libro de calificaciones.</p>
         </div>
         {% endif %}
 
