@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-03-06";
+const APP_VERSION = "2026-06-01-csrf-fix";
 const CACHE_PREFIX = "sistema-escolar";
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${APP_VERSION}`;
 const PAGES_CACHE = `${CACHE_PREFIX}-pages-${APP_VERSION}`;
@@ -21,6 +21,17 @@ const OPTIONAL_PRECACHE_URLS = [
 function isApiRequest(request) {
   const url = new URL(request.url);
   return url.pathname.startsWith("/api/");
+}
+
+function isDynamicOrPrivateRequest(request) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  return (
+    path.startsWith("/accounts/") ||
+    path.startsWith("/dashboard/") ||
+    path.startsWith("/admin/") ||
+    path.startsWith("/api/")
+  );
 }
 
 function isSameOrigin(request) {
@@ -83,7 +94,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isApiRequest(request)) {
+  if (isDynamicOrPrivateRequest(request)) {
+    // Only handle navigation requests to provide the offline fallback page, but NEVER cache them!
+    if (request.mode === "navigate") {
+      event.respondWith(
+        withTimeout(fetch(request), 4500)
+          .catch(async () => {
+            const offlinePage = await caches.match(OFFLINE_URL);
+            return offlinePage || Response.error();
+          })
+      );
+    }
     return;
   }
 

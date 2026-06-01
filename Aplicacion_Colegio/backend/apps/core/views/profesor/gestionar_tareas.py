@@ -239,10 +239,81 @@ def ver_entregas_tarea(request, tarea_id):
         messages.error(request, 'No tienes permiso para ver las entregas de esta tarea.')
         return redirect('dashboard')
     
-    # Obtener entregas
     from backend.apps.academico.models import EntregaTarea
-    entregas = ORMAccessService.filter(EntregaTarea, tarea=tarea).select_related('estudiante').order_by('-fecha_entrega')
     
+    # POST handler for grading tasks (single or bulk)
+    if request.method == 'POST':
+        accion = (request.POST.get('accion') or '').strip()
+        
+        if accion == 'calificar_entrega':
+            entrega_id = request.POST.get('entrega_id')
+            calificacion_val = request.POST.get('calificacion')
+            retroalimentacion = (request.POST.get('retroalimentacion') or '').strip()
+            
+            try:
+                entrega = EntregaTarea.objects.get(id_entrega=entrega_id, tarea=tarea)
+                entrega.calificacion = Decimal(calificacion_val)
+                entrega.retroalimentacion = retroalimentacion
+                entrega.estado = 'revisada'
+                entrega.revisada_por = request.user
+                entrega.save()
+                messages.success(request, f'Se calificó la entrega de {entrega.estudiante.get_full_name()} con nota {calificacion_val}.')
+            except Exception as e:
+                messages.error(request, f'Error al calificar la entrega: {str(e)}')
+                
+            return redirect('ver_entregas_tarea', tarea_id=tarea.id_tarea)
+            
+        elif accion == 'calificar_masiva':
+            entrega_ids_raw = request.POST.get('entrega_ids', '')
+            calificacion_val = request.POST.get('calificacion')
+            retroalimentacion = (request.POST.get('retroalimentacion') or '').strip()
+            
+            if not entrega_ids_raw:
+                messages.error(request, 'No se seleccionaron entregas para calificar.')
+            else:
+                try:
+                    entrega_ids = [int(x.strip()) for x in entrega_ids_raw.split(',') if x.strip()]
+                    entregas_qs = EntregaTarea.objects.filter(id_entrega__in=entrega_ids, tarea=tarea)
+                    
+                    with transaction.atomic():
+                        count = 0
+                        for entrega in entregas_qs:
+                            if calificacion_val:
+                                entrega.calificacion = Decimal(calificacion_val)
+                            if retroalimentacion:
+                                entrega.retroalimentacion = retroalimentacion
+                            entrega.estado = 'revisada'
+                            entrega.revisada_por = request.user
+                            entrega.save()
+                            count += 1
+                            
+                    messages.success(request, f'Se calificaron {count} entregas en lote correctamente.')
+                except Exception as e:
+                    messages.error(request, f'Error al calificar en lote: {str(e)}')
+                    
+            return redirect('ver_entregas_tarea', tarea_id=tarea.id_tarea)
+            
+    # Obtener alumnos y cruzar con entregas
+    from backend.apps.cursos.models import ClaseEstudiante
+    estudiantes_clase = ClaseEstudiante.objects.filter(clase=clase, activo=True).select_related('estudiante')
+    
+    entregas = EntregaTarea.objects.filter(tarea=tarea)
+    entregas_map = {entrega.estudiante_id: entrega for entrega in entregas}
+    
+    estudiantes_list = []
+    total_entregas = 0
+    for rel in estudiantes_clase:
+        est = rel.estudiante
+        ent = entregas_map.get(est.id)
+        tiene = ent is not None
+        if tiene:
+            total_entregas += 1
+        estudiantes_list.append({
+            'estudiante': est,
+            'tiene_entrega': tiene,
+            'entrega': ent
+        })
+        
     sidebar_template, rol_nombre = _resolve_sidebar_and_role(request.user)
     navigation_access = DashboardService.get_navigation_access(
         rol_nombre,
@@ -254,6 +325,9 @@ def ver_entregas_tarea(request, tarea_id):
         'clase': clase,
         'tarea': tarea,
         'entregas': entregas,
+        'estudiantes': estudiantes_list,
+        'total_estudiantes': len(estudiantes_list),
+        'total_entregas': total_entregas,
         'sidebar_template': sidebar_template,
         'content_template': '',
         'rol': rol_nombre,

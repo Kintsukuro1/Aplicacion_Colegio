@@ -1,6 +1,63 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/profesor/entregas_tarea.css' %}">
 
+<style>
+    /* Premium additions for entregas_tarea */
+    .tareas-container {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .bulk-checkbox {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        cursor: pointer;
+        accent-color: #3b82f6;
+    }
+
+    .bulk-grade-panel {
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.08);
+        border: 1px solid #bfdbfe;
+        transition: all 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .calificacion-badge {
+        background: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .acciones-btns {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-icon {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 6px 10px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+</style>
+
 <div class="tareas-container">
     {# Breadcrumb #}
     <div class="breadcrumb">
@@ -70,10 +127,39 @@
     {# Tabla de Entregas #}
     <div class="entregas-tabla-container">
         <h2>👥 Entregas de Estudiantes</h2>
+
+        <!-- Action Panel for Bulk Grading ("Corrección Masiva") -->
+        <div class="bulk-grade-panel" id="bulkGradePanel" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px; margin-bottom: 20px; animation: slideDown 0.2s ease-out;">
+            <h3 style="margin-top: 0; color: #1e3a8a; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                🛠️ Corrección Masiva (<span id="bulkSelectedCount">0</span> seleccionadas)
+            </h3>
+            <form method="post" id="bulkGradeForm" style="display: flex; flex-direction: column; gap: 14px;">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="calificar_masiva">
+                <input type="hidden" id="bulk_delivery_ids" name="entrega_ids">
+                
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 180px;">
+                        <label for="bulk_calificacion" style="font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 4px; display: block;">Asignar nota común (1.0 - 7.0) *</label>
+                        <input type="number" id="bulk_calificacion" name="calificacion" min="1.0" max="7.0" step="0.1" placeholder="Ej. 6.5" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600;" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0; flex: 3; min-width: 250px;">
+                        <label for="bulk_retroalimentacion" style="font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 4px; display: block;">Feedback lote (opcional)</label>
+                        <textarea id="bulk_retroalimentacion" name="retroalimentacion" placeholder="Escribe comentarios comunes para los estudiantes seleccionados..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.88rem; height: 38px; resize: none;"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 700; background: #3b82f6; border: none; color: #ffffff; cursor: pointer; transition: background 0.2s;">
+                        💾 Calificar en Lote
+                    </button>
+                </div>
+            </form>
+        </div>
         
         <table class="entregas-tabla">
             <thead>
                 <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <input type="checkbox" id="selectAllDeliveries" class="bulk-checkbox" title="Seleccionar todas las entregas">
+                    </th>
                     <th>Estudiante</th>
                     <th>Estado</th>
                     <th>Fecha Entrega</th>
@@ -84,6 +170,13 @@
             <tbody>
                 {% for item in estudiantes %}
                 <tr class="{% if not item.tiene_entrega %}sin-entrega{% endif %}">
+                    <td style="text-align: center;">
+                        {% if item.tiene_entrega %}
+                            <input type="checkbox" name="selected_deliveries" class="delivery-select-checkbox bulk-checkbox" value="{{ item.entrega.id_entrega }}">
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>
                         <div class="estudiante-info">
                             <span class="estudiante-avatar">👤</span>
@@ -123,9 +216,11 @@
                     <td>
                         {% if item.tiene_entrega %}
                             <div class="acciones-btns">
-                                <a href="{{ item.entrega.archivo.url }}" class="btn-icon" download title="Descargar">
+                                {% if item.entrega.archivo %}
+                                <a href="{{ item.entrega.archivo.url }}" class="btn-icon" download title="Descargar archivo">
                                     ⬇️
                                 </a>
+                                {% endif %}
                                 <button class="btn-icon" onclick="mostrarModalCalificar({{ item.entrega.id_entrega }}, '{{ item.estudiante.get_full_name }}', {{ item.entrega.calificacion|default:'null' }}, '{{ item.entrega.retroalimentacion|default:'' }}')" title="Calificar">
                                     ✏️
                                 </button>
@@ -134,6 +229,10 @@
                             -
                         {% endif %}
                     </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">No hay estudiantes registrados en esta clase.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -155,7 +254,7 @@
             
             <div class="form-group">
                 <label>Estudiante</label>
-                <p id="estudiante_nombre" class="font-semibold"></p>
+                <p id="estudiante_nombre" class="font-semibold" style="margin: 0; font-size: 1.1rem; color: #1e293b;"></p>
             </div>
             
             <div class="form-group">
@@ -197,4 +296,51 @@ window.onclick = function(event) {
         cerrarModalCalificar();
     }
 }
+
+// --- Corrección Masiva Script ---
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAllDeliveries');
+    const deliveryCheckboxes = document.querySelectorAll('.delivery-select-checkbox');
+    const bulkGradePanel = document.getElementById('bulkGradePanel');
+    const bulkSelectedCountSpan = document.getElementById('bulkSelectedCount');
+    const bulkDeliveryIdsInput = document.getElementById('bulk_delivery_ids');
+    const bulkGradeForm = document.getElementById('bulkGradeForm');
+
+    function updateBulkPanelState() {
+        const checkedCheckboxes = document.querySelectorAll('.delivery-select-checkbox:checked');
+        const checkedCount = checkedCheckboxes.length;
+        
+        if (checkedCount > 0) {
+            bulkSelectedCountSpan.textContent = checkedCount;
+            bulkGradePanel.style.display = 'block';
+            
+            // Compile list of selected delivery IDs
+            const ids = Array.from(checkedCheckboxes).map(cb => cb.value);
+            bulkDeliveryIdsInput.value = ids.join(',');
+        } else {
+            bulkGradePanel.style.display = 'none';
+            bulkDeliveryIdsInput.value = '';
+        }
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = selectAllCheckbox.checked;
+            deliveryCheckboxes.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateBulkPanelState();
+        });
+    }
+
+    deliveryCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            updateBulkPanelState();
+            
+            // Sincronizar selectAll
+            const allChecked = Array.from(deliveryCheckboxes).every(c => c.checked);
+            selectAllCheckbox.checked = allChecked;
+        });
+    });
+});
 </script>

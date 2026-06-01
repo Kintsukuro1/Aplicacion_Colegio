@@ -27,7 +27,7 @@ def get_paginas_por_rol(rol):
             'notificaciones': 'compartido/notificaciones.html',
         },
         'admin_general': {
-            'inicio': 'compartido/inicio_modulos.html',
+            'inicio': 'admin/inicio.html',
             'gestionar_escuelas': 'admin/seleccionar_escuela.html',
             'perfil': 'compartido/perfil.html',
             'escuelas': 'admin/escuelas.html',
@@ -45,7 +45,7 @@ def get_paginas_por_rol(rol):
             'notificaciones': 'compartido/notificaciones.html',
         },
         'admin_escolar': {
-            'inicio': 'compartido/inicio_modulos.html',
+            'inicio': 'admin_escolar/inicio.html',
             'mi_escuela': 'admin_escolar/mi_escuela.html',
             'infraestructura': 'admin_escolar/infraestructura.html',
             'gestionar_estudiantes': 'admin_escolar/gestionar_estudiantes.html',
@@ -70,7 +70,7 @@ def get_paginas_por_rol(rol):
             'notificaciones': 'compartido/notificaciones.html',
         },
         'profesor': {
-            'inicio': 'compartido/inicio_modulos.html',
+            'inicio': 'profesor/inicio.html',
             'mis_clases': 'profesor/mis_clases.html',
             'asistencia': 'profesor/asistencia.html',
             'notas': 'profesor/notas.html',

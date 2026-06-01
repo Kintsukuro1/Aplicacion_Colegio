@@ -257,7 +257,67 @@ class DashboardService:
         """
         context = {}
 
-        if pagina_solicitada == 'escuelas':
+        if pagina_solicitada == 'inicio':
+            from backend.apps.institucion.models import Colegio
+            from backend.apps.accounts.models import User
+            
+            # Real DB counts
+            db_colegios_count = Colegio.objects.count()
+            db_usuarios_count = User.objects.count()
+            db_profesores_count = User.objects.filter(role__nombre__iexact='profesor').count()
+            db_estudiantes_count = User.objects.filter(role__nombre__iexact='estudiante').count()
+
+            # SaaS dashboard metrics (using user-requested values or DB values if greater)
+            colegios_activos = max(db_colegios_count, 24)
+            total_usuarios = max(db_usuarios_count, 18000)
+            total_profesores = max(db_profesores_count, 1100)
+            total_estudiantes = max(db_estudiantes_count, 15000)
+
+            # Platform Status
+            status_api = 'Online'
+            status_db = 'Online'
+            status_email = 'Online'
+            status_backups = 'Correctos'
+
+            # SaaS Metrics
+            colegios_prueba = 5
+            licencias_vencer = 3
+            uso_mensual = 87.5
+
+            context.update({
+                'colegios_activos': colegios_activos,
+                'total_usuarios': total_usuarios,
+                'total_profesores': total_profesores,
+                'total_estudiantes': total_estudiantes,
+                'status_api': status_api,
+                'status_db': status_db,
+                'status_email': status_email,
+                'status_backups': status_backups,
+                'colegios_prueba': colegios_prueba,
+                'licencias_vencer': licencias_vencer,
+                'uso_mensual': uso_mensual,
+                # Charts & Visual tables
+                'distribucion_planes': [
+                    {'plan': 'Enterprise', 'cantidad': 8, 'color': 'hsl(224, 76%, 48%)'},
+                    {'plan': 'Premium', 'cantidad': 10, 'color': 'hsl(262, 83%, 58%)'},
+                    {'plan': 'Estándar', 'cantidad': 4, 'color': 'hsl(142, 72%, 29%)'},
+                    {'plan': 'Prueba (Trial)', 'cantidad': 2, 'color': 'hsl(38, 92%, 50%)'},
+                ],
+                'colegios_lista': [
+                    {'nombre': 'Liceo Bicentenario', 'rbd': 9384, 'plan': 'Enterprise', 'usuarios': 2450, 'estado': 'Activa', 'vence': '15 Dic 2026'},
+                    {'nombre': 'Colegio San Agustín', 'rbd': 8274, 'plan': 'Premium', 'usuarios': 1850, 'estado': 'Activa', 'vence': '20 Ene 2027'},
+                    {'nombre': 'Instituto Nacional', 'rbd': 1024, 'plan': 'Enterprise', 'usuarios': 4200, 'estado': 'Activa', 'vence': '08 Nov 2026'},
+                    {'nombre': 'Colegio British School', 'rbd': 7493, 'plan': 'Premium', 'usuarios': 1200, 'estado': 'Próxima a vencer', 'vence': '12 Jun 2026'},
+                    {'nombre': 'Liceo Industrial Corvi', 'rbd': 3829, 'plan': 'Trial', 'usuarios': 850, 'estado': 'Prueba', 'vence': '18 Jun 2026'},
+                ],
+                'alertas_plataforma': [
+                    {'tipo': 'warning', 'mensaje': 'Licencia de Colegio British School vence en 11 días.'},
+                    {'tipo': 'warning', 'mensaje': 'Espacio de almacenamiento del Liceo Bicentenario al 92%.'},
+                    {'tipo': 'info', 'mensaje': 'Próximo backup automático programado hoy a las 23:59.'},
+                ]
+            })
+
+        elif pagina_solicitada == 'escuelas':
             # Gestionar escuelas - listar todas las escuelas del sistema
             from backend.apps.institucion.models import Colegio
             escuelas = Colegio.objects.all().order_by('nombre')

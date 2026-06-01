@@ -1,280 +1,875 @@
 {% load static %}
 {% include 'apoderado/_apoderado_wrap_start.html' %}
 
-    <section class="apod-hero" aria-label="Bienvenida apoderado">
-        <div class="apod-hero__content">
-            <h1 class="apod-hero__title">¡Bienvenido/a, {{ nombre_usuario }}!</h1>
-            <p class="apod-hero__meta">
-                {% now "l d \d\e F \d\e Y" %} · {{ year|default:"" }} Portal Apoderado
-            </p>
-        </div>
-        <div class="apod-hero__metrics" aria-label="Resumen familiar">
-            <article class="apod-hero-metric apod-hero-metric--pupilos">
-                <p class="apod-hero-metric__value">
-                    {% if estudiantes %}
-                        {{ estudiantes|length }}
-                    {% elif total_pupilos is not None %}
-                        {{ total_pupilos }}
-                    {% else %}
-                        {{ apod_resumen_pupilos|default:"0" }}
-                    {% endif %}
-                </p>
-                <p class="apod-hero-metric__label">Mis pupilos</p>
-                <div class="apod-hero-metric__foot" aria-hidden="true"></div>
-            </article>
-            <article class="apod-hero-metric apod-hero-metric--comunicados">
-                <p class="apod-hero-metric__value" id="apodMetricComunicados">{{ apod_resumen_comunicados|default:comunicados_nuevos|default:"0" }}</p>
-                <p class="apod-hero-metric__label">Comunicados nuevos</p>
-                <div class="apod-hero-metric__foot" aria-hidden="true"></div>
-            </article>
-            <article class="apod-hero-metric apod-hero-metric--firmas">
-                <p class="apod-hero-metric__value" id="apodMetricFirmas">{{ apod_resumen_firmas|default:pendientes_firma|default:"0" }}</p>
-                <p class="apod-hero-metric__label">Pendientes de firma</p>
-                <div class="apod-hero-metric__foot" aria-hidden="true"></div>
-            </article>
-            <article class="apod-hero-metric apod-hero-metric--cuotas">
-                <p class="apod-hero-metric__value" id="apodMetricCuotas">{{ apod_resumen_cuotas|default:cuotas_pendientes|default:"0" }}</p>
-                <p class="apod-hero-metric__label">Cuotas pendientes</p>
-                <div class="apod-hero-metric__foot" aria-hidden="true"></div>
-            </article>
-        </div>
-    </section>
+<style>
+    /* CSS Premium Adicional para el Dashboard Familiar */
+    .apod-dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        color: var(--apod-text);
+        animation: fadeIn 0.4s ease-out;
+    }
 
-    <section class="apod-section-card apod-priority" aria-label="Prioridades del día">
-        <div class="apod-section-card__head">
-            <h2 class="apod-section-title">
-                <span class="apod-section-title__icon" aria-hidden="true">🎯</span>
-                Prioridades del día
-            </h2>
-            <span class="apod-priority__tag">Panel ejecutivo</span>
-        </div>
-        <div class="apod-priority__grid">
-            <article class="apod-priority-item" id="apodPriorityComunicados">
-                <p class="apod-priority-item__title">Comunicados pendientes</p>
-                <p class="apod-priority-item__desc">Revisa avisos recientes del colegio.</p>
-                <a href="{% url 'comunicados:lista' %}" class="apod-priority-item__link">Ir a comunicados</a>
-            </article>
-            <article class="apod-priority-item" id="apodPriorityFirmas">
-                <p class="apod-priority-item__title">Firmas digitales</p>
-                <p class="apod-priority-item__desc">Confirma documentos pendientes de tus pupilos.</p>
-                <a href="{% url 'dashboard' %}?pagina=firmas_pendientes" class="apod-priority-item__link">Ver firmas</a>
-            </article>
-            <article class="apod-priority-item" id="apodPriorityPagos">
-                <p class="apod-priority-item__title">Seguimiento financiero</p>
-                <p class="apod-priority-item__desc">Consulta cuotas pendientes y estado de pagos.</p>
-                <a href="{% url 'matriculas:mi_estado_cuenta' %}" class="apod-priority-item__link">Revisar estado</a>
-            </article>
-        </div>
-    </section>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-    <section class="apod-section-card" aria-label="Mis pupilos">
-        <div class="apod-section-card__head">
-            <h2 class="apod-section-title">
-                <span class="apod-section-title__icon" aria-hidden="true">👨‍👩‍👧‍👦</span>
-                Mis pupilos
-            </h2>
-            {% if 'mis_pupilos' in paginas_habilitadas %}
-            <a href="{% url 'dashboard' %}?pagina=mis_pupilos" class="apod-acceso-card__btn">Ver todos</a>
+    /* Selector de Pupilo Premium */
+    .apod-welcome-bar {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid var(--apod-border);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        box-shadow: var(--apod-shadow);
+    }
+
+    .apod-welcome-text h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--apod-text);
+    }
+
+    .apod-welcome-text p {
+        margin: 4px 0 0;
+        font-size: 0.9rem;
+        color: var(--apod-text-soft);
+        font-weight: 500;
+    }
+
+    .apod-selector-card {
+        background: var(--apod-surface);
+        border: 1px solid var(--apod-border);
+        padding: 8px 16px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(20, 83, 45, 0.05);
+    }
+
+    .apod-selector-card label {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--apod-text-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .apod-select-pupilo {
+        border: 1px solid var(--apod-border);
+        background: transparent;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        color: var(--apod-text);
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .apod-select-pupilo:focus {
+        border-color: var(--apod-accent);
+    }
+
+    /* Grid de Estado de Mi Hijo */
+    .apod-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .apod-kpi-card {
+        background: var(--apod-surface);
+        border: 1px solid var(--apod-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--apod-shadow);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .apod-kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(20, 83, 45, 0.08);
+    }
+
+    .apod-kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--apod-accent);
+    }
+
+    .apod-kpi-card--danger::before { background: #f43f5e; }
+    .apod-kpi-card--warning::before { background: #f59e0b; }
+    .apod-kpi-card--info::before { background: #3b82f6; }
+
+    .apod-kpi-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .apod-kpi-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--apod-text-soft);
+    }
+
+    .apod-kpi-icon {
+        font-size: 1.25rem;
+    }
+
+    .apod-kpi-body {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .apod-kpi-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+    }
+
+    .apod-kpi-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--apod-text-soft);
+    }
+
+    .apod-kpi-footer {
+        margin-top: 14px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--apod-text-soft);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Widget de Evaluación Próxima */
+    .apod-eval-badge {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        padding: 10px 12px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .apod-eval-subject {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+    .apod-eval-date {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #2563eb;
+    }
+
+    /* Alertas Automáticas */
+    .apod-alerts-section {
+        background: #fff;
+        border: 1px solid #fecaca;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .apod-alerts-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #991b1b;
+        margin-bottom: 4px;
+    }
+
+    .apod-alert-card {
+        background: #fff5f5;
+        border-left: 4px solid #ef4444;
+        border-radius: 0 12px 12px 0;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: pulseAlert 2s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+        0% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.1); }
+    }
+
+    .apod-alert-text {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #7f1d1d;
+    }
+
+    /* Evolución Académica (Charts) */
+    .apod-charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    .apod-chart-card {
+        background: var(--apod-surface);
+        border: 1px solid var(--apod-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--apod-shadow);
+    }
+
+    .apod-chart-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .apod-chart-container {
+        position: relative;
+        height: 240px;
+        width: 100%;
+    }
+
+    /* Comunicación Directa */
+    .apod-contact-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        border-radius: 16px;
+        padding: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        box-shadow: 0 8px 30px rgba(5, 150, 105, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .apod-contact-card::before {
+        content: '💬';
+        position: absolute;
+        right: -10px;
+        bottom: -20px;
+        font-size: 8rem;
+        opacity: 0.1;
+        pointer-events: none;
+    }
+
+    .apod-contact-info h3 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .apod-contact-info p {
+        margin: 6px 0 0;
+        font-size: 0.88rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .apod-contact-btn {
+        background: #fff;
+        color: #059669;
+        border: none;
+        padding: 12px 24px;
+        font-size: 0.92rem;
+        font-weight: 700;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+
+    .apod-contact-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        background: #f8fafc;
+    }
+
+    /* Modal de Contactar Profesor */
+    .apod-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .apod-modal-backdrop.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .apod-modal {
+        background: #fff;
+        border: 1px solid var(--apod-border);
+        border-radius: 20px;
+        width: 100%;
+        max-width: 500px;
+        padding: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .apod-modal-backdrop.show .apod-modal {
+        transform: scale(1);
+    }
+
+    .apod-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+    }
+
+    .apod-modal-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--apod-text);
+        margin: 0;
+    }
+
+    .apod-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        color: var(--apod-text-soft);
+        cursor: pointer;
+        padding: 4px;
+    }
+
+    .apod-form-group {
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .apod-form-group label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--apod-text-soft);
+    }
+
+    .apod-input, .apod-textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        font-family: inherit;
+    }
+
+    .apod-input:focus, .apod-textarea:focus {
+        border-color: var(--apod-accent);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    .apod-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .apod-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 16px;
+        margin-top: 20px;
+    }
+
+    .apod-btn {
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .apod-btn--ghost {
+        background: #f1f5f9;
+        border: none;
+        color: #475569;
+    }
+
+    .apod-btn--ghost:hover {
+        background: #e2e8f0;
+    }
+
+    .apod-btn--primary {
+        background: var(--apod-accent);
+        border: none;
+        color: #fff;
+    }
+
+    .apod-btn--primary:hover {
+        background: var(--apod-accent-deep);
+    }
+
+    /* Toast Notification */
+    .apod-toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #0f172a;
+        color: #fff;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.88rem;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 2000;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+    }
+
+    .apod-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+</style>
+
+<div class="apod-dashboard-container">
+    
+    <!-- Barra de bienvenida y selector -->
+    <div class="apod-welcome-bar">
+        <div class="apod-welcome-text">
+            <h1>¡Bienvenido/a al Portal Familiar, {{ nombre_usuario }}!</h1>
+            <p>{% now "l d \d\e F \d\e Y" %} · Resumen académico de tus pupilos</p>
+        </div>
+        {% if estudiantes and estudiantes|length > 1 %}
+        <div class="apod-selector-card">
+            <label for="studentSelector">Visualizar Pupilo:</label>
+            <select id="studentSelector" class="apod-select-pupilo" aria-label="Seleccionar estudiante">
+                {% for est in estudiantes %}
+                <option value="{{ est.id }}" {% if est.id == estudiante_seleccionado.id %}selected{% endif %}>
+                    {{ est.get_full_name|default:est.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Panel de Alertas Automáticas (Si corresponden) -->
+    {% if alerta_inasistencia_consecutiva or alerta_promedio_drop %}
+    <div class="apod-alerts-section">
+        <div class="apod-alerts-header">
+            <span>⚠️</span>
+            <span>Alertas Automáticas de Seguimiento</span>
+        </div>
+        <div class="flex flex-col gap-2">
+            {% if alerta_inasistencia_consecutiva %}
+            <div class="apod-alert-card">
+                <span class="text-lg">🚨</span>
+                <span class="apod-alert-text">Atención: Tu hijo(a) {{ estudiante_seleccionado.nombre }} tiene 3 inasistencias consecutivas registradas en el mes.</span>
+            </div>
+            {% endif %}
+            {% if alerta_promedio_drop %}
+            <div class="apod-alert-card">
+                <span class="text-lg">📈</span>
+                <span class="apod-alert-text">Atención: El promedio general acumulado de tu hijo bajó de {{ alerta_promedio_drop.previo|floatformat:1 }} a {{ alerta_promedio_drop.actual|floatformat:1 }}.</span>
+            </div>
             {% endif %}
         </div>
-        {% if estudiantes %}
-        <div class="apod-table-wrap">
-            <table class="apod-table">
-                <thead>
-                    <tr>
-                        <th>Estudiante</th>
-                        <th>Curso</th>
-                        <th class="apod-table__actions">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for e in estudiantes %}
-                    <tr>
-                        <td>
-                            {% if e.get_full_name %}
-                                {{ e.get_full_name }}
-                            {% elif e.nombre %}
-                                {{ e.nombre }} {{ e.apellido_paterno|default:"" }} {{ e.apellido_materno|default:"" }}
-                            {% elif e.user and e.user.get_full_name %}
-                                {{ e.user.get_full_name }}
-                            {% else %}
-                                {{ e.email|default:e.user.email|default:"-" }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if e.perfil_estudiante and e.perfil_estudiante.curso_actual %}
-                                <span class="apod-chip apod-chip--course">{{ e.perfil_estudiante.curso_actual.nombre }}</span>
-                            {% else %}
-                                <span class="apod-chip apod-chip--muted">Sin curso</span>
-                            {% endif %}
-                        </td>
-                        <td class="apod-table__actions">
-                            <a href="{% url 'dashboard' %}?pagina=notas&estudiante_id={{ e.id }}">Notas</a>
-                            <a href="{% url 'dashboard' %}?pagina=asistencia&estudiante_id={{ e.id }}">Asistencia</a>
-                        </td>
-                    </tr>
+    </div>
+    {% endif %}
+
+    <!-- Estado de mi hijo (KPIs) -->
+    <div class="apod-kpi-grid">
+        <!-- Promedio General -->
+        <div class="apod-kpi-card {% if promedio_general < 4.0 %}apod-kpi-card--danger{% elif promedio_general < 5.5 %}apod-kpi-card--warning{% endif %}">
+            <div class="apod-kpi-header">
+                <span class="apod-kpi-title">Promedio General</span>
+                <span class="apod-kpi-icon">📝</span>
+            </div>
+            <div class="apod-kpi-body">
+                <span class="apod-kpi-value">{{ promedio_general|floatformat:1 }}</span>
+                <span class="apod-kpi-label">/ 7.0</span>
+            </div>
+            <div class="apod-kpi-footer">
+                <span>Rendimiento Académico Actual</span>
+            </div>
+        </div>
+
+        <!-- Asistencia -->
+        <div class="apod-kpi-card {% if porcentaje_asistencia < 85 %}apod-kpi-card--danger{% elif porcentaje_asistencia < 90 %}apod-kpi-card--warning{% endif %}">
+            <div class="apod-kpi-header">
+                <span class="apod-kpi-title">Asistencia Total</span>
+                <span class="apod-kpi-icon">📅</span>
+            </div>
+            <div class="apod-kpi-body">
+                <span class="apod-kpi-value">{{ porcentaje_asistencia }}%</span>
+            </div>
+            <div class="apod-kpi-footer">
+                <span>Asistencia Acumulada</span>
+            </div>
+        </div>
+
+        <!-- Tareas Pendientes -->
+        <div class="apod-kpi-card {% if tareas_pendientes_count > 0 %}apod-kpi-card--warning{% endif %}">
+            <div class="apod-kpi-header">
+                <span class="apod-kpi-title">Tareas Pendientes</span>
+                <span class="apod-kpi-icon">📋</span>
+            </div>
+            <div class="apod-kpi-body">
+                <span class="apod-kpi-value">{{ tareas_pendientes_count }}</span>
+                <span class="apod-kpi-label">tareas</span>
+            </div>
+            <div class="apod-kpi-footer">
+                <span>Por entregar en plataforma</span>
+            </div>
+        </div>
+
+        <!-- Próxima Evaluación -->
+        <div class="apod-kpi-card apod-kpi-card--info">
+            <div class="apod-kpi-header">
+                <span class="apod-kpi-title">Próxima Evaluación</span>
+                <span class="apod-kpi-icon">🎯</span>
+            </div>
+            {% if proxima_evaluacion %}
+            <div class="apod-eval-badge">
+                <span class="apod-eval-subject">{{ proxima_evaluacion.asignatura }}</span>
+                <span class="apod-eval-date">{{ proxima_evaluacion.fecha|date:"d \d\e F"|default:proxima_evaluacion.fecha }}</span>
+            </div>
+            {% else %}
+            <div class="apod-kpi-body">
+                <span class="apod-kpi-label text-secondary">Sin evaluaciones programadas</span>
+            </div>
+            {% endif %}
+            <div class="apod-kpi-footer">
+                <span>Calendario de Evaluaciones</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evolución Académica (Gráficos) -->
+    <div class="apod-charts-grid">
+        <!-- Gráfico de Notas -->
+        <div class="apod-chart-card">
+            <h2 class="apod-chart-title">
+                <span>📈</span> Evolución de Notas Recientes
+            </h2>
+            <div class="apod-chart-container">
+                <canvas id="chartNotas"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Asistencia -->
+        <div class="apod-chart-card">
+            <h2 class="apod-chart-title">
+                <span>📊</span> Historial de Asistencia Mensual
+            </h2>
+            <div class="apod-chart-container">
+                <canvas id="chartAsistencia"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comunicación Directa -->
+    <div class="apod-contact-card">
+        <div class="apod-contact-info">
+            <h3>Comunicación Directa con Profesores</h3>
+            <p>Envía mensajes de consulta a los docentes de las asignaturas de tu hijo sin demoras.</p>
+        </div>
+        <button class="apod-contact-btn" id="btnContactarProfesor">
+            <span>💬</span> Contactar Profesor
+        </button>
+    </div>
+
+</div>
+
+<!-- Modal de Contactar Profesor -->
+<div class="apod-modal-backdrop" id="modalContactarProfesor">
+    <div class="apod-modal">
+        <div class="apod-modal-header">
+            <h2 class="apod-modal-title">Nueva Consulta al Profesor</h2>
+            <button class="apod-modal-close" id="btnCerrarModal">&times;</button>
+        </div>
+        <form id="formContactoProfesor">
+            {% csrf_token %}
+            
+            <div class="apod-form-group">
+                <label for="selectProfesor">Profesor / Asignatura</label>
+                <select id="selectProfesor" class="apod-input" required>
+                    <option value="" disabled selected>Selecciona un profesor...</option>
+                    {% for p in profesores_contacto %}
+                    <option value="{{ p.id }}" data-clase-id="{{ p.clase_id }}">
+                        {{ p.nombre }} ({{ p.asignatura }})
+                    </option>
+                    {% empty %}
+                    <option value="" disabled>No se encontraron docentes asociados</option>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="apod-empty-msg">No hay estudiantes asociados a este apoderado.</p>
-        {% endif %}
-    </section>
+                </select>
+            </div>
 
-    <section class="apod-section-card apod-accesos" aria-label="Monitoreo familiar">
-        <h2 class="apod-section-title">
-            <span class="apod-section-title__icon" aria-hidden="true">📌</span>
-            Monitoreo familiar
-        </h2>
-        <div class="apod-accesos__grid">
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">🗓️</span>
-                <h3 class="apod-acceso-card__name">Próxima revisión sugerida</h3>
-                <p class="apod-acceso-card__desc">
-                    {% now "l d \d\e F" %}. Revisa primero pendientes de firma y comunicados institucionales.
-                </p>
-                <a href="{% url 'dashboard' %}?pagina=firmas_pendientes" class="apod-acceso-card__btn">Revisar ahora</a>
-            </article>
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">👨‍👩‍👧‍👦</span>
-                <h3 class="apod-acceso-card__name">Pupilos bajo seguimiento</h3>
-                <p class="apod-acceso-card__desc">
-                    Actualmente gestionas {{ estudiantes|length|default:"0" }} pupilo(s) en el portal académico.
-                </p>
-                <a href="{% url 'dashboard' %}?pagina=mis_pupilos" class="apod-acceso-card__btn">Ver detalle</a>
-            </article>
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">💬</span>
-                <h3 class="apod-acceso-card__name">Coordinación institucional</h3>
-                <p class="apod-acceso-card__desc">
-                    Prioriza mensajes con docentes y mantén registro de acuerdos relevantes del periodo.
-                </p>
-                <a href="{% url 'mensajeria:bandeja_mensajes' %}" class="apod-acceso-card__btn">Ir a mensajería</a>
-            </article>
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">📊</span>
-                <h3 class="apod-acceso-card__name">Rendimiento académico</h3>
-                <p class="apod-acceso-card__desc">
-                    Consolida notas y asistencia por pupilo para anticipar apoyos durante el mes.
-                </p>
-                <a href="{% url 'dashboard' %}?pagina=notas" class="apod-acceso-card__btn">Analizar</a>
-            </article>
-        </div>
-    </section>
+            <div class="apod-form-group">
+                <label for="txtMensaje">Mensaje</label>
+                <textarea id="txtMensaje" class="apod-textarea" placeholder="Escribe tu consulta aquí de forma clara..." required></textarea>
+            </div>
 
-    <section class="apod-section-card" aria-label="Gestión financiera">
-        <h2 class="apod-section-title">
-            <span class="apod-section-title__icon" aria-hidden="true">💰</span>
-            Gestión financiera
-        </h2>
-        <div class="apod-accesos__grid apod-accesos__grid--compact">
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">📎</span>
-                <h3 class="apod-acceso-card__name">Estado financiero actual</h3>
-                <p class="apod-acceso-card__desc" id="apodFinanceHint">
-                    Consulta saldos, vencimientos y comportamiento de pagos por estudiante.
-                </p>
-                <a href="{% url 'matriculas:mi_estado_cuenta' %}" class="apod-acceso-card__btn">Ver estado</a>
-            </article>
-            <article class="apod-acceso-card">
-                <span class="apod-acceso-card__icon" aria-hidden="true">🧾</span>
-                <h3 class="apod-acceso-card__name">Historial y comprobantes</h3>
-                <p class="apod-acceso-card__desc">
-                    Mantén trazabilidad de pagos realizados y respaldo documental del periodo.
-                </p>
-                <a href="{% url 'matriculas:mis_pagos' %}" class="apod-acceso-card__btn">Ver historial</a>
-            </article>
-        </div>
-    </section>
+            <div class="apod-modal-footer">
+                <button type="button" class="apod-btn apod-btn--ghost" id="btnCancelarModal">Cancelar</button>
+                <button type="submit" class="apod-btn apod-btn--primary" id="btnEnviarMensaje">Enviar Mensaje</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-{% include 'apoderado/_apoderado_wrap_end.html' %}
+<!-- Toast de Éxito -->
+<div class="apod-toast" id="toastNotificacion">
+    <span class="toast-icon">✅</span>
+    <span class="toast-message">¡Mensaje enviado con éxito!</span>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-(function () {
-    function toInt(value, fallback) {
-        var n = Number(value);
-        return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback;
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+        // Selector de Pupilo (Múltiples hijos)
+        const studentSelector = document.getElementById('studentSelector');
+        if (studentSelector) {
+            studentSelector.addEventListener('change', function () {
+                const studentId = this.value;
+                const url = new URL(window.location.href);
+                url.searchParams.set('estudiante_id', studentId);
+                url.searchParams.set('pagina', 'inicio');
+                window.location.href = url.toString();
+            });
+        }
 
-    async function fetchFirst(urls) {
-        for (var i = 0; i < urls.length; i++) {
+        // --- Gráficos del Dashboard ---
+        
+        // Datos de Notas
+        const notasData = {{ recent_grades|safe|default:"[6.0, 5.8, 5.5, 5.1]" }};
+        const notasLabels = notasData.map((_, i) => `Nota ${i + 1}`);
+
+        // Gráfico de Notas (Chart.js)
+        const ctxNotas = document.getElementById('chartNotas').getContext('2d');
+        new Chart(ctxNotas, {
+            type: 'line',
+            data: {
+                labels: notasLabels,
+                datasets: [{
+                    label: 'Calificación',
+                    data: notasData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        min: 1.0,
+                        max: 7.0,
+                        ticks: { stepSize: 1.0, color: '#475569', font: { weight: 600 } },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        ticks: { color: '#475569', font: { weight: 600 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Datos de Asistencia
+        const asistenciaRaw = {{ asistencia_mensual|safe|default:"[]" }};
+        const asistenciaLabels = asistenciaRaw.map(item => item.mes);
+        const asistenciaData = asistenciaRaw.map(item => item.porcentaje);
+
+        // Gráfico de Asistencia (Chart.js)
+        const ctxAsist = document.getElementById('chartAsistencia').getContext('2d');
+        new Chart(ctxAsist, {
+            type: 'bar',
+            data: {
+                labels: asistenciaLabels,
+                datasets: [{
+                    data: asistenciaData,
+                    backgroundColor: '#8b5cf6',
+                    hoverBackgroundColor: '#7c3aed',
+                    borderRadius: 8,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: { callback: value => value + '%', color: '#475569', font: { weight: 600 } },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        ticks: { color: '#475569', font: { weight: 600 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // --- Gestión de Modal de Contacto y AJAX ---
+
+        const btnContactar = document.getElementById('btnContactarProfesor');
+        const modalContacto = document.getElementById('modalContactarProfesor');
+        const btnCerrar = document.getElementById('btnCerrarModal');
+        const btnCancelar = document.getElementById('btnCancelarModal');
+        const formContacto = document.getElementById('formContactoProfesor');
+        const selectProfesor = document.getElementById('selectProfesor');
+        const txtMensaje = document.getElementById('txtMensaje');
+        const toast = document.getElementById('toastNotificacion');
+
+        const openModal = () => modalContacto.classList.add('show');
+        const closeModal = () => {
+            modalContacto.classList.remove('show');
+            formContacto.reset();
+        };
+
+        if (btnContactar) btnContactar.addEventListener('click', openModal);
+        if (btnCerrar) btnCerrar.addEventListener('click', closeModal);
+        if (btnCancelar) btnCancelar.addEventListener('click', closeModal);
+
+        // Cerrar modal al hacer clic en el backdrop
+        modalContacto.addEventListener('click', function(e) {
+            if (e.target === modalContacto) closeModal();
+        });
+
+        // Mostrar Toast Notification
+        const showToast = (message, isSuccess = true) => {
+            toast.querySelector('.toast-icon').textContent = isSuccess ? '✅' : '❌';
+            toast.querySelector('.toast-message').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        };
+
+        // Envío AJAX
+        formContacto.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const selectedOption = selectProfesor.options[selectProfesor.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                alert('Por favor selecciona un profesor.');
+                return;
+            }
+
+            const teacherId = selectedOption.value;
+            const classId = selectedOption.getAttribute('data-clase-id');
+            const messageText = txtMensaje.value.trim();
+
+            const submitBtn = document.getElementById('btnEnviarMensaje');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
+
             try {
-                var r = await fetch(urls[i], { credentials: 'same-origin' });
-                if (r.ok) return await r.json();
-            } catch (e) {
-                // noop: try next endpoint
+                const response = await fetch('/mensajeria/nueva/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        clase_id: parseInt(classId),
+                        destinatario_id: parseInt(teacherId),
+                        contenido: messageText
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeModal();
+                    showToast('¡Consulta enviada al profesor correctamente!');
+                } else {
+                    showToast(result.message || 'Error al enviar el mensaje', false);
+                }
+            } catch (error) {
+                console.error('Error en AJAX de mensajería:', error);
+                showToast('Error en la conexión con el servidor', false);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Mensaje';
             }
-        }
-        return null;
-    }
-
-    var elComunicados = document.getElementById('apodMetricComunicados');
-    var elFirmas = document.getElementById('apodMetricFirmas');
-    var elCuotas = document.getElementById('apodMetricCuotas');
-    var financeHint = document.getElementById('apodFinanceHint');
-    var priorityComunicados = document.getElementById('apodPriorityComunicados');
-    var priorityFirmas = document.getElementById('apodPriorityFirmas');
-    var priorityPagos = document.getElementById('apodPriorityPagos');
-    if (!elComunicados || !elFirmas || !elCuotas) return;
-
-    function syncPriorityStates() {
-        if (priorityComunicados) {
-            var n1 = toInt(elComunicados.textContent, 0);
-            priorityComunicados.classList.toggle('apod-priority-item--active', n1 > 0);
-            priorityComunicados.querySelector('.apod-priority-item__desc').textContent =
-                n1 > 0 ? ('Tienes ' + n1 + ' comunicado(s) por revisar.') : 'Sin comunicados pendientes por ahora.';
-        }
-        if (priorityFirmas) {
-            var n2 = toInt(elFirmas.textContent, 0);
-            priorityFirmas.classList.toggle('apod-priority-item--active', n2 > 0);
-            priorityFirmas.querySelector('.apod-priority-item__desc').textContent =
-                n2 > 0 ? ('Hay ' + n2 + ' documento(s) en espera de firma.') : 'No hay documentos pendientes de firma.';
-        }
-        if (priorityPagos) {
-            var n3 = toInt(elCuotas.textContent, 0);
-            priorityPagos.classList.toggle('apod-priority-item--active', n3 > 0);
-            priorityPagos.querySelector('.apod-priority-item__desc').textContent =
-                n3 > 0 ? ('' + n3 + ' pupilo(s) tienen cuotas pendientes.') : 'No hay cuotas pendientes registradas.';
-            if (financeHint) {
-                financeHint.textContent = n3 > 0
-                    ? ('Se detectan cuotas pendientes en ' + n3 + ' pupilo(s). Revisa vencimientos y prioriza regularización.')
-                    : 'Sin cuotas pendientes actualmente. Puedes revisar historial y respaldos de pago.';
-            }
-        }
-    }
-
-    syncPriorityStates();
-
-    Promise.all([
-        fetchFirst(['/api/apoderado/comunicados/', '/api/v1/apoderado/comunicados/']),
-        fetchFirst(['/api/apoderado/firmas/', '/api/v1/apoderado/firmas/']),
-        fetchFirst(['/api/apoderado/pagos/estado/', '/api/v1/apoderado/pagos/estado/'])
-    ]).then(function (results) {
-        var comunicadosData = results[0];
-        var firmasData = results[1];
-        var pagosData = results[2];
-
-        if (Array.isArray(comunicadosData)) {
-            elComunicados.textContent = String(comunicadosData.length);
-        } else if (comunicadosData && Array.isArray(comunicadosData.results)) {
-            elComunicados.textContent = String(comunicadosData.results.length);
-        }
-
-        if (firmasData && Array.isArray(firmasData.pendientes)) {
-            elFirmas.textContent = String(firmasData.pendientes.length);
-        }
-
-        if (pagosData && Array.isArray(pagosData.pupilos)) {
-            var cuotasPendientes = pagosData.pupilos.reduce(function (acc, p) {
-                var pendiente = toInt(p && p.pendiente, 0);
-                return acc + (pendiente > 0 ? 1 : 0);
-            }, 0);
-            elCuotas.textContent = String(cuotasPendientes);
-        }
-        syncPriorityStates();
-    }).catch(function () {
-        // Si falla todo, mantiene valores iniciales del servidor.
+        });
     });
-})();
 </script>
+
+{% include 'apoderado/_apoderado_wrap_end.html' %}
