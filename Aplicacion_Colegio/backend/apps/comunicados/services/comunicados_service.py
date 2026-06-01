@@ -494,7 +494,8 @@ class ComunicadosService:
                     tipo_mime=archivo.content_type
                 )
 
-            logger.info(f"Comunicado creado - Usuario: {user.username}, Título: {titulo}")
+            user_label = user.get_full_name() or getattr(user, 'email', None) or f"id:{user.id}"
+            logger.info(f"Comunicado creado - Usuario: {user_label}, Título: {titulo}")
             return {
                 'success': True,
                 'message': f'✓ Comunicado "{titulo}" publicado exitosamente.',
@@ -502,7 +503,8 @@ class ComunicadosService:
             }
 
         except Exception as e:
-            logger.error(f"Error creando comunicado - Usuario: {user.username}, Error: {str(e)}")
+            user_label = user.get_full_name() or getattr(user, 'email', None) or f"id:{user.id}"
+            logger.error(f"Error creando comunicado - Usuario: {user_label}, Error: {str(e)}")
             return {
                 'success': False,
                 'message': f'Error al crear comunicado: {str(e)}',
