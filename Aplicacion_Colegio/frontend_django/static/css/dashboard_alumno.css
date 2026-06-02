@@ -389,6 +389,36 @@ body.pagina-inicio:has(.perfil-alumno) {
     gap: 12px;
 }
 
+.alumno-main-header--compact {
+    justify-content: flex-end;
+    min-height: 0;
+    padding: 16px 28px 0;
+    border-bottom: none;
+}
+
+.alumno-main-header--compact .alumno-main-header__actions .btn-notificaciones {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--alumno-accent-light);
+    padding: 0;
+    font-size: 1.25rem;
+}
+
+.alumno-main-header--compact .alumno-main-header__actions .btn-notificaciones:hover {
+    background: var(--alumno-accent-hover);
+    transform: scale(1.04);
+}
+
+.alumno-main-header--compact .alumno-main-header__actions .badge-notificaciones {
+    top: 4px;
+    right: 4px;
+    border: 2px solid var(--alumno-surface);
+}
+
 .alumno-main-header__notif {
     position: relative;
     width: 40px;
