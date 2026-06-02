@@ -142,6 +142,15 @@ class DashboardApoderadoService:
                     user, estudiantes, estudiante_id_param
                 )
                 context.update(context_asistencia)
+                if context_asistencia.get('estudiante_seleccionado'):
+                    context.update(
+                        DashboardApoderadoService._enriquecer_apoderado_asistencia_vista(
+                            user,
+                            context_asistencia['estudiante_seleccionado'],
+                            context_asistencia.get('estadisticas') or {},
+                            context_asistencia.get('registros_por_fecha') or {},
+                        )
+                    )
 
             # Certificados page
             elif pagina_solicitada == 'mis_certificados':
@@ -176,6 +185,14 @@ class DashboardApoderadoService:
                     user, estudiantes, estudiante_id_param
                 )
                 context.update(context_cal)
+                if context_cal.get('estudiante_seleccionado'):
+                    context.update(
+                        DashboardApoderadoService._enriquecer_apoderado_calendario_vista(
+                            user,
+                            context_cal['estudiante_seleccionado'],
+                            context_cal.get('eventos_calendario') or [],
+                        )
+                    )
                 
         except Exception as e:
             logger.error(f"Error in get_apoderado_context: {e}", exc_info=True)
@@ -925,6 +942,277 @@ class DashboardApoderadoService:
         }
 
     @staticmethod
+    def _enriquecer_apoderado_asistencia_vista(user, estudiante, estadisticas, registros_por_fecha):
+        """KPIs claros e insights de asistencia (capa aparte; no altera el contexto base)."""
+        from collections import defaultdict
+        from datetime import timedelta
+
+        from django.db.models import Avg, Count, Q
+        from django.utils import timezone
+
+        from backend.apps.academico.models import Asistencia, Calificacion
+
+        hoy = timezone.now().date()
+        inicio_90 = hoy - timedelta(days=90)
+        inicio_30 = hoy - timedelta(days=30)
+        inicio_60 = hoy - timedelta(days=60)
+
+        registros_map = registros_por_fecha or {}
+        dias_con_registro = len(registros_map)
+        dias_con_falta = set()
+        por_asignatura = defaultdict(lambda: {'P': 0, 'A': 0, 'J': 0, 'T': 0})
+
+        for fecha, regs in registros_map.items():
+            hubo_falta_dia = False
+            for reg in regs:
+                est = getattr(reg, 'estado', '')
+                clase = getattr(reg, 'clase', None)
+                asig = getattr(getattr(clase, 'asignatura', None), 'nombre', None) or 'Sin asignatura'
+                por_asignatura[asig][est] = por_asignatura[asig].get(est, 0) + 1
+                if est != 'P':
+                    hubo_falta_dia = True
+            if hubo_falta_dia:
+                dias_con_falta.add(fecha)
+
+        presentes = int(estadisticas.get('presentes') or 0)
+        ausentes = int(estadisticas.get('ausentes') or 0)
+        justificadas = int(estadisticas.get('justificadas') or 0)
+        atrasos = int(estadisticas.get('atrasos') or 0)
+        total_regs = int(estadisticas.get('total') or 0)
+        pct = float(estadisticas.get('porcentaje_presente') or 0)
+
+        peor_asignatura = None
+        peor_score = -1
+        for nombre, conteos in por_asignatura.items():
+            total_asig = sum(conteos.values())
+            if total_asig < 3:
+                continue
+            faltas = conteos.get('A', 0) + conteos.get('T', 0) + conteos.get('J', 0)
+            score = faltas / total_asig
+            if score > peor_score:
+                peor_score = score
+                pct_asig = round((conteos.get('P', 0) / total_asig) * 100, 1)
+                peor_asignatura = {
+                    'nombre': nombre,
+                    'porcentaje': pct_asig,
+                    'faltas': faltas,
+                }
+
+        def _pct_periodo(desde, hasta):
+            qs = Asistencia.objects.filter(
+                estudiante_id=estudiante.id,
+                fecha__gte=desde,
+                fecha__lte=hasta,
+            ).aggregate(
+                total=Count('pk'),
+                presentes=Count('pk', filter=Q(estado='P')),
+            )
+            if not qs['total']:
+                return None
+            return round((qs['presentes'] / qs['total']) * 100, 1)
+
+        pct_30 = _pct_periodo(inicio_30, hoy)
+        pct_30_60 = _pct_periodo(inicio_60, inicio_30 - timedelta(days=1))
+        tendencia = 'sin_dato'
+        tendencia_label = 'Sin datos suficientes para comparar tendencia'
+        if pct_30 is not None and pct_30_60 is not None:
+            delta = round(pct_30 - pct_30_60, 1)
+            if delta >= 2:
+                tendencia = 'mejora'
+                tendencia_label = f'Asistencia mejoró ~{delta:+.1f} pts en el último mes'
+            elif delta <= -2:
+                tendencia = 'baja'
+                tendencia_label = f'Asistencia bajó ~{delta:+.1f} pts en el último mes'
+            else:
+                tendencia = 'estable'
+                tendencia_label = 'Asistencia estable en el último mes'
+
+        semanas = []
+        for offset in range(4):
+            fin = hoy - timedelta(days=offset * 7)
+            inicio = fin - timedelta(days=6)
+            row = Asistencia.objects.filter(
+                estudiante_id=estudiante.id,
+                fecha__gte=max(inicio, inicio_90),
+                fecha__lte=fin,
+            ).aggregate(
+                total=Count('pk'),
+                presentes=Count('pk', filter=Q(estado='P')),
+            )
+            pct_sem = round((row['presentes'] / row['total']) * 100, 0) if row['total'] else None
+            semanas.append({
+                'label': f'{inicio.strftime("%d/%m")}–{fin.strftime("%d/%m")}',
+                'porcentaje': pct_sem,
+            })
+        semanas.reverse()
+
+        inasistencias_consecutivas = 0
+        fechas_orden = sorted(registros_map.keys(), reverse=True)
+        racha = 0
+        for fecha in fechas_orden:
+            regs = registros_map[fecha]
+            if any(getattr(r, 'estado', '') in ('A', 'T') for r in regs):
+                racha += 1
+            else:
+                break
+        inasistencias_consecutivas = racha
+
+        promedio_notas = None
+        prom_qs = Calificacion.objects.filter(
+            estudiante_id=estudiante.id,
+            evaluacion__activa=True,
+        ).aggregate(p=Avg('nota'))
+        if prom_qs['p'] is not None:
+            promedio_notas = round(float(prom_qs['p']), 1)
+
+        estado = 'estable'
+        estado_label = 'Asistencia en rango esperado'
+        estado_hint = 'Sigue el detalle por asignatura y coordina con el colegio si hay dudas.'
+        if pct < 85 or ausentes >= 5:
+            estado = 'riesgo'
+            estado_label = 'Requiere seguimiento urgente'
+            estado_hint = 'Hay inasistencias o asistencia baja: revisa el detalle y coordina con docentes por Mensajería.'
+        elif pct < 90 or ausentes >= 2 or inasistencias_consecutivas >= 2:
+            estado = 'atencion'
+            estado_label = 'Conviene reforzar asistencia'
+            estado_hint = 'Revisa los días con falta y las observaciones que dejó cada docente.'
+
+        alertas = []
+        if ausentes:
+            alertas.append(f'{ausentes} registro(s) de ausencia injustificada en 90 días (según libro de clases).')
+        if inasistencias_consecutivas >= 2:
+            alertas.append(f'{inasistencias_consecutivas} día(s) recientes con inasistencia o atraso.')
+        if atrasos:
+            alertas.append(f'{atrasos} atraso(s) registrados en el período.')
+        if pct < 90 and promedio_notas and promedio_notas < 4.5:
+            alertas.append(
+                f'Asistencia {pct}% y promedio {promedio_notas}: conviene revisar también Notas.'
+            )
+
+        consejo = 'Usa los filtros para ver un día o solo inasistencias. Cada fila muestra al docente que registró la clase.'
+        if ausentes:
+            consejo = (
+                f'Hay {ausentes} ausencia(s) injustificada(s) en el período: '
+                'si necesitas aclararlas, escribe al docente o a convivencia por Mensajería.'
+            )
+        elif peor_asignatura and peor_asignatura['porcentaje'] < 90:
+            consejo = (
+                f'En {peor_asignatura["nombre"]} la asistencia es {peor_asignatura["porcentaje"]}%: '
+                'vale la pena hablar con el profesor por Mensajería.'
+            )
+
+        profesor_contacto = None
+        if peor_asignatura:
+            for fecha, regs in registros_map.items():
+                for reg in regs:
+                    clase = getattr(reg, 'clase', None)
+                    asig_nombre = getattr(getattr(clase, 'asignatura', None), 'nombre', None)
+                    if asig_nombre != peor_asignatura['nombre']:
+                        continue
+                    prof = getattr(clase, 'profesor', None) if clase else None
+                    if prof:
+                        profesor_contacto = {
+                            'nombre': prof.get_full_name() or prof.email,
+                            'asignatura': asig_nombre,
+                        }
+                        break
+                if profesor_contacto:
+                    break
+
+        asistencia_dias = []
+        dias_destacados = []
+        for fecha in sorted(registros_map.keys(), reverse=True):
+            regs = list(registros_map[fecha])
+            conteos_dia = {'P': 0, 'A': 0, 'J': 0, 'T': 0}
+            for reg in regs:
+                est = getattr(reg, 'estado', '') or ''
+                if est in conteos_dia:
+                    conteos_dia[est] += 1
+            total_dia = sum(conteos_dia.values())
+            incidencias = conteos_dia['A'] + conteos_dia['J'] + conteos_dia['T']
+            sin_just_dia = conteos_dia['A']
+            pct_dia = round((conteos_dia['P'] / total_dia) * 100, 0) if total_dia else 0
+
+            nivel = 'ok'
+            mensaje = (
+                f'{conteos_dia["P"]} de {total_dia} clase(s) con asistencia normal en este día.'
+            )
+            if sin_just_dia >= 2 or (sin_just_dia >= 1 and conteos_dia['T'] >= 2):
+                nivel = 'critico'
+                mensaje = (
+                    f'{sin_just_dia} ausencia(s) injustificada(s)'
+                    f' y {conteos_dia["T"]} atraso(s): revisa observaciones del docente.'
+                )
+            elif sin_just_dia >= 1 or incidencias >= 3:
+                nivel = 'atencion'
+                mensaje = (
+                    f'{incidencias} incidencia(s) en el día'
+                    f' ({sin_just_dia} ausencia(s) injustificada(s)). Detalle por asignatura abajo.'
+                )
+            elif conteos_dia['T'] >= 1:
+                nivel = 'atencion'
+                mensaje = (
+                    f'{conteos_dia["T"]} atraso(s) registrados por el docente en este día.'
+                )
+
+            dia_row = {
+                'fecha_iso': fecha.isoformat(),
+                'fecha_corta': fecha.strftime('%d/%m'),
+                'fecha_label': fecha.strftime('%A %d/%m/%Y').capitalize(),
+                'registros': regs,
+                'presentes': conteos_dia['P'],
+                'justificadas': conteos_dia['J'],
+                'injustificadas': sin_just_dia,
+                'atrasos': conteos_dia['T'],
+                'total': total_dia,
+                'porcentaje': pct_dia,
+                'nivel': nivel,
+                'mensaje': mensaje,
+            }
+            asistencia_dias.append(dia_row)
+            if nivel != 'ok':
+                dias_destacados.append({
+                    **dia_row,
+                    'prioridad': sin_just_dia * 3 + conteos_dia['T'] + conteos_dia['J'],
+                })
+
+        dias_destacados.sort(key=lambda d: (-d['prioridad'], d['fecha_iso']))
+        dias_destacados = [
+            {k: v for k, v in d.items() if k != 'prioridad'}
+            for d in dias_destacados[:5]
+        ]
+
+        return {
+            'estadisticas_ui': {
+                'porcentaje_presente': pct,
+                'registros_total': total_regs,
+                'registros_presentes': presentes,
+                'sin_justificar': ausentes,
+                'justificadas': justificadas,
+                'atrasos': atrasos,
+                'dias_con_registro': dias_con_registro,
+                'dias_con_falta': len(dias_con_falta),
+                'sin_datos': bool(estadisticas.get('sin_datos')),
+            },
+            'asistencia_inteligencia': {
+                'estado': estado,
+                'estado_label': estado_label,
+                'estado_hint': estado_hint,
+                'tendencia': tendencia,
+                'tendencia_label': tendencia_label,
+                'alertas': alertas,
+                'consejo': consejo,
+                'peor_asignatura': peor_asignatura,
+                'profesor_contacto': profesor_contacto,
+                'inasistencias_consecutivas': inasistencias_consecutivas,
+                'semanas': semanas,
+                'promedio_notas': promedio_notas,
+            },
+            'asistencia_dias': asistencia_dias,
+            'dias_destacados': dias_destacados,
+        }
+
+    @staticmethod
     def _get_apoderado_mis_pupilos_context(user, estudiantes):
         """Métricas e insights por pupilo para la vista Mis pupilos (sin tocar inicio)."""
         from collections import defaultdict
@@ -1346,6 +1634,230 @@ class DashboardApoderadoService:
             'estudiante_seleccionado': estudiante_seleccionado,
             'eventos_calendario': eventos,
             'total_eventos': len(eventos),
+        }
+
+    @staticmethod
+    def _enriquecer_apoderado_calendario_vista(user, estudiante, eventos_base):
+        """Calendario apoderado: más eventos, institucionales e insights (sin tocar el contexto base)."""
+        from datetime import date, timedelta
+
+        from django.db.models import Q
+        from django.utils import timezone
+
+        from backend.apps.academico.models import EntregaTarea, Evaluacion, Tarea
+        from backend.apps.cursos.models import ClaseEstudiante
+        from backend.apps.institucion.models import EventoCalendario
+
+        hoy = timezone.now().date()
+        rango_dias = 60
+        fecha_limite = hoy + timedelta(days=rango_dias)
+        fecha_pasado = hoy - timedelta(days=14)
+
+        def _fecha_key(ev):
+            f = ev.get('fecha')
+            if hasattr(f, 'date'):
+                return f.date()
+            return f
+
+        def _evento_key(ev):
+            return (ev.get('tipo'), ev.get('titulo'), _fecha_key(ev))
+
+        vistos = {_evento_key(e) for e in eventos_base}
+        eventos = list(eventos_base)
+
+        def _agregar(ev):
+            clave = _evento_key(ev)
+            if clave in vistos:
+                return
+            vistos.add(clave)
+            f = _fecha_key(ev)
+            ev['es_pasado'] = f < hoy if f else False
+            eventos.append(ev)
+
+        clase_ids = list(
+            ClaseEstudiante.objects.filter(
+                estudiante_id=estudiante.id,
+                activo=True,
+                clase__activo=True,
+            ).values_list('clase_id', flat=True)
+        )
+
+        if clase_ids:
+            evaluaciones = Evaluacion.objects.filter(
+                clase_id__in=clase_ids,
+                activa=True,
+                fecha_evaluacion__gte=fecha_pasado,
+                fecha_evaluacion__lte=fecha_limite,
+            ).select_related('clase__asignatura').order_by('fecha_evaluacion')
+
+            for ev in evaluaciones:
+                _agregar({
+                    'tipo': 'evaluacion',
+                    'titulo': ev.nombre,
+                    'asignatura': ev.clase.asignatura.nombre if ev.clase and ev.clase.asignatura else 'Asignatura',
+                    'fecha': ev.fecha_evaluacion,
+                    'icono': '📝',
+                    'color': '#ef4444',
+                })
+
+            tareas = Tarea.objects.filter(
+                clase_id__in=clase_ids,
+                activa=True,
+                es_publica=True,
+                fecha_entrega__date__gte=fecha_pasado,
+                fecha_entrega__date__lte=fecha_limite,
+            ).select_related('clase__asignatura').order_by('fecha_entrega')
+
+            for tarea in tareas:
+                f_entrega = tarea.fecha_entrega.date() if tarea.fecha_entrega else hoy
+                _agregar({
+                    'tipo': 'tarea',
+                    'titulo': tarea.titulo,
+                    'asignatura': tarea.clase.asignatura.nombre if tarea.clase and tarea.clase.asignatura else 'Asignatura',
+                    'fecha': f_entrega,
+                    'icono': '📋',
+                    'color': '#3b82f6',
+                })
+
+        rbd = getattr(user, 'rbd_colegio', None) or getattr(estudiante, 'rbd_colegio', None)
+        if rbd:
+            institucionales = EventoCalendario.objects.filter(
+                colegio_id=rbd,
+                activo=True,
+                visibilidad__in=['todos', 'apoderados'],
+                fecha_inicio__lte=fecha_limite,
+            ).filter(
+                Q(fecha_fin__gte=fecha_pasado) | Q(fecha_fin__isnull=True, fecha_inicio__gte=fecha_pasado)
+            ).order_by('fecha_inicio')[:25]
+
+            for ev_inst in institucionales:
+                _agregar({
+                    'tipo': 'institucional',
+                    'subtipo': ev_inst.tipo,
+                    'titulo': ev_inst.titulo,
+                    'asignatura': 'Colegio',
+                    'fecha': ev_inst.fecha_inicio,
+                    'icono': '🏫',
+                    'color': ev_inst.color or '#6366f1',
+                    'lugar': ev_inst.lugar or '',
+                })
+
+        eventos.sort(key=lambda e: (_fecha_key(e) or hoy, e.get('tipo') or ''))
+
+        proximos = [e for e in eventos if not e.get('es_pasado')]
+        pasados = [e for e in eventos if e.get('es_pasado')]
+
+        tareas_pendientes = 0
+        if clase_ids:
+            tareas_pub = Tarea.objects.filter(
+                clase_id__in=clase_ids,
+                activa=True,
+                es_publica=True,
+                fecha_entrega__date__gte=hoy,
+                fecha_entrega__date__lte=fecha_limite,
+            ).values_list('id_tarea', flat=True)
+            if tareas_pub:
+                entregadas = set(
+                    EntregaTarea.objects.filter(
+                        estudiante_id=estudiante.id,
+                        tarea_id__in=tareas_pub,
+                        estado__in=['entregada', 'revisada'],
+                    ).values_list('tarea_id', flat=True)
+                )
+                tareas_pendientes = sum(1 for tid in tareas_pub if tid not in entregadas)
+
+        proximo_lejano = None
+        if clase_ids and not proximos:
+            ev_lejana = (
+                Evaluacion.objects.filter(
+                    clase_id__in=clase_ids,
+                    activa=True,
+                    fecha_evaluacion__gt=fecha_limite,
+                )
+                .select_related('clase__asignatura')
+                .order_by('fecha_evaluacion')
+                .first()
+            )
+            if ev_lejana:
+                proximo_lejano = {
+                    'titulo': ev_lejana.nombre,
+                    'asignatura': (
+                        ev_lejana.clase.asignatura.nombre
+                        if ev_lejana.clase and ev_lejana.clase.asignatura
+                        else 'Asignatura'
+                    ),
+                    'fecha': ev_lejana.fecha_evaluacion,
+                    'dias': (ev_lejana.fecha_evaluacion - hoy).days,
+                }
+
+        eval_30 = sum(
+            1 for e in proximos
+            if e.get('tipo') == 'evaluacion' and (_fecha_key(e) - hoy).days <= 30
+        )
+        task_30 = sum(
+            1 for e in proximos
+            if e.get('tipo') == 'tarea' and (_fecha_key(e) - hoy).days <= 30
+        )
+        inst_30 = sum(
+            1 for e in proximos
+            if e.get('tipo') == 'institucional' and (_fecha_key(e) - hoy).days <= 30
+        )
+
+        alertas = []
+        if not proximos and not pasados:
+            alertas.append('No hay evaluaciones ni tareas en el rango visible para este pupilo.')
+        elif not proximos and pasados:
+            alertas.append('No hay eventos futuros; revisa lo reciente o el calendario del colegio.')
+        if tareas_pendientes:
+            alertas.append(f'{tareas_pendientes} tarea(s) por entregar en los próximos {rango_dias} días.')
+        if proximo_lejano:
+            alertas.append(
+                f'Próxima evaluación más adelante: {proximo_lejano["asignatura"]} '
+                f'({proximo_lejano["dias"]} días).'
+            )
+
+        consejo = 'Usa el calendario para filtrar por fecha o asignatura; los puntos de color marcan días con actividad.'
+        if tareas_pendientes:
+            consejo = f'Revisa las {tareas_pendientes} entrega(s) pendiente(s) y apóyate en Notas para ver rendimiento.'
+        elif eval_30:
+            consejo = f'Tienes {eval_30} evaluación(es) en los próximos 30 días: conviene planificar estudio por asignatura.'
+        elif inst_30 and not eval_30 and not task_30:
+            consejo = 'Hay fechas importantes del colegio (reuniones, feriados o actividades): revísalas en el calendario.'
+
+        eventos_json = []
+        for ev in eventos:
+            f = _fecha_key(ev)
+            eventos_json.append({
+                'tipo': ev.get('tipo', ''),
+                'subtipo': ev.get('subtipo', ''),
+                'titulo': ev.get('titulo', ''),
+                'asignatura': ev.get('asignatura', ''),
+                'fecha': f.isoformat() if f else '',
+                'fecha_label': f.strftime('%A %d de %B').capitalize() if f else '',
+                'es_pasado': bool(ev.get('es_pasado')),
+            })
+
+        return {
+            'eventos_calendario': eventos,
+            'eventos_calendario_json': eventos_json,
+            'total_eventos': len(eventos),
+            'calendario_rango_dias': rango_dias,
+            'resumen_calendario': {
+                'total': len(proximos),
+                'evaluaciones': sum(1 for e in proximos if e.get('tipo') == 'evaluacion'),
+                'tareas': sum(1 for e in proximos if e.get('tipo') == 'tarea'),
+                'institucionales': sum(1 for e in proximos if e.get('tipo') == 'institucional'),
+                'pasados': len(pasados),
+            },
+            'calendario_inteligencia': {
+                'alertas': alertas,
+                'consejo': consejo,
+                'proximo_lejano': proximo_lejano,
+                'tareas_pendientes': tareas_pendientes,
+                'evaluaciones_30d': eval_30,
+                'tiene_vista_calendario': bool(eventos),
+                'pasados_recientes': pasados[:5],
+            },
         }
 
     @staticmethod
