@@ -117,7 +117,7 @@ class DashboardApoderadoService:
             # Mis pupilos page
             elif pagina_solicitada == 'mis_pupilos':
                 context_pupilos = DashboardApoderadoService._get_apoderado_mis_pupilos_context(
-                    estudiantes
+                    user, estudiantes
                 )
                 context.update(context_pupilos)
             
@@ -675,29 +675,50 @@ class DashboardApoderadoService:
         }
 
     @staticmethod
-    def _get_apoderado_mis_pupilos_context(estudiantes):
-        """Attach promedio general y asistencia acumulada por pupilo."""
-        from django.db.models import Avg, Count, Q
-        from backend.apps.academico.models import Calificacion, Asistencia
+    def _get_apoderado_mis_pupilos_context(user, estudiantes):
+        """Métricas e insights por pupilo para la vista Mis pupilos (sin tocar inicio)."""
+        from collections import defaultdict
+        from datetime import date, timedelta
 
+        from django.db.models import Avg, Count, Q
+        from django.utils import timezone
+
+        from backend.apps.academico.models import Asistencia, Calificacion, EntregaTarea, Evaluacion, Tarea
+        from backend.apps.cursos.models import ClaseEstudiante
+
+        empty = {
+            'estudiantes': estudiantes,
+            'pupilos_insights': [],
+            'pupilos_hitos': [],
+            'familia_resumen': {},
+            'apod_resumen_pupilos': 0,
+            'apod_resumen_alertas': 0,
+            'apod_resumen_evaluaciones': 0,
+            'apod_resumen_firmas': 0,
+        }
         if not estudiantes:
-            return {'estudiantes': estudiantes}
+            return empty
 
         estudiante_ids = [e.id for e in estudiantes if getattr(e, 'id', None)]
         if not estudiante_ids:
-            return {'estudiantes': estudiantes}
+            return empty
+
+        hoy = timezone.now().date()
+        limite_hitos = hoy + timedelta(days=21)
+        inicio_mes = hoy.replace(day=1)
 
         promedios_qs = (
-            Calificacion.objects
-            .filter(estudiante_id__in=estudiante_ids, evaluacion__activa=True)
+            Calificacion.objects.filter(
+                estudiante_id__in=estudiante_ids,
+                evaluacion__activa=True,
+            )
             .values('estudiante_id')
             .annotate(promedio=Avg('nota'))
         )
         promedios_map = {row['estudiante_id']: row['promedio'] for row in promedios_qs}
 
         asistencia_qs = (
-            Asistencia.objects
-            .filter(estudiante_id__in=estudiante_ids)
+            Asistencia.objects.filter(estudiante_id__in=estudiante_ids)
             .values('estudiante_id')
             .annotate(
                 total=Count('pk'),
@@ -711,12 +732,233 @@ class DashboardApoderadoService:
             for row in asistencia_qs
         }
 
+        inasistencias_mes_qs = (
+            Asistencia.objects.filter(
+                estudiante_id__in=estudiante_ids,
+                fecha__gte=inicio_mes,
+                fecha__lte=hoy,
+            )
+            .exclude(estado='P')
+            .values('estudiante_id')
+            .annotate(total=Count('pk'))
+        )
+        inasistencias_mes_map = {row['estudiante_id']: row['total'] for row in inasistencias_mes_qs}
+
+        clase_por_estudiante = defaultdict(list)
+        for row in ClaseEstudiante.objects.filter(
+            estudiante_id__in=estudiante_ids,
+            activo=True,
+            clase__activo=True,
+        ).values('estudiante_id', 'clase_id'):
+            clase_por_estudiante[row['estudiante_id']].append(row['clase_id'])
+
+        todas_clase_ids = {cid for ids in clase_por_estudiante.values() for cid in ids}
+        tareas_pendientes_map = {sid: 0 for sid in estudiante_ids}
+        tareas_por_clase = defaultdict(list)
+        entregadas_set = set()
+        if todas_clase_ids:
+            tareas_publicadas = list(
+                Tarea.objects.filter(
+                    clase_id__in=todas_clase_ids,
+                    activa=True,
+                    es_publica=True,
+                ).values('id_tarea', 'clase_id', 'titulo', 'fecha_entrega')
+            )
+            tareas_por_clase = defaultdict(list)
+            for tarea in tareas_publicadas:
+                tareas_por_clase[tarea['clase_id']].append(tarea)
+
+            entregas = EntregaTarea.objects.filter(
+                estudiante_id__in=estudiante_ids,
+                tarea__clase_id__in=todas_clase_ids,
+                estado__in=['entregada', 'revisada'],
+            ).values_list('estudiante_id', 'tarea_id')
+            entregadas_set = set(entregas)
+
+            for estudiante_id in estudiante_ids:
+                pendientes = 0
+                for clase_id in clase_por_estudiante.get(estudiante_id, []):
+                    for tarea in tareas_por_clase.get(clase_id, []):
+                        if (estudiante_id, tarea['id_tarea']) not in entregadas_set:
+                            pendientes += 1
+                tareas_pendientes_map[estudiante_id] = pendientes
+
+        proxima_eval_por_estudiante = {}
+        if todas_clase_ids:
+            evaluaciones = (
+                Evaluacion.objects.filter(
+                    clase_id__in=todas_clase_ids,
+                    activa=True,
+                    fecha_evaluacion__gte=hoy,
+                )
+                .select_related('clase__asignatura')
+                .order_by('fecha_evaluacion')
+            )
+            for ev in evaluaciones:
+                asignatura = ev.clase.asignatura.nombre if ev.clase and ev.clase.asignatura else 'Asignatura'
+                payload = {
+                    'nombre': ev.nombre,
+                    'asignatura': asignatura,
+                    'fecha': ev.fecha_evaluacion,
+                }
+                for estudiante_id, clase_ids in clase_por_estudiante.items():
+                    if ev.clase_id in clase_ids and estudiante_id not in proxima_eval_por_estudiante:
+                        proxima_eval_por_estudiante[estudiante_id] = payload
+
+        def _resolver_estado(promedio, asistencia, tareas_pendientes, inasistencias_mes):
+            if (promedio is not None and promedio < 4.0) or (asistencia is not None and asistencia < 75):
+                return 'riesgo', 'Seguimiento prioritario', 'Promedio o asistencia requieren apoyo inmediato.'
+            if (
+                (promedio is not None and promedio < 5.0)
+                or (asistencia is not None and asistencia < 85)
+                or tareas_pendientes >= 3
+                or inasistencias_mes >= 3
+            ):
+                return 'atencion', 'Requiere atención', 'Hay señales académicas que conviene revisar esta semana.'
+            if (
+                promedio is not None
+                and promedio >= 6.0
+                and asistencia is not None
+                and asistencia >= 90
+                and tareas_pendientes == 0
+            ):
+                return 'destacado', 'Rendimiento destacado', 'Buen desempeño académico y asistencia sostenida.'
+            return 'estable', 'Progreso estable', 'Sin alertas críticas en este momento.'
+
+        pupilos_insights = []
+        pupilos_hitos = []
+        alertas_familia = 0
+        evaluaciones_proximas_7d = 0
+
         for estudiante in estudiantes:
             promedio_raw = promedios_map.get(estudiante.id)
-            estudiante.promedio_general = round(float(promedio_raw), 1) if promedio_raw is not None else None
-            estudiante.porcentaje_asistencia = asistencia_map.get(estudiante.id)
+            promedio = round(float(promedio_raw), 1) if promedio_raw is not None else None
+            asistencia = asistencia_map.get(estudiante.id)
+            tareas_pendientes = tareas_pendientes_map.get(estudiante.id, 0)
+            inasistencias_mes = inasistencias_mes_map.get(estudiante.id, 0)
+            proxima_eval = proxima_eval_por_estudiante.get(estudiante.id)
 
-        return {'estudiantes': estudiantes}
+            estudiante.promedio_general = promedio
+            estudiante.porcentaje_asistencia = asistencia
+
+            estado, estado_label, estado_hint = _resolver_estado(
+                promedio, asistencia, tareas_pendientes, inasistencias_mes
+            )
+            if estado in ('riesgo', 'atencion'):
+                alertas_familia += 1
+
+            alertas = []
+            if promedio is not None and promedio < 5.0:
+                alertas.append(f'Promedio general {promedio:.1f}: conviene reforzar estudio.')
+            if asistencia is not None and asistencia < 85:
+                alertas.append(f'Asistencia {asistencia:.0f}%: revisar inasistencias del mes.')
+            if tareas_pendientes:
+                alertas.append(
+                    f'{tareas_pendientes} tarea{"s" if tareas_pendientes != 1 else ""} pendiente{"s" if tareas_pendientes != 1 else ""} en plataforma.'
+                )
+            if inasistencias_mes:
+                alertas.append(
+                    f'{inasistencias_mes} inasistencia{"s" if inasistencias_mes != 1 else ""} registrada{"s" if inasistencias_mes != 1 else ""} este mes.'
+                )
+            if not alertas:
+                alertas.append('Sin alertas urgentes. Mantén el seguimiento habitual.')
+
+            nombre_corto = estudiante.get_full_name() or estudiante.email or 'Pupilo'
+            pupilos_insights.append({
+                'estudiante': estudiante,
+                'nombre': nombre_corto,
+                'estado': estado,
+                'estado_label': estado_label,
+                'estado_hint': estado_hint,
+                'promedio': promedio,
+                'asistencia': asistencia,
+                'tareas_pendientes': tareas_pendientes,
+                'inasistencias_mes': inasistencias_mes,
+                'proxima_evaluacion': proxima_eval,
+                'alertas': alertas[:3],
+            })
+
+            if proxima_eval:
+                dias = (proxima_eval['fecha'] - hoy).days
+                if dias <= 7:
+                    evaluaciones_proximas_7d += 1
+                pupilos_hitos.append({
+                    'tipo': 'evaluacion',
+                    'icono': '📝',
+                    'titulo': proxima_eval['nombre'],
+                    'meta': proxima_eval['fecha'].strftime('%d/%m/%Y'),
+                    'texto': f'{nombre_corto} · {proxima_eval["asignatura"]}',
+                    'fecha_ord': proxima_eval['fecha'],
+                    'enlace': (
+                        f'/dashboard/?pagina=calendario_pupilo&estudiante_id={estudiante.id}'
+                    ),
+                })
+
+            proxima_tarea = None
+            for clase_id in clase_por_estudiante.get(estudiante.id, []):
+                for tarea in tareas_por_clase.get(clase_id, []):
+                    if (estudiante.id, tarea['id_tarea']) in entregadas_set:
+                        continue
+                    fecha_entrega = tarea.get('fecha_entrega')
+                    if not fecha_entrega or fecha_entrega < hoy or fecha_entrega > limite_hitos:
+                        continue
+                    if not proxima_tarea or fecha_entrega < proxima_tarea['fecha_entrega']:
+                        proxima_tarea = {**tarea, 'fecha_entrega': fecha_entrega}
+            if proxima_tarea:
+                pupilos_hitos.append({
+                    'tipo': 'tarea',
+                    'icono': '📋',
+                    'titulo': f'Tarea pendiente: {proxima_tarea["titulo"]}',
+                    'meta': proxima_tarea['fecha_entrega'].strftime('%d/%m/%Y'),
+                    'texto': f'{nombre_corto} · entrega próxima',
+                    'fecha_ord': proxima_tarea['fecha_entrega'],
+                    'enlace': f'/dashboard/?pagina=notas&estudiante_id={estudiante.id}',
+                })
+
+        pendientes_firma = 0
+        if hasattr(user, 'perfil_apoderado'):
+            from backend.apps.core.services.apoderado_api_service import ApoderadoApiService
+
+            pendientes, _ = ApoderadoApiService.list_firmas_apoderado(user.perfil_apoderado)
+            pendientes_firma = len(pendientes)
+            if pendientes_firma:
+                pupilos_hitos.insert(0, {
+                    'tipo': 'firma',
+                    'icono': '✍️',
+                    'titulo': 'Documentos pendientes de firma',
+                    'meta': 'Gestión',
+                    'texto': f'Tienes {pendientes_firma} documento{"s" if pendientes_firma != 1 else ""} por firmar.',
+                    'fecha_ord': hoy,
+                    'enlace': '/dashboard/?pagina=firmas_pendientes',
+                })
+
+        pupilos_hitos.sort(key=lambda item: item['fecha_ord'])
+        pupilos_hitos = pupilos_hitos[:8]
+
+        promedios_validos = [p['promedio'] for p in pupilos_insights if p['promedio'] is not None]
+        asistencias_validas = [p['asistencia'] for p in pupilos_insights if p['asistencia'] is not None]
+        familia_resumen = {
+            'promedio_hogar': (
+                round(sum(promedios_validos) / len(promedios_validos), 1) if promedios_validos else None
+            ),
+            'asistencia_hogar': (
+                round(sum(asistencias_validas) / len(asistencias_validas), 1) if asistencias_validas else None
+            ),
+            'pupilos_en_riesgo': sum(1 for p in pupilos_insights if p['estado'] == 'riesgo'),
+            'pupilos_atencion': sum(1 for p in pupilos_insights if p['estado'] == 'atencion'),
+            'tareas_pendientes_total': sum(p['tareas_pendientes'] for p in pupilos_insights),
+        }
+
+        return {
+            'estudiantes': estudiantes,
+            'pupilos_insights': pupilos_insights,
+            'pupilos_hitos': pupilos_hitos,
+            'familia_resumen': familia_resumen,
+            'apod_resumen_pupilos': len(estudiantes),
+            'apod_resumen_alertas': alertas_familia,
+            'apod_resumen_evaluaciones': evaluaciones_proximas_7d,
+            'apod_resumen_firmas': pendientes_firma,
+        }
 
     @staticmethod
     def _get_apoderado_justificativos_context(user, estudiantes):
