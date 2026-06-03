@@ -1,8 +1,15 @@
+{% if rol == 'profesor' or rol == 'Profesor' %}
+{% include 'profesor/_personal_wrap_start.html' %}
+{% endif %}
 <div class="content-wrapper ce-page">
+    {% if rol == 'profesor' or rol == 'Profesor' %}
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Calendario Escolar" hero_subtitle="Gestión de eventos académicos del colegio" hero_aria="Calendario escolar" hero_show_date="0" hero_hide_metrics=1 %}
+    {% else %}
     <div class="page-header ce-header">
         <h1>Calendario Escolar</h1>
         <p class="subtitle">Gestion de eventos academicos por capability.</p>
     </div>
+    {% endif %}
 
     <div id="calendar-feedback" class="alert ce-feedback" hidden></div>
 
@@ -341,3 +348,6 @@
     loadEvents();
 })();
 </script>
+{% if rol == 'profesor' or rol == 'Profesor' %}
+{% include 'profesor/_personal_wrap_end.html' %}
+{% endif %}

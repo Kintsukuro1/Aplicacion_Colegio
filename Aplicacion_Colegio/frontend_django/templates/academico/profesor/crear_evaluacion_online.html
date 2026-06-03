@@ -1,44 +1,27 @@
-{% extends 'base_app.html' %}
 {% load static %}
+{% load custom_filters %}
+{% include 'profesor/_personal_wrap_start.html' %}
+<link rel="stylesheet" href="{% static 'academico/css/profesor/crear_evaluacion_online.css' %}?v=20260528-portal">
 
-{% block page_title %}{% if evaluacion_seleccionada %}Editar evaluación online{% else %}Crear evaluación online{% endif %}{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'academico/css/profesor/crear_evaluacion_online.css' %}">
-{% endblock %}
-
-{% block breadcrumbs %}
-<div class="container-xl mt-md">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}?pagina=notas{% if clase_seleccionada %}&clase_id={{ clase_seleccionada.id }}{% endif %}">Notas</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{% if evaluacion_seleccionada %}Editar evaluación online{% else %}Crear evaluación online{% endif %}</li>
-        </ol>
+<div class="eo-page">
+    <nav class="eo-breadcrumb" aria-label="Ruta de navegación">
+        <a href="{% url 'dashboard' %}?pagina=notas{% if clase_seleccionada %}&clase_id={{ clase_seleccionada.id }}{% endif %}">Evaluaciones y Notas</a>
+        <span aria-hidden="true">/</span>
+        <span>{% if evaluacion_seleccionada %}Editar evaluación{% else %}Nueva evaluación online{% endif %}</span>
     </nav>
-</div>
-{% endblock %}
 
-{% block page_header %}
-<div class="eo-hero-panel card mb-xl">
-    <div class="eo-hero-copy">
-        <h1 class="eo-hero-title">{% if evaluacion_seleccionada %}Editar evaluación{% else %}Crear Nueva Evaluación{% endif %}</h1>
-        <p class="eo-hero-description">Configura los parámetros y preguntas para tus estudiantes.</p>
-    </div>
-    <div class="eo-page-actions flex flex-wrap items-center gap-sm">
-        <a href="{% url 'dashboard' %}?pagina=notas{% if clase_seleccionada %}&clase_id={{ clase_seleccionada.id }}{% endif %}" class="btn eo-btn-outline">
-            Guardar Borrador
-        </a>
-        <button type="submit" form="form-evaluacion-online" class="btn eo-btn-primary">
-            Vista Previa
+    {% if evaluacion_seleccionada %}
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Editar evaluación online" hero_subtitle="Actualiza parámetros y preguntas del cuestionario" hero_aria="Editar evaluación" hero_hide_metrics=1 hero_show_date="0" %}
+    {% else %}
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Crear nueva evaluación" hero_subtitle="Configura los parámetros y preguntas para tus estudiantes" hero_aria="Crear evaluación" hero_hide_metrics=1 hero_show_date="0" %}
+    {% endif %}
+
+    <div class="eo-hero__actions">
+        <a href="{% url 'dashboard' %}?pagina=notas{% if clase_seleccionada %}&clase_id={{ clase_seleccionada.id }}{% endif %}" class="eo-btn eo-btn-outline">← Volver a notas</a>
+        <button type="submit" form="form-evaluacion-online" class="eo-btn eo-btn-primary">
+            {% if evaluacion_seleccionada %}Guardar cambios{% else %}Publicar evaluación{% endif %}
         </button>
     </div>
-</div>
-{% endblock %}
-
-{% block content %}
-<div class="eo-page">
 {% if evaluacion_seleccionada %}
 <div class="card mb-xl" style="border-left: 4px solid var(--color-primary);">
     <div class="card-body flex flex-col md:flex-row md:items-center md:justify-between gap-md">
@@ -293,9 +276,7 @@
     </aside>
 </form>
 </div>
-{% endblock %}
 
-{% block page_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const checklistLinks = Array.from(document.querySelectorAll('.eo-check-item'));
@@ -431,4 +412,5 @@ function recalculateSidebar() {
     }
 }
 </script>
-{% endblock %}
+
+{% include 'profesor/_personal_wrap_end.html' %}

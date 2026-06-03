@@ -6,12 +6,28 @@
 {% block content %}
 {% if rol == 'apoderado' %}
 {% include 'apoderado/_apoderado_portal_styles.html' %}
-<link rel="stylesheet" href="{% static 'css/apoderado/comunicados.css' %}?v=20260615">
+<link rel="stylesheet" href="{% static 'css/apoderado/comunicados.css' %}?v=20260602-wide">
 
 <div class="aco-page">
     {% include 'apoderado/_apoderado_hero.html' with hero_title="Comunicados y Circulares" hero_subtitle="Información oficial y avisos importantes del colegio." hero_aria="Comunicados" %}
     {% include 'comunicados/lista_comunicados_apoderado.html' %}
 </div>
+
+{% elif rol == 'profesor' or rol == 'Profesor' %}
+{% include 'profesor/_personal_wrap_start.html' %}
+<link rel="stylesheet" href="{% static 'css/comunicados/lista_comunicados.css' %}?v=20260602-prof-lavanda">
+
+<div class="comunicados-container content-wrapper">
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Comunicación" hero_title="Comunicados y Circulares" hero_subtitle="Información oficial, circulares y avisos del colegio" hero_aria="Comunicados" hero_show_date="0" m1_value=comunicados|length|default:0 m1_label="Comunicados" m1_mod="mensajes" m2_value="—" m2_label="Filtrar" m2_mod="neutral" m3_value="—" m3_label="Urgentes" m3_mod="riesgo" m4_value="—" m4_label="Leídos" m4_mod="asistencia" %}
+    {% if can_create_comunicado %}
+    <p class="comunicados-hero-action">
+        <a href="{% url 'comunicados:crear' %}" class="btn-crear">➕ Nuevo Comunicado</a>
+    </p>
+    {% endif %}
+
+    {% include 'comunicados/_lista_comunicados_contenido.html' %}
+</div>
+{% include 'profesor/_personal_wrap_end.html' %}
 
 {% else %}
 <link rel="stylesheet" href="{% static 'css/comunicados/lista_comunicados.css' %}">

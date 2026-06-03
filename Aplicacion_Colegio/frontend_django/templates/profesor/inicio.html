@@ -1,11 +1,21 @@
 {% load static %}
+{% include 'profesor/_personal_wrap_start.html' %}
 <link rel="stylesheet" href="{% static 'css/portal_notifications.css' %}?v=20260629">
 
 <style>
-    /* Premium Teacher Dashboard Styles */
+    /* Inicio docente — paleta lavanda (dashboard_personal.css) */
     .prof-dashboard {
+        --prof-accent: #8b7cc8;
+        --prof-accent-deep: #6a5ab8;
+        --prof-accent-light: #ddd6fe;
+        --prof-accent-soft: #ede9fe;
+        --prof-text: #4c1d95;
+        --prof-text-soft: #6d28d9;
+        --prof-border: #ddd6fe;
+        --prof-surface: #ffffff;
+        --prof-shadow: 0 8px 28px rgba(76, 29, 149, 0.07);
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        color: #1e293b;
+        color: var(--prof-text);
         animation: fadeIn 0.4s ease-out;
         display: flex;
         flex-direction: column;
@@ -19,8 +29,8 @@
 
     /* Welcome Header */
     .prof-welcome-bar {
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-        border: 1px solid #bbf7d0;
+        background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 55%, #ddd6fe 100%);
+        border: 1px solid var(--prof-border);
         border-radius: 20px;
         padding: 24px 30px;
         display: flex;
@@ -28,33 +38,40 @@
         align-items: center;
         flex-wrap: wrap;
         gap: 16px;
-        box-shadow: 0 8px 30px rgba(21, 128, 61, 0.05);
+        box-shadow: var(--prof-shadow);
+        position: relative;
+        z-index: 1;
+    }
+
+    .prof-welcome-bar .portal-welcome-actions {
+        position: relative;
+        z-index: 2;
     }
 
     .prof-welcome-text h1 {
         margin: 0;
         font-size: 1.8rem;
         font-weight: 800;
-        color: #14532d;
+        color: var(--prof-text);
         letter-spacing: -0.03em;
     }
 
     .prof-welcome-text p {
         margin: 4px 0 0;
         font-size: 0.95rem;
-        color: #166534;
+        color: var(--prof-text-soft);
         font-weight: 600;
     }
 
     .prof-date-badge {
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.75);
         backdrop-filter: blur(8px);
         padding: 8px 16px;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1px solid var(--prof-border);
         font-size: 0.9rem;
         font-weight: 700;
-        color: #15803d;
+        color: var(--prof-accent-deep);
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
     }
 
@@ -73,11 +90,11 @@
 
     /* Cards Base */
     .prof-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--prof-surface);
+        border: 1px solid var(--prof-border);
         border-radius: 20px;
         padding: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        box-shadow: var(--prof-shadow);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -89,7 +106,7 @@
     .prof-card-title {
         font-size: 1.2rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--prof-text);
         margin-top: 0;
         margin-bottom: 20px;
         display: flex;
@@ -111,14 +128,14 @@
     }
 
     .prof-kpi-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--prof-surface);
+        border: 1px solid var(--prof-border);
         border-radius: 16px;
         padding: 20px;
         display: flex;
         align-items: center;
         gap: 14px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.01);
+        box-shadow: 0 4px 16px rgba(76, 29, 149, 0.05);
         border-top-width: 4px;
         border-top-style: solid;
         transition: transform 0.2s ease;
@@ -176,23 +193,25 @@
     }
 
     .alert-item-card {
-        background: #fff8f8;
-        border: 1px solid #fee2e2;
+        background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+        border: 1px solid var(--prof-border);
+        border-left: 4px solid #c084fc;
         border-radius: 16px;
         padding: 16px 20px;
         display: flex;
         gap: 16px;
         align-items: flex-start;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .alert-item-card:hover {
-        border-color: #fca5a5;
+        border-color: var(--prof-accent);
+        box-shadow: 0 6px 18px rgba(106, 90, 184, 0.1);
     }
 
     .alert-avatar {
         font-size: 1.5rem;
-        background: #fef2f2;
+        background: var(--prof-accent-soft);
         width: 44px;
         height: 44px;
         border-radius: 12px;
@@ -200,7 +219,7 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        border: 1px solid #fee2e2;
+        border: 1px solid var(--prof-border);
     }
 
     .alert-body {
@@ -227,8 +246,8 @@
         font-weight: 700;
         padding: 3px 8px;
         border-radius: 6px;
-        background: #fee2e2;
-        color: #b91c1c;
+        background: var(--prof-accent-soft);
+        color: var(--prof-accent-deep);
     }
 
     .alert-details-grid {
@@ -252,12 +271,12 @@
     .val-warning { color: #d97706; }
 
     .alert-advice {
-        background: #ffffff;
-        border: 1px solid #f1f5f9;
+        background: var(--prof-surface);
+        border: 1px solid var(--prof-border);
         border-radius: 10px;
         padding: 8px 12px;
         font-size: 0.82rem;
-        color: #475569;
+        color: var(--prof-text-soft);
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -332,10 +351,14 @@
     /* Heatmap Grid */
     .heatmap-header-meta {
         font-size: 0.8rem;
-        color: #64748b;
+        color: var(--prof-text-soft);
         font-weight: 600;
         margin-top: -14px;
         margin-bottom: 18px;
+    }
+
+    .heatmap-header-meta strong {
+        color: var(--prof-text);
     }
 
     .heatmap-table th.day-header {
@@ -364,60 +387,7 @@
 
 <div class="prof-dashboard">
 
-    <!-- Welcome Hero Banner -->
-    <section class="prof-welcome-bar" aria-label="Bienvenida">
-        <div class="prof-welcome-text">
-            <h1>¡Hola, Profesor(a) {{ nombre_usuario }}! 🎓</h1>
-            <p>Portal Académico Escolar · Resumen del Día</p>
-        </div>
-        <div class="portal-welcome-actions">
-            {% include 'includes/_portal_welcome_notif.html' with theme='profesor' %}
-            <div class="prof-date-badge" aria-hidden="true">
-                📅 {% now "l d \d\e F \d\e Y" %}
-            </div>
-        </div>
-    </section>
-
-    <!-- Operational Summary KPI Grid -->
-    <section class="prof-kpi-grid" aria-label="Resumen de operaciones">
-        
-        <!-- Clases Hoy -->
-        <article class="prof-kpi-card kpi-clases">
-            <div class="prof-kpi-icon">📚</div>
-            <div class="prof-kpi-info">
-                <span class="prof-kpi-val">{{ clases_hoy }}</span>
-                <span class="prof-kpi-lbl">Clases hoy</span>
-            </div>
-        </article>
-
-        <!-- Tareas por corregir -->
-        <article class="prof-kpi-card kpi-corregir">
-            <div class="prof-kpi-icon">📝</div>
-            <div class="prof-kpi-info">
-                <span class="prof-kpi-val">{{ tareas_por_corregir }}</span>
-                <span class="prof-kpi-lbl">Por corregir</span>
-            </div>
-        </article>
-
-        <!-- Estudiantes en riesgo -->
-        <article class="prof-kpi-card kpi-riesgo">
-            <div class="prof-kpi-icon">⚠️</div>
-            <div class="prof-kpi-info">
-                <span class="prof-kpi-val">{{ estudiantes_riesgo }}</span>
-                <span class="prof-kpi-lbl">En riesgo</span>
-            </div>
-        </article>
-
-        <!-- Asistencias pendientes -->
-        <article class="prof-kpi-card kpi-pendientes">
-            <div class="prof-kpi-icon">📋</div>
-            <div class="prof-kpi-info">
-                <span class="prof-kpi-val">{{ asistencias_pendientes }}</span>
-                <span class="prof-kpi-lbl">Sin pasar lista</span>
-            </div>
-        </article>
-
-    </section>
+    {% include 'profesor/_profesor_hero.html' with hero_greeting=1 hero_subtitle="Portal Académico Escolar · Resumen del Día" hero_aria="Bienvenida docente" metrics_aria="Resumen de operaciones" m1_value=clases_hoy m1_label="Clases hoy" m1_mod="clases" m2_value=tareas_por_corregir m2_label="Por corregir" m2_mod="tareas" m3_value=estudiantes_riesgo m3_label="En riesgo" m3_mod="riesgo" m4_value=asistencias_pendientes m4_label="Sin pasar lista" m4_mod="asistencia" %}
 
     <!-- Main Dashboard Grid Layout -->
     <div class="prof-grid">
@@ -552,3 +522,5 @@
     </div>
 
 </div>
+
+{% include 'profesor/_personal_wrap_end.html' %}

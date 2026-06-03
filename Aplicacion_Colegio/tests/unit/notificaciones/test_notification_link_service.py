@@ -35,3 +35,43 @@ class TestNormalizeNotificationEnlace:
     def test_otros_tipos_no_cambian(self):
         link = '/comunicados/'
         assert normalize_notification_enlace(link, 'comunicado_nuevo') == link
+
+    def test_dashboard_pagina_clase_redirige_a_detalle(self):
+        assert (
+            normalize_notification_enlace(
+                '/dashboard/?pagina=clase&id=5&tarea=30',
+                'tarea_entregada',
+            )
+            == '/estudiante/clase/5/?tarea=30'
+        )
+
+    def test_dashboard_pagina_clase_con_clase_id(self):
+        assert (
+            normalize_notification_enlace(
+                '/dashboard/?pagina=clase&clase_id=12&tab=entregas',
+                'alerta',
+            )
+            == '/estudiante/clase/12/?tab=entregas'
+        )
+
+    def test_estudiante_clase_path_se_mantiene(self):
+        link = '/estudiante/clase/5/?tarea=30'
+        assert normalize_notification_enlace(link, 'tarea_nueva') == link
+
+    def test_dashboard_pagina_clase_sin_barra_inicial(self):
+        assert (
+            normalize_notification_enlace(
+                'dashboard/?pagina=clase&id=5&tarea=30',
+                'tarea_entregada',
+            )
+            == '/estudiante/clase/5/?tarea=30'
+        )
+
+    def test_dashboard_pagina_clase_url_absoluta(self):
+        assert (
+            normalize_notification_enlace(
+                'http://127.0.0.1:8000/dashboard/?pagina=clase&id=5&tarea=30',
+                'tarea_entregada',
+            )
+            == '/estudiante/clase/5/?tarea=30'
+        )

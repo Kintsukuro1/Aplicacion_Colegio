@@ -45,6 +45,11 @@ body.vista-personal .mm-page,
 body.vista-personal .aec-page,
 body.vista-personal .apg-page,
 body.vista-personal .apf-page,
+body.vista-personal .ce-page,
+body.vista-personal .sr-page,
+body.vista-personal .disponibilidad-container,
+body.vista-personal .eo-page,
+body.vista-personal .prof-hero,
 body.vista-personal .pers-hero {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -92,10 +97,14 @@ body.pagina-inicio:has(.perfil-personal) .dashboard-container > .sidebar {
 
 body.vista-personal .main-content,
 body:has(.perfil-personal) .main-content,
+body:has(.vista-personal) .main-content,
 body.pagina-inicio:has(.vista-personal) .main-content,
-body.pagina-inicio:has(.perfil-personal) .main-content {
+body.pagina-inicio:has(.perfil-personal) .main-content,
+body.pagina-comunicados:has(.vista-personal) .main-content,
+body.pagina-mensajes:has(.vista-personal) .main-content {
     margin-left: 0 !important;
     width: 100% !important;
+    max-width: none !important;
     background: var(--pers-bg) !important;
 }
 
@@ -454,14 +463,24 @@ body.pagina-inicio:has(.perfil-personal) {
     gap: 12px;
 }
 
-.pers-main-header--compact {
+/* Barra de campana dentro del contenido (mismo padding que la página) */
+.pers-page-toolbar {
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
-    min-height: 0;
-    padding: 16px 28px 0;
-    border-bottom: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    position: relative;
+    z-index: 40;
 }
 
-.pers-main-header--compact .pers-main-header__actions .btn-notificaciones {
+.pers-page-toolbar .portal-notif,
+.pers-page-toolbar .notificaciones-container {
+    position: relative;
+    margin: 0;
+}
+
+.pers-page-toolbar .btn-notificaciones {
     width: 42px;
     height: 42px;
     display: inline-flex;
@@ -469,17 +488,41 @@ body.pagina-inicio:has(.perfil-personal) {
     justify-content: center;
     border-radius: 12px;
     background: var(--pers-accent-light);
+    border: 1px solid var(--pers-border);
     padding: 0;
+    color: var(--pers-accent-deep);
 }
 
-.pers-main-header--compact .pers-main-header__actions .btn-notificaciones:hover {
+.pers-page-toolbar .btn-notificaciones:hover {
     background: var(--pers-accent-hover);
 }
 
-.pers-main-header--compact .pers-main-header__actions .badge-notificaciones {
+.pers-page-toolbar .badge-notificaciones {
     top: 4px;
     right: 4px;
     border: 2px solid var(--pers-surface);
+}
+
+/* Hero docente: campana arriba a la derecha (refuerzo sobre mis_clases.css) */
+body.vista-personal .mm-prof-hero .mc-hero__head,
+body.vista-personal .mc-hero__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: nowrap;
+}
+
+body.vista-personal .mc-hero__head-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+body.vista-personal .mc-hero__actions,
+body.vista-personal .mc-hero__head .portal-welcome-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    align-self: flex-start;
 }
 
 .pers-main-header__notif {
@@ -698,6 +741,51 @@ body.vista-personal .pers-page-content .section-header h2 {
 
 body.vista-personal .pers-page-content .page-header h1 {
     color: var(--pers-text);
+}
+
+body.vista-personal .ce-page .ce-header h1,
+body.vista-personal .sr-page .sr-header h1,
+body.vista-personal .disponibilidad-container .page-header h1 {
+    color: var(--pers-text);
+}
+
+body.vista-personal .ce-page .subtitle,
+body.vista-personal .sr-page .subtitle,
+body.vista-personal .disponibilidad-container .page-header p {
+    color: var(--pers-text-soft);
+}
+
+body.vista-personal .comunicados-container .header-comunicados h1 {
+    color: var(--pers-text);
+}
+
+body.vista-personal .comunicados-container .btn-crear {
+    background: var(--pers-accent-deep);
+    color: #fff;
+}
+
+body.vista-personal .comunicados-container .btn-crear:hover {
+    background: #5b4aa8;
+    filter: none;
+}
+
+body.vista-personal .comunicados-container .comunicado-card {
+    border-left-color: var(--pers-accent);
+    border: 1px solid var(--pers-border);
+    border-left-width: 4px;
+    box-shadow: var(--pers-shadow);
+}
+
+body.vista-personal .comunicados-container .filtro-select:focus {
+    border-color: var(--pers-accent-deep);
+    box-shadow: 0 0 0 3px rgba(106, 90, 184, 0.15);
+}
+
+body.vista-personal .comunicados-container .empty-state {
+    background: #faf5ff;
+    border: 1px solid var(--pers-border);
+    border-radius: 16px;
+    color: var(--pers-text-soft);
 }
 
 /* ── 5. Feed ───────────────────────────────────────────────── */
@@ -1938,6 +2026,8 @@ body.vista-personal .pers-page-content .page-header h1 {
 .pers-page-content .af-page,
 .pers-page-content .am-page,
 .pers-page-content .amm-page,
+.pers-page-content .mm-page,
+.pers-page-content .mm-page--prof,
 .pers-page-content .aec-page,
 .pers-page-content .apg-page,
 .pers-page-content .apf-page {

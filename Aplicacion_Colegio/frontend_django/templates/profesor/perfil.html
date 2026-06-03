@@ -3,11 +3,7 @@
 <link rel="stylesheet" href="{% static 'css/profesor/perfil.css' %}">
 
 <div class="perfil-container">
-    <!-- Header -->
-    <div class="page-header">
-        <h1>Mi Perfil</h1>
-        <p>Administra tu informacion personal y configuracion de cuenta</p>
-    </div>
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Configuración" hero_title="Mi Perfil" hero_subtitle="Administra tu información personal y configuración de cuenta" hero_aria="Mi perfil" hero_hide_metrics=1 hero_show_date="0" %}
 
     <!-- Mensajes -->
     {% if messages %}

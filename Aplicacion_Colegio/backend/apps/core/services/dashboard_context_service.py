@@ -123,6 +123,7 @@ class DashboardContextService:
                 'fecha_creacion': notif.fecha_creacion,
                 'icono': icono,
                 'url': url,
+                'enlace': url,
                 'leido': notif.leido,
             })
             
@@ -168,6 +169,7 @@ class DashboardContextService:
                 'fecha_creacion': notif.fecha_creacion,
                 'icono': icono,
                 'url': url,
+                'enlace': url,
                 'leido': notif.leido,
             })
             
@@ -1927,6 +1929,11 @@ class DashboardContextService:
                 'promedio_estudiantes': round(total_estudiantes_sum / total_clases) if total_clases > 0 else 0,
                 'total_horas_semanales': total_horas_sum,
                 'total_cursos': len(cursos_unicos),
+                'total_entregas_pendientes': sum(c['tareas_sin_corregir'] for c in mis_clases),
+                'total_alumnos_riesgo': sum(c['alumnos_riesgo'] for c in mis_clases),
+                'clases_requieren_atencion': sum(
+                    1 for c in mis_clases if c['tareas_sin_corregir'] > 0 or c['alumnos_riesgo'] > 0
+                ),
             }
     @staticmethod
     @PermissionService.require_permission_any([

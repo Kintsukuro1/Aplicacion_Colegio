@@ -188,7 +188,11 @@ def gestionar_tareas_profesor(request, clase_id):
                 messages.success(request, 'La tarea fue eliminada correctamente.')
                 return redirect('gestionar_tareas_profesor', clase_id=clase.id)
 
-    tareas_queryset = ORMAccessService.filter(Tarea, clase=clase, activa=True).prefetch_related('actividades_resolubles').order_by('-fecha_creacion')
+    tareas_queryset = (
+        ORMAccessService.filter(Tarea, clase=clase, activa=True)
+        .prefetch_related('actividades_resolubles')
+        .order_by('-fecha_publicacion')
+    )
     tareas = [_build_item_tarea(tarea) for tarea in tareas_queryset]
 
     total_entregas = EntregaTarea.objects.filter(tarea__clase=clase).count()
@@ -209,19 +213,24 @@ def gestionar_tareas_profesor(request, clase_id):
         'total_entregas': total_entregas,
         'total_pendientes': total_pendientes,
         'total_revisadas': total_revisadas,
+        'user': request.user,
         'sidebar_template': sidebar_template,
         'content_template': '',
         'rol': rol_nombre,
         'nombre_usuario': request.user.get_full_name(),
         'id_usuario': request.user.id,
         'escuela_rbd': request.user.rbd_colegio,
-        'escuela_nombre': request.user.colegio.nombre if hasattr(request.user, 'colegio') and request.user.colegio else 'Sistema',
+        'escuela_nombre': (
+            request.user.colegio.nombre
+            if hasattr(request.user, 'colegio') and request.user.colegio
+            else 'Portal Académico'
+        ),
         'year': datetime.now().year,
         'pagina_actual': 'mis_clases',
         **navigation_access,
     }
-    
-    return render(request, 'academico/profesor/gestionar_tareas.html', context)
+
+    return render(request, 'profesor/gestionar_tareas.html', context)
 
 
 @login_required

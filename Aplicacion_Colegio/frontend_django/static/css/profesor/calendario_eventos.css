@@ -1,3 +1,5 @@
+/* Calendario escolar — portal docente (lavanda) */
+
 .ce-page {
     display: grid;
     gap: 1rem;
@@ -7,27 +9,38 @@
     margin-bottom: 0.5rem;
 }
 
+.ce-header h1,
+.ce-card-title {
+    color: #4c1d95;
+}
+
+.ce-header .subtitle {
+    color: #6d28d9;
+}
+
 .ce-feedback {
     margin-bottom: 0.75rem;
 }
 
 .ce-feedback--success {
-    border: 1px solid #b8d8bf;
-    background: #edf8f0;
-    color: #1e5f2f;
+    border: 1px solid #c4b5fd;
+    background: #f5f3ff;
+    color: #5b21b6;
 }
 
 .ce-feedback--error {
-    border: 1px solid #d7acb5;
-    background: #f7ebee;
-    color: #8f1d2c;
+    border: 1px solid #e9d5ff;
+    background: #faf5ff;
+    color: #7c3aed;
 }
 
 .ce-card {
     margin-bottom: 1rem;
     padding: 1rem;
-    border: 1px solid #d8d8d8;
-    border-radius: 12px;
+    border: 1px solid #ddd6fe;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(76, 29, 149, 0.07);
 }
 
 .ce-card-title {
@@ -43,7 +56,7 @@
 .ce-grid label {
     display: grid;
     gap: 0.35rem;
-    color: #253246;
+    color: #4c1d95;
     font-weight: 600;
     font-size: 0.94rem;
 }
@@ -52,26 +65,26 @@
 .ce-grid select {
     width: 100%;
     min-height: 40px;
-    border: 1px solid #cfd6df;
+    border: 1px solid #ddd6fe;
     border-radius: 10px;
     padding: 0.45rem 0.65rem;
     background: #fff;
     font-weight: 500;
-    color: #1e293b;
+    color: #4c1d95;
 }
 
 .ce-grid input:focus,
 .ce-grid select:focus {
     outline: none;
-    border-color: #1f8f58;
-    box-shadow: 0 0 0 3px rgba(31, 143, 88, 0.15);
+    border-color: #6a5ab8;
+    box-shadow: 0 0 0 3px rgba(106, 90, 184, 0.18);
 }
 
 .ce-grid input[type='checkbox'] {
     width: auto;
     min-height: auto;
     margin: 0;
-    accent-color: #1f8f58;
+    accent-color: #6a5ab8;
 }
 
 .ce-grid input[type='color'] {
@@ -121,11 +134,17 @@
     border-collapse: collapse;
 }
 
+.ce-table th {
+    color: #4c1d95;
+    font-weight: 700;
+    background: #faf5ff;
+}
+
 .ce-table th,
 .ce-table td {
     text-align: left;
     padding: 0.65rem;
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid #ede9fe;
     vertical-align: top;
 }
 
@@ -137,6 +156,30 @@
 
 .ce-action-btn {
     min-width: 84px;
+}
+
+body.vista-personal .ce-page .btn-primary {
+    background: #6a5ab8;
+    border-color: #6a5ab8;
+    color: #fff;
+    font-weight: 600;
+}
+
+body.vista-personal .ce-page .btn-primary:hover {
+    background: #5b4aa8;
+    border-color: #5b4aa8;
+}
+
+body.vista-personal .ce-page .btn-secondary {
+    background: #faf5ff;
+    border-color: #ddd6fe;
+    color: #6d28d9;
+}
+
+body.vista-personal .ce-page .btn-secondary:hover {
+    background: #f3e8ff;
+    border-color: #c4b5fd;
+    color: #4c1d95;
 }
 
 @media (max-width: 768px) {

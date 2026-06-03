@@ -1,5 +1,6 @@
 from datetime import date, datetime
-from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.urls import reverse
 from backend.apps.academico.services.attendance_service import AttendanceService
@@ -7,6 +8,25 @@ from backend.apps.cursos.models import Clase
 from backend.apps.core.services.orm_access_service import ORMAccessService
 from backend.apps.core.services.dashboard_service import DashboardService
 from backend.common.services.policy_service import PolicyService
+from backend.common.exceptions import PrerequisiteException
+
+
+def _redirect_registro_asistencia(clase_id, fecha=None):
+    url = reverse('registro_asistencia_clase', kwargs={'clase_id': clase_id})
+    if fecha:
+        url = f'{url}?fecha={fecha.strftime("%Y-%m-%d")}'
+    return redirect(url)
+
+
+def _asistencia_resumen_dia(estudiantes_data):
+    presentes = ausentes = 0
+    for item in estudiantes_data:
+        estado = item.get('estado', 'P')
+        if estado == 'P':
+            presentes += 1
+        elif estado == 'A':
+            ausentes += 1
+    return presentes, ausentes
 
 
 def gestionar_asistencia(request, colegio, admin_mode=False):
@@ -53,7 +73,14 @@ def gestionar_asistencia(request, colegio, admin_mode=False):
                 logger.exception('Error al actualizar observación de asistencia')
                 messages.error(request, 'No se pudo actualizar la observación. Intenta nuevamente.')
         
-        return redirect(f"{reverse('dashboard')}?pagina=asistencia")
+        clase_id = request.POST.get('clase_id') or request.session.get('last_attendance_clase_id', '')
+        fecha = request.POST.get('fecha') or request.session.get('last_attendance_fecha', '')
+        url = f"{reverse('dashboard')}?pagina=asistencia"
+        if clase_id:
+            url += f"&clase_id={clase_id}"
+        if fecha:
+            url += f"&fecha={fecha}"
+        return redirect(url)
     
     else:
         # Procesar GET - Devolver contexto
@@ -138,109 +165,160 @@ def _resolve_sidebar_and_role(user):
     return 'sidebars/sidebar_profesor.html', 'profesor'
 
 
+@login_required
 def registro_asistencia_clase(request, clase_id):
-    """Vista para registrar asistencia de una clase."""
-    from django.shortcuts import render
-    from django.contrib.auth.decorators import login_required
-
-    try:
-        clase = ORMAccessService.get(Clase, id=clase_id)  # Fix: Clase.pk es id, no id_curso (Curso).
-    except Exception:
+    """Registro de asistencia por clase (lista de estudiantes + guardar por fecha)."""
+    clase = AttendanceService.get_class_for_user(request.user, clase_id)
+    if not clase:
         messages.error(request, 'Clase no encontrada.')
         return redirect('dashboard')
-    
-    # Verificar que es profesor de esta clase
+
     if request.user.id != clase.profesor_id:
         messages.error(request, 'No tienes permiso para registrar asistencia de esta clase.')
         return redirect('dashboard')
-    
-    sidebar_template, rol_nombre = _resolve_sidebar_and_role(request.user)
+
+    colegio = request.user.colegio
+
+    if request.method == 'POST':
+        fecha_str = request.POST.get('fecha')
+        try:
+            fecha = AttendanceService.parse_date_from_string(fecha_str)
+        except ValueError:
+            messages.error(request, 'Formato de fecha inválido.')
+            return _redirect_registro_asistencia(clase.id)
+
+        estados = {}
+        for key in request.POST:
+            if key.startswith('estado_'):
+                estudiante_id = key.split('_', 1)[1]
+                if str(estudiante_id).isdigit():
+                    estados[int(estudiante_id)] = request.POST.get(key)
+
+        if not estados:
+            messages.error(request, 'Seleccione el estado de al menos un estudiante.')
+            return _redirect_registro_asistencia(clase.id, fecha)
+
+        try:
+            count = AttendanceService.register_attendance_for_class(
+                request.user, colegio, clase, fecha, estados
+            )
+        except PrerequisiteException as exc:
+            ctx = getattr(exc, 'context', None) or {}
+            messages.error(
+                request,
+                ctx.get('message', 'No se pudo registrar la asistencia.'),
+            )
+            return _redirect_registro_asistencia(clase.id, fecha)
+
+        if count == 0:
+            messages.warning(
+                request,
+                'No se guardó ningún registro. Verifique que los estudiantes pertenezcan al ciclo de la clase.',
+            )
+        else:
+            messages.success(
+                request,
+                f'Asistencia guardada correctamente ({count} estudiante{"s" if count != 1 else ""}).',
+            )
+        return _redirect_registro_asistencia(clase.id, fecha)
+
+    fecha_param = request.GET.get('fecha', date.today().strftime('%Y-%m-%d'))
+    try:
+        fecha = AttendanceService.parse_date_from_string(fecha_param)
+    except ValueError:
+        fecha = date.today()
+        fecha_param = fecha.strftime('%Y-%m-%d')
+
+    estudiantes_data = AttendanceService.get_students_with_attendance(
+        request.user, colegio, clase, fecha
+    )
+    resumen_presentes, resumen_ausentes = _asistencia_resumen_dia(estudiantes_data)
+
+    _, rol_nombre = _resolve_sidebar_and_role(request.user)
     navigation_access = DashboardService.get_navigation_access(
         rol_nombre,
         user=request.user,
         school_id=request.user.rbd_colegio,
     )
-    
-    context = {
-        'clase': clase,
-        'sidebar_template': sidebar_template,
-        'content_template': '',
-        'rol': rol_nombre,
-        'nombre_usuario': request.user.get_full_name(),
-        'id_usuario': request.user.id,
-        'escuela_rbd': request.user.rbd_colegio,
-        'escuela_nombre': request.user.colegio.nombre if hasattr(request.user, 'colegio') and request.user.colegio else 'Sistema',
-        'year': datetime.now().year,
-        'pagina_actual': 'mis_clases',
-        **navigation_access,
-    }
-    
-    return render(request, 'profesor/registro_asistencia.html', context)
+
+    return render(
+        request,
+        'profesor/registro_asistencia.html',
+        {
+            'clase': clase,
+            'fecha': fecha,
+            'fecha_str': fecha_param,
+            'fecha_hoy': date.today().strftime('%Y-%m-%d'),
+            'estudiantes': estudiantes_data,
+            'total_estudiantes': len(estudiantes_data),
+            'resumen_presentes': resumen_presentes,
+            'resumen_ausentes': resumen_ausentes,
+            'resumen_fecha': fecha.strftime('%d/%m/%Y'),
+            'pagina_actual': 'mis_clases',
+            'user': request.user,
+            'nombre_usuario': request.user.get_full_name(),
+            'escuela_nombre': (
+                request.user.colegio.nombre
+                if hasattr(request.user, 'colegio') and request.user.colegio
+                else 'Portal Académico'
+            ),
+            **navigation_access,
+        },
+    )
 
 
+@login_required
 def reporte_asistencia_clase(request, clase_id):
-    """Vista para ver reportes de asistencia de una clase."""
-    from django.shortcuts import render
-    from django.contrib.auth.decorators import login_required
-
-    try:
-        clase = ORMAccessService.get(Clase, id=clase_id)  # Fix: Clase.pk es id, no id_curso (Curso).
-    except Exception:
+    """Reporte mensual de asistencia por clase."""
+    clase = AttendanceService.get_class_for_user(request.user, clase_id)
+    if not clase:
         messages.error(request, 'Clase no encontrada.')
         return redirect('dashboard')
-    
-    # Verificar que es profesor de esta clase
+
     if request.user.id != clase.profesor_id:
         messages.error(request, 'No tienes permiso para ver reportes de asistencia de esta clase.')
         return redirect('dashboard')
-    
-    # Obtener estadísticas de asistencia
-    from backend.apps.academico.models import Asistencia, ClaseEstudiante
-    from django.db.models import Count, Q
-    
-    estudiantes = ORMAccessService.filter(ClaseEstudiante, clase=clase).select_related('estudiante')
-    
-    reporte_data = []
-    for ce in estudiantes:
-        asistencias = ORMAccessService.filter(Asistencia, clase=clase, estudiante=ce.estudiante)
-        total = asistencias.count()
-        presentes = asistencias.filter(estado='P').count()
-        ausentes = asistencias.filter(estado='A').count()
-        justificados = asistencias.filter(estado='J').count()
-        atrasados = asistencias.filter(estado='T').count()
-        
-        porcentaje = (presentes / total * 100) if total > 0 else 0
-        
-        reporte_data.append({
-            'estudiante': ce.estudiante,
-            'total': total,
-            'presentes': presentes,
-            'ausentes': ausentes,
-            'justificados': justificados,
-            'atrasados': atrasados,
-            'porcentaje': round(porcentaje, 1)
-        })
-    
-    sidebar_template, rol_nombre = _resolve_sidebar_and_role(request.user)
+
+    mes_param = request.GET.get('mes', str(date.today().month))
+    anio_param = request.GET.get('anio', str(date.today().year))
+    try:
+        mes = int(mes_param)
+        anio = int(anio_param)
+    except (ValueError, TypeError):
+        mes = date.today().month
+        anio = date.today().year
+    if mes < 1 or mes > 12:
+        mes = date.today().month
+
+    reporte = AttendanceService.get_attendance_report(request.user, clase, mes, anio)
+
+    _, rol_nombre = _resolve_sidebar_and_role(request.user)
     navigation_access = DashboardService.get_navigation_access(
         rol_nombre,
         user=request.user,
         school_id=request.user.rbd_colegio,
     )
-    
-    context = {
-        'clase': clase,
-        'reporte_data': reporte_data,
-        'sidebar_template': sidebar_template,
-        'content_template': '',
-        'rol': rol_nombre,
-        'nombre_usuario': request.user.get_full_name(),
-        'id_usuario': request.user.id,
-        'escuela_rbd': request.user.rbd_colegio,
-        'escuela_nombre': request.user.colegio.nombre if hasattr(request.user, 'colegio') and request.user.colegio else 'Sistema',
-        'year': datetime.now().year,
-        'pagina_actual': 'mis_clases',
-        **navigation_access,
-    }
-    
-    return render(request, 'profesor/reporte_asistencia.html', context)
+
+    return render(
+        request,
+        'profesor/reporte_asistencia.html',
+        {
+            'clase': clase,
+            'estudiantes_stats': reporte['estudiantes_stats'],
+            'stats_generales': reporte['stats_generales'],
+            'mes': mes,
+            'anio': anio,
+            'meses': AttendanceService.get_months_list(),
+            'anios': AttendanceService.get_years_list(),
+            'mes_nombre': AttendanceService.get_month_name(mes),
+            'pagina_actual': 'mis_clases',
+            'user': request.user,
+            'nombre_usuario': request.user.get_full_name(),
+            'escuela_nombre': (
+                request.user.colegio.nombre
+                if hasattr(request.user, 'colegio') and request.user.colegio
+                else 'Portal Académico'
+            ),
+            **navigation_access,
+        },
+    )

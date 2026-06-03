@@ -5,17 +5,11 @@
 <div id="toast-container" style="position: fixed; top: 24px; right: 24px; z-index: 10000; display: flex; flex-direction: column; gap: 12px; max-width: 380px; pointer-events: none;"></div>
 
 <div class="content-wrapper" style="font-family: 'Outfit', 'Inter', sans-serif; color: #1e293b; padding: 1.5rem;">
-    <!-- Cabecera Principal -->
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1.5rem;">
-        <div>
-            <h1 style="margin: 0; font-weight: 800; font-size: 2.2rem; background: linear-gradient(135deg, #1e293b, #4f46e5); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">📅 Planificación Curricular</h1>
-            <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 1.05rem;">Diseña experiencias de aprendizaje y accede al banco de recursos compartidos</p>
-        </div>
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <button onclick="openPlanningModal()" class="btn-action btn-add-plan" style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: white; border: none; padding: 0.8rem 1.6rem; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); transition: all 0.3s ease;">
-                <span style="font-size: 1.25rem; font-weight: bold;">+</span> Nueva Planificación
-            </button>
-        </div>
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Planificación Curricular" hero_subtitle="Diseña experiencias de aprendizaje y accede al banco de recursos compartidos" hero_aria="Planificaciones" hero_show_date="0" hero_hide_metrics=1 %}
+    <div class="planif-hero-actions" style="display: flex; justify-content: flex-end; margin: -8px 0 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <button onclick="openPlanningModal()" class="btn-action btn-add-plan" style="background: #6a5ab8; color: white; border: none; padding: 0.8rem 1.6rem; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 4px 14px rgba(106, 90, 184, 0.35);">
+            <span style="font-size: 1.25rem; font-weight: bold;">+</span> Nueva Planificación
+        </button>
     </div>
 
     <!-- Pestañas de Navegación de Nivel Superior -->

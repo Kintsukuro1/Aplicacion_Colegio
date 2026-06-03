@@ -1,9 +1,6 @@
 {% include 'profesor/_personal_wrap_start.html' %}
 <div class="content-wrapper">
-    <div class="page-header">
-        <h1>📊 Tareas Consolidadas</h1>
-        <p class="subtitle">Visión general del estado de las tareas en tus cursos</p>
-    </div>
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Tareas Consolidadas" hero_subtitle="Visión general del estado de las tareas en tus cursos" hero_aria="Tareas consolidadas" metrics_aria="Resumen de tareas" hero_show_date="0" m1_value=tareas|length m1_label="Tareas listadas" m1_mod="tareas" m2_value="—" m2_label="En curso" m2_mod="clases" m3_value="—" m3_label="Vencidas" m3_mod="riesgo" m4_value="—" m4_label="Cursos" m4_mod="neutral" %}
 
     <!-- Lista de Tareas Consolidadas -->
     <div class="tareas-lista d-flex flex-col gap-md">

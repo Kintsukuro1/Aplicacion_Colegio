@@ -11,6 +11,16 @@
     margin-bottom: 1.5rem;
 }
 
+.comunicados-hero-action {
+    display: flex;
+    justify-content: flex-end;
+    margin: -8px 0 1.25rem;
+}
+
+.comunicados-hero-action .btn-crear {
+    margin: 0;
+}
+
 .btn-crear {
     display: inline-flex;
     align-items: center;

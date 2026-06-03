@@ -223,6 +223,64 @@ class MensajeriaService:
         return data
 
     @staticmethod
+    def get_clase_mensajes_panel_context(user, clase) -> Dict[str, Any]:
+        """Contactos y conversaciones de una clase para el panel en detalle (sin iframe)."""
+        from django.urls import reverse
+
+        from backend.apps.accounts.models import User as UserModel
+        from backend.apps.cursos.models import ClaseEstudiante
+
+        conversaciones_clase = []
+        conv_por_estudiante: Dict[int, Dict[str, Any]] = {}
+        for item in MensajeriaService.get_conversaciones_data(user):
+            if item['conversacion'].clase_id != clase.id:
+                continue
+            conversaciones_clase.append(item)
+            otro = item['destinatario']
+            if otro.id != user.id:
+                conv_por_estudiante[otro.id] = item
+
+        estudiante_ids = list(
+            ClaseEstudiante.objects.filter(clase=clase, activo=True).values_list(
+                'estudiante_id', flat=True
+            )
+        )
+        estudiantes = (
+            UserModel.objects.filter(id__in=estudiante_ids, is_active=True)
+            .order_by('apellido_paterno', 'apellido_materno', 'nombre')
+        )
+
+        contactos = []
+        for estudiante in estudiantes:
+            conv_item = conv_por_estudiante.get(estudiante.id)
+            ultimo = conv_item['ultimo_mensaje'] if conv_item else None
+            preview = ''
+            if ultimo and ultimo.contenido:
+                preview = ultimo.contenido[:100]
+            contactos.append({
+                'estudiante': estudiante,
+                'conversacion_id': (
+                    conv_item['conversacion'].id_conversacion if conv_item else None
+                ),
+                'no_leidos': conv_item['no_leidos'] if conv_item else 0,
+                'ultimo_preview': preview,
+                'tiene_conversacion': conv_item is not None,
+            })
+
+        no_leidos = sum(item['no_leidos'] for item in conversaciones_clase)
+        sin_conversar = sum(1 for c in contactos if not c['tiene_conversacion'])
+
+        return {
+            'mensajes_clase_contactos': contactos,
+            'mensajes_clase_conversaciones': conversaciones_clase,
+            'mensajes_clase_no_leidos': no_leidos,
+            'mensajes_clase_sin_conversar': sin_conversar,
+            'mensajes_bandeja_url': (
+                f"{reverse('mensajeria:bandeja_mensajes')}?clase_id={clase.id}"
+            ),
+        }
+
+    @staticmethod
     def _build_mensajeria_inteligencia(
         enriched: List[Dict[str, Any]],
         clases: Optional[List[Any]],
@@ -442,6 +500,304 @@ class MensajeriaService:
             'hero_subtitle_mensajes': hero_subtitle,
             'tiene_conversaciones': conversaciones_count > 0,
             'hay_resultados': len(filtradas) > 0,
+            **inteligencia,
+        }
+
+    @staticmethod
+    def _build_profesor_mensajeria_inteligencia(
+        user,
+        enriched: List[Dict[str, Any]],
+        clases: Optional[List[Any]],
+        no_leidos_total: int,
+        notificaciones_count: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Contactos estudiantes por clase e insights para bandeja docente."""
+        from backend.apps.cursos.models import ClaseEstudiante
+
+        conv_por_estudiante: Dict[tuple, Dict[str, Any]] = {}
+        for item in enriched:
+            clase = item['conversacion'].clase
+            if clase.profesor_id != user.id:
+                continue
+            otro = item['destinatario']
+            if otro.id == user.id:
+                continue
+            conv_por_estudiante[(clase.id, otro.id)] = item
+
+        estudiantes_contacto: List[Dict[str, Any]] = []
+        estudiantes_sin_chat = 0
+        clases_sin_conversar = 0
+
+        for clase in clases or []:
+            if clase.profesor_id != user.id:
+                continue
+            tiene_alguna_conv = False
+            inscripciones = (
+                ClaseEstudiante._base_manager.filter(clase=clase, activo=True)
+                .select_related('estudiante')
+                .order_by(
+                    'estudiante__apellido_paterno',
+                    'estudiante__apellido_materno',
+                    'estudiante__nombre',
+                )
+            )
+            for rel in inscripciones:
+                estudiante = rel.estudiante
+                if not estudiante.is_active:
+                    continue
+                existente = conv_por_estudiante.get((clase.id, estudiante.id))
+                tiene_conversacion = bool(existente)
+                if tiene_conversacion:
+                    tiene_alguna_conv = True
+                else:
+                    estudiantes_sin_chat += 1
+                ultimo = existente['ultimo_mensaje'] if existente else None
+                preview = ''
+                if ultimo and getattr(ultimo, 'contenido', None):
+                    preview = (ultimo.contenido or '')[:100]
+                asignatura = (
+                    clase.asignatura.nombre if getattr(clase, 'asignatura_id', None) else 'Clase'
+                )
+                asignatura_color = ''
+                if getattr(clase, 'asignatura_id', None) and getattr(
+                    clase.asignatura, 'color', None
+                ):
+                    asignatura_color = clase.asignatura.color
+                estudiantes_contacto.append({
+                    'clase': clase,
+                    'estudiante': estudiante,
+                    'asignatura': asignatura,
+                    'asignatura_key': asignatura.lower(),
+                    'asignatura_color': asignatura_color,
+                    'curso': clase.curso.nombre if getattr(clase, 'curso_id', None) else '',
+                    'tiene_conversacion': tiene_conversacion,
+                    'conversacion_id': (
+                        existente['conversacion'].id_conversacion if existente else None
+                    ),
+                    'no_leidos': existente['no_leidos'] if existente else 0,
+                    'ultimo_preview': preview,
+                    'iniciales': (
+                        (estudiante.nombre[:1] if estudiante.nombre else '')
+                        + (
+                            estudiante.apellido_paterno[:1]
+                            if estudiante.apellido_paterno
+                            else ''
+                        )
+                    ).upper()
+                    or '?',
+                })
+            if not tiene_alguna_conv and inscripciones.exists():
+                clases_sin_conversar += 1
+
+        estudiantes_contacto.sort(
+            key=lambda row: (
+                -row['no_leidos'],
+                0 if row['tiene_conversacion'] else 1,
+                row['asignatura'].lower(),
+                row['estudiante'].get_full_name().lower(),
+            ),
+        )
+
+        conversacion_sugerida = None
+        for item in enriched:
+            if item['no_leidos'] > 0:
+                conversacion_sugerida = item
+                break
+        if conversacion_sugerida is None and enriched:
+            conversacion_sugerida = enriched[0]
+
+        insights: List[Dict[str, Any]] = []
+        if no_leidos_total:
+            insights.append({
+                'tipo': 'alerta',
+                'icono': '📬',
+                'titulo': f'{no_leidos_total} mensaje(s) sin leer',
+                'texto': 'Responde a familias y estudiantes desde tus conversaciones.',
+                'url_name': 'mensajeria:bandeja_mensajes',
+                'url_query': 'estado=sin_leer',
+            })
+        if estudiantes_sin_chat:
+            insights.append({
+                'tipo': 'sugerencia',
+                'icono': '✉️',
+                'titulo': f'{estudiantes_sin_chat} contacto(s) sin chat',
+                'texto': 'Inicia conversación desde el panel lateral o el detalle de cada clase.',
+                'url_name': 'dashboard',
+                'url_query': 'pagina=mis_clases',
+            })
+        if clases_sin_conversar:
+            insights.append({
+                'tipo': 'info',
+                'icono': '📚',
+                'titulo': f'{clases_sin_conversar} clase(s) sin mensajes',
+                'texto': 'Aún no hay conversaciones en esas asignaturas.',
+                'url_name': None,
+                'url_query': '',
+            })
+        notif_total = int(notificaciones_count or 0)
+        if notif_total > no_leidos_total:
+            insights.append({
+                'tipo': 'info',
+                'icono': '🔔',
+                'titulo': f'{notif_total} avisos en la campana',
+                'texto': 'Comunicados, tareas y alertas del portal (fuera del chat directo).',
+                'url_name': 'dashboard',
+                'url_query': 'pagina=notificaciones',
+            })
+        if not insights:
+            insights.append({
+                'tipo': 'info',
+                'icono': '💬',
+                'titulo': 'Bandeja al día',
+                'texto': 'No hay mensajes pendientes ni alertas de mensajería.',
+                'url_name': None,
+                'url_query': '',
+            })
+
+        return {
+            'estudiantes_contacto': estudiantes_contacto,
+            'profesores_contacto': [],
+            'estudiantes_sin_chat': estudiantes_sin_chat,
+            'clases_sin_conversar': clases_sin_conversar,
+            'conversacion_sugerida': conversacion_sugerida,
+            'mensajes_insights': insights,
+            'total_estudiantes_contactables': len(estudiantes_contacto),
+            'mis_clases_count': len(clases or []),
+        }
+
+    @staticmethod
+    def get_profesor_bandeja_context(
+        user,
+        query_params: Optional[Dict[str, Any]] = None,
+        conversacion_activa_id: Optional[int] = None,
+        clases: Optional[List[Any]] = None,
+        notificaciones_count: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Bandeja de mensajes para docente (estudiantes/familias por clase)."""
+        query_params = query_params or {}
+        estado_filtro = (query_params.get('estado') or '').strip()
+        busqueda = (query_params.get('q') or '').strip().lower()
+
+        conversaciones = MensajeriaService.get_conversaciones_data(user)
+        conversacion_ids = [item['conversacion'].id_conversacion for item in conversaciones]
+        total_mensajes = 0
+        if conversacion_ids:
+            total_mensajes = Mensaje.objects.filter(
+                conversacion_id__in=conversacion_ids,
+            ).count()
+
+        enriched = []
+        for item in conversaciones:
+            conv = item['conversacion']
+            clase = conv.clase
+            if clase.profesor_id != user.id:
+                continue
+            destinatario = item['destinatario']
+            ultimo = item['ultimo_mensaje']
+            asignatura = clase.asignatura.nombre if clase.asignatura_id else 'Clase'
+            asignatura_color = ''
+            if clase.asignatura_id and getattr(clase.asignatura, 'color', None):
+                asignatura_color = clase.asignatura.color
+            curso = clase.curso.nombre if clase.curso_id else ''
+            con_estudiante = destinatario.id != user.id
+
+            enriched.append({
+                **item,
+                'asignatura': asignatura,
+                'asignatura_key': asignatura.lower(),
+                'asignatura_color': asignatura_color,
+                'curso': curso,
+                'con_profesor': False,
+                'con_estudiante': con_estudiante,
+                'activa': conversacion_activa_id == conv.id_conversacion,
+                'iniciales': (
+                    (destinatario.nombre[:1] if destinatario.nombre else '')
+                    + (
+                        destinatario.apellido_paterno[:1]
+                        if destinatario.apellido_paterno
+                        else ''
+                    )
+                ).upper()
+                or '?',
+            })
+
+        no_leidos_total = sum(item['no_leidos'] for item in enriched)
+        conversaciones_count = len(enriched)
+        con_estudiantes = sum(1 for item in enriched if item.get('con_estudiante'))
+
+        filtradas = enriched
+        if estado_filtro == 'sin_leer':
+            filtradas = [item for item in filtradas if item['no_leidos'] > 0]
+        elif estado_filtro == 'estudiantes':
+            filtradas = [item for item in filtradas if item.get('con_estudiante')]
+
+        if busqueda:
+            filtradas = [
+                item for item in filtradas
+                if busqueda in item['destinatario'].get_full_name().lower()
+                or busqueda in item['asignatura'].lower()
+                or busqueda in item['curso'].lower()
+                or (
+                    item['ultimo_mensaje']
+                    and busqueda in (item['ultimo_mensaje'].contenido or '').lower()
+                )
+            ]
+
+        inteligencia = MensajeriaService._build_profesor_mensajeria_inteligencia(
+            user,
+            enriched,
+            clases,
+            no_leidos_total,
+            notificaciones_count=notificaciones_count,
+        )
+
+        clases_con_estudiantes = []
+        from backend.apps.cursos.models import ClaseEstudiante
+
+        for clase in clases or []:
+            if clase.profesor_id != user.id:
+                continue
+            ests = [
+                rel.estudiante
+                for rel in ClaseEstudiante._base_manager.filter(
+                    clase=clase, activo=True
+                ).select_related('estudiante')
+                if rel.estudiante.is_active
+            ]
+            clases_con_estudiantes.append({'clase': clase, 'estudiantes': ests})
+
+        hero_subtitle = 'Comunícate con estudiantes y apoderados de tus clases.'
+        if no_leidos_total:
+            hero_subtitle = (
+                f'Tienes {no_leidos_total} mensaje(s) sin leer en '
+                f'{conversaciones_count} conversación(es).'
+            )
+        elif inteligencia['estudiantes_sin_chat']:
+            hero_subtitle = (
+                f'{inteligencia["estudiantes_sin_chat"]} contacto(s) aún sin conversación · '
+                f'{len(clases or [])} clase(s) activas'
+            )
+        elif conversaciones_count:
+            hero_subtitle = (
+                f'{conversaciones_count} conversación(es) · '
+                f'{total_mensajes} mensaje(s) en total'
+            )
+
+        return {
+            'conversaciones': filtradas,
+            'conversaciones_todas': enriched,
+            'no_leidos_count': no_leidos_total,
+            'conversaciones_count': conversaciones_count,
+            'con_profesores_count': con_estudiantes,
+            'con_estudiantes_count': con_estudiantes,
+            'total_mensajes_count': total_mensajes,
+            'estado_filtro': estado_filtro,
+            'busqueda': query_params.get('q', '').strip(),
+            'filtros_activos': bool(estado_filtro or busqueda),
+            'hero_subtitle_mensajes': hero_subtitle,
+            'tiene_conversaciones': conversaciones_count > 0,
+            'hay_resultados': len(filtradas) > 0,
+            'clases_con_estudiantes': clases_con_estudiantes,
             **inteligencia,
         }
 

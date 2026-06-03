@@ -4,10 +4,7 @@
 <link rel="stylesheet" href="{% static 'css/profesor/reportes.css' %}">
 
 <div class="content-wrapper">
-    <div class="page-header">
-        <h1>📊 Reportes y Estadísticas</h1>
-        <p class="subtitle">Análisis de asistencia y rendimiento académico</p>
-    </div>
+    {% include 'profesor/_profesor_hero.html' with hero_eyebrow="Académico" hero_title="Reportes y Estadísticas" hero_subtitle="Análisis de asistencia y rendimiento académico" hero_aria="Reportes" metrics_aria="Resumen de reportes" hero_show_date="0" m1_value=clases|length|default:0 m1_label="Clases" m1_mod="clases" m2_label="Asistencia" m2_mod="asistencia" m3_label="Académico" m3_mod="tareas" m4_label="Exportar" m4_mod="neutral" m2_value="✓" m3_value="✓" m4_value="✓" %}
 
     <div class="reportes-container">
         
@@ -41,15 +38,10 @@
                         <label for="clase_id">Clase:</label>
                         <select name="clase_id" id="clase_id" onchange="this.form.submit()">
                             <option value="">-- Seleccione una clase --</option>
-                            {% regroup clases|ordenar_por_curso by curso.nombre as clases_por_curso %}
-                            {% for grupo in clases_por_curso %}
-                                <optgroup label="{{ grupo.grouper }}">
-                                    {% for clase in grupo.list %}
-                                        <option value="{{ clase.id }}" {% if filtro_clase_id|stringformat:"s" == clase.id|stringformat:"s" %}selected{% endif %}>
-                                            {{ clase.asignatura.nombre }}
-                                        </option>
-                                    {% endfor %}
-                                </optgroup>
+                            {% for clase in clases|ordenar_por_curso %}
+                            <option value="{{ clase.id }}" data-curso="{{ clase.curso.nombre }}" {% if filtro_clase_id|stringformat:"s" == clase.id|stringformat:"s" %}selected{% endif %}>
+                                {{ clase.curso.nombre }} · {{ clase.asignatura.nombre }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -405,58 +397,35 @@
 {% if rol == 'admin_escolar' %}
 <script>
 function filtrarClasesPorCurso(cursoNombre) {
-    const claseSelect = document.getElementById('clase_id');
+    var claseSelect = document.getElementById('clase_id');
     if (!claseSelect) return;
-    
-    const optgroups = claseSelect.querySelectorAll('optgroup');
-    
-    // Si cursoNombre es vacío, mostramos todos los optgroups
-    if (!cursoNombre) {
-        optgroups.forEach(group => group.style.display = '');
-        return;
-    }
-    
-    // Ocultar todos los optgroups excepto el seleccionado
-    optgroups.forEach(group => {
-        if (group.getAttribute('label') === cursoNombre) {
-            group.style.display = '';
-        } else {
-            group.style.display = 'none';
+
+    var primeraVisible = null;
+    Array.from(claseSelect.options).forEach(function (opt) {
+        if (!opt.value) {
+            opt.hidden = false;
+            return;
         }
+        var visible = !cursoNombre || opt.dataset.curso === cursoNombre;
+        opt.hidden = !visible;
+        if (visible && !primeraVisible) primeraVisible = opt;
     });
-    
-    // Auto-seleccionar la primera opción visible si la opción seleccionada actualmente está oculta
-    const currentSelected = claseSelect.options[claseSelect.selectedIndex];
-    if (currentSelected && currentSelected.value !== "") {
-        const parentGroup = currentSelected.parentNode;
-        if (parentGroup && parentGroup.tagName === 'OPTGROUP' && parentGroup.style.display === 'none') {
-            const targetGroup = Array.from(optgroups).find(g => g.getAttribute('label') === cursoNombre);
-            if (targetGroup) {
-                const firstOption = targetGroup.querySelector('option');
-                if (firstOption) {
-                    claseSelect.value = firstOption.value;
-                    claseSelect.dispatchEvent(new Event('change'));
-                }
-            }
-        }
+
+    var actual = claseSelect.options[claseSelect.selectedIndex];
+    if (actual && actual.value && actual.hidden && primeraVisible) {
+        claseSelect.value = primeraVisible.value;
+        claseSelect.dispatchEvent(new Event('change'));
     }
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    const cursoFiltro = document.getElementById('filtro_curso_nombre');
-    if (cursoFiltro) {
-        const claseSelect = document.getElementById('clase_id');
-        if (claseSelect) {
-            const selectedOption = claseSelect.options[claseSelect.selectedIndex];
-            if (selectedOption && selectedOption.value !== "") {
-                const parentGroup = selectedOption.parentNode;
-                if (parentGroup && parentGroup.tagName === 'OPTGROUP') {
-                    const cursoNombre = parentGroup.getAttribute('label');
-                    cursoFiltro.value = cursoNombre;
-                    filtrarClasesPorCurso(cursoNombre);
-                }
-            }
-        }
+document.addEventListener('DOMContentLoaded', function () {
+    var cursoFiltro = document.getElementById('filtro_curso_nombre');
+    var claseSelect = document.getElementById('clase_id');
+    if (!cursoFiltro || !claseSelect) return;
+    var selectedOption = claseSelect.options[claseSelect.selectedIndex];
+    if (selectedOption && selectedOption.value && selectedOption.dataset.curso) {
+        cursoFiltro.value = selectedOption.dataset.curso;
+        filtrarClasesPorCurso(selectedOption.dataset.curso);
     }
 });
 </script>

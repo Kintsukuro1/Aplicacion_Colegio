@@ -256,14 +256,14 @@ def crear_evaluacion_online_profesor(request):
         'filtro_clase_id': filtro_clase_id,
         'modo_formulario': 'editar' if evaluacion_seleccionada else 'crear',
         'fecha_hoy': date.today().strftime('%Y-%m-%d'),
-        'sidebar_template': DashboardService.get_sidebar_template(rol_contexto),
-        'hide_top_navbar': True,
+        'pagina_actual': 'notas',
+        'content_template': 'academico/profesor/crear_evaluacion_online.html',
     }
 
     if request.GET.get('json'):
         return JsonResponse(context, safe=False)
 
-    return render(request, 'academico/profesor/crear_evaluacion_online.html', context)
+    return render(request, 'dashboard.html', context)
 
 
 @login_required

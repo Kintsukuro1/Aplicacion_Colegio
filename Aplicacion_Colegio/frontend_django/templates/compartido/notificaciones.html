@@ -19,7 +19,7 @@
     <div class="notifications-page-list">
         {% if notificaciones_todas %}
             {% for n in notificaciones_todas %}
-                <a href="{{ n.enlace }}" class="notifications-page-item {% if not n.leido %}is-unread{% endif %}">
+                <a href="{{ n.url|default:n.enlace }}" class="notifications-page-item {% if not n.leido %}is-unread{% endif %}">
                     <div class="item-icon">{{ n.icono }}</div>
                     <div class="item-content">
                         <div class="item-title">{{ n.titulo }}</div>
