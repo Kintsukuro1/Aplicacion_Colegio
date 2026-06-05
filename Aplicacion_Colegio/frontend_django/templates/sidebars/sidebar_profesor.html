@@ -1,3 +1,6 @@
+{% if pagina_actual == 'inicio' or pagina_actual == 'mis_clases' or pagina_actual == 'asistencia' or pagina_actual == 'notas' or pagina_actual == 'libro_clases' or pagina_actual == 'reportes' or pagina_actual == 'perfil' or pagina_actual == 'mis_planificaciones' or pagina_actual == 'tareas_consolidado' or pagina_actual == 'calendario_eventos' or pagina_actual == 'solicitud_reuniones' or pagina_actual == 'disponibilidad' or pagina_actual == 'mensajes' or pagina_actual == 'comunicados' or '/mensajeria/' in request.path or '/comunicados/' in request.path %}
+{# Layout docente (_personal_wrap_start): sidebar en profesor/_sidebar.html #}
+{% else %}
 <aside class="sidebar">
     <div class="sidebar-header">
         <h2>🎓 Portal Académico</h2>
@@ -135,3 +138,4 @@
         </ul>
     </nav>
 </aside>
+{% endif %}

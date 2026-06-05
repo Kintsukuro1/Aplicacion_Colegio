@@ -51,6 +51,17 @@ class DashboardOrchestratorService:
                 return redirect('mensajeria:ver_conversacion', id_conversacion=int(conv_id))
             return redirect('mensajeria:bandeja_mensajes')
 
+        # Fix: notificaciones legacy usaban ?pagina=clase&id=… (solo válido para estudiante en dashboard).
+        if pagina_solicitada == 'clase':
+            from backend.apps.notificaciones.services.notification_link_service import (
+                normalize_notification_enlace,
+            )
+
+            legacy_link = f'/dashboard/?{request.META.get("QUERY_STRING", "pagina=clase")}'
+            destino = normalize_notification_enlace(legacy_link)
+            if destino and destino not in {legacy_link, '#'}:
+                return redirect(destino)
+
         if (is_system_admin_scope or rol == 'admin_general') and pagina_solicitada == 'escuelas':
             from backend.apps.core.views.admin_general.escuelas import gestionar_escuelas
             return gestionar_escuelas(request)
@@ -124,6 +135,13 @@ class DashboardOrchestratorService:
                 role_context.update(asistencia_context)
 
             context.update(role_context)
+
+            if not context.get('prof_hero_manual'):
+                from backend.apps.core.services.profesor_hero_service import ProfesorHeroService
+                colegio_obj = SchoolQueryService.get_required_by_rbd(escuela_rbd)
+                context['prof_hero'] = ProfesorHeroService.build(
+                    pagina_solicitada, request.user, colegio_obj, context
+                )
 
         elif rol == 'apoderado':
             role_context = DashboardService.get_apoderado_context(
