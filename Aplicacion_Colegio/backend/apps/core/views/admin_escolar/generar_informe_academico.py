@@ -18,6 +18,7 @@ from backend.apps.academico.services.academic_reports_service import AcademicRep
 from backend.apps.auditoria.services.sensitive_action_service import SensitiveActionService
 from backend.apps.core.services.academic_report_query_service import AcademicReportQueryService
 from backend.apps.core.services.dashboard_service import DashboardService
+from backend.apps.core.views.admin_escolar._access import can_manage_school_data
 from backend.common.services.policy_service import PolicyService
 from backend.common.utils.report_exporters import ExcelReportExporter, PDFReportExporter
 
@@ -35,7 +36,7 @@ def generar_informe_academico(request, estudiante_id: int):
     rol = user_data.get('rol')
     escuela_rbd = user_data.get('escuela_rbd')
 
-    if rol not in ['admin', 'admin_escolar']:
+    if not can_manage_school_data(rol, request.user):
         messages.error(request, 'No tienes permiso para generar informes')
         return redirect('dashboard')
 
