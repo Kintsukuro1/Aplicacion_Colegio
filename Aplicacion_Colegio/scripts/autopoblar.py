@@ -1,4 +1,4 @@
-image.pngimage.png"""
+"""
 ============================================================
 SCRIPT DE AUTOPOBLADO PARA SISTEMA DE GESTIÓN ESCOLAR
 FASE 3 - Domain Redesign: Ciclos Académicos y Estados Explícitos
