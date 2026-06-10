@@ -890,37 +890,14 @@ class DashboardAdminService:
             })
         clases_por_asignatura_json = json.dumps(dict(clases_por_asignatura))
 
-        total_asignaturas_filtradas = paginator.count
-        insights_asignaturas = []
-        if asignaturas_sin_asignar > 0:
-            insights_asignaturas.append({
-                'tipo': 'warn',
-                'texto': (
-                    f'{asignaturas_sin_asignar} asignatura{"s" if asignaturas_sin_asignar != 1 else ""} '
-                    f'sin clases asignadas en el ciclo activo.'
-                ),
-            })
-        if total_horas_semanales > 0 and total_clases_activas == 0:
-            insights_asignaturas.append({
-                'tipo': 'info',
-                'texto': 'Hay horas semanales definidas pero aún no hay clases activas. Asigne docentes a los cursos.',
-            })
-        if ciclo_activo:
-            insights_asignaturas.append({
-                'tipo': 'neutral',
-                'texto': f'Ciclo activo: {ciclo_activo.nombre}. {total_horas_semanales}h semanales planificadas.',
-            })
-        
         return {
             'asignaturas': asignaturas,
             'page_obj': asignaturas_page,
             'is_paginated': paginator.num_pages > 1,
             'total_asignaturas': total_asignaturas,
-            'total_asignaturas_filtradas': total_asignaturas_filtradas,
             'total_clases_activas': total_clases_activas,
             'total_horas_semanales': total_horas_semanales,
             'asignaturas_sin_asignar': asignaturas_sin_asignar,
-            'insights_asignaturas': insights_asignaturas,
             'filtro_busqueda': filtro_busqueda,
             'cursos': cursos,
             'curso_seleccionado': curso_seleccionado,

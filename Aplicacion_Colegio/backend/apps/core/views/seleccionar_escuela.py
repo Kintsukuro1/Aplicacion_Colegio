@@ -5,6 +5,7 @@ import logging
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 from django.db import transaction
 from django.shortcuts import redirect, get_object_or_404, render
 from django.utils import timezone
@@ -19,6 +20,7 @@ User = get_user_model()
 
 
 @login_required(login_url='accounts:login')
+@never_cache
 def seleccionar_escuela(request):
     """
     Vista para que el administrador GENERAL seleccione o administre colegios

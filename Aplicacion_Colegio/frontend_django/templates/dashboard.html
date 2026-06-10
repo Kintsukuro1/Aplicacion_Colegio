@@ -5,6 +5,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     {% include 'includes/_portal_favicon.html' %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +22,13 @@
     <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <!-- Dashboard CSS -->
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260405-notif-ui">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260611-admin-layout">
+    {% if rol == 'admin_general' or rol == 'Administrador general' %}
+    <link rel="stylesheet" href="{% static 'css/dashboard_personal.css' %}?v=20260611-admin-layout">
+    <link rel="stylesheet" href="{% static 'css/profesor/profesor_hero.css' %}?v=20260611-admin-layout">
+    <link rel="stylesheet" href="{% static 'css/admin/admin_portal.css' %}?v=20260611-admin-layout">
+    <link rel="stylesheet" href="{% static 'css/portal_notifications.css' %}?v=20260611-admin-layout">
+    {% endif %}
     {% if rol == 'profesor' or rol == 'Profesor' %}
     <link rel="stylesheet" href="{% static 'css/profesor/profesor_hero.css' %}?v=20260605-hero">
     <link rel="stylesheet" href="{% static 'css/portal_notifications.css' %}?v=20260604-prof-notif">
@@ -68,7 +77,7 @@
     <link rel="stylesheet" href="{% static 'css/responsive.css' %}?v=20260509">
 </head>
 
-<body class="pagina-{{ pagina_actual }}">
+<body class="pagina-{{ pagina_actual }}{% if rol == 'admin_general' or rol == 'Administrador general' %} vista-personal vista-admin-global{% endif %}">
     <div class="dashboard-container">
 
         {# Incluir sidebar dinámicamente según rol #}
@@ -187,6 +196,12 @@
                     {% include 'staff/_staff_content_shell.html' with staff_slug='soporte_tecnico_escolar' staff_label='Soporte Técnico Escolar' %}
                 {% elif rol == 'bibliotecario_digital' or rol == 'Bibliotecario digital' %}
                     {% include 'staff/_staff_content_shell.html' with staff_slug='bibliotecario_digital' staff_label='Bibliotecario Digital' %}
+                {% elif rol == 'admin_general' or rol == 'Administrador general' %}
+                    {% if pagina_actual == 'inicio' or pagina_actual == 'escuelas' or pagina_actual == 'usuarios' or pagina_actual == 'planes' or pagina_actual == 'estadisticas_globales' or pagina_actual == 'reportes_financieros' or pagina_actual == 'configuracion' or pagina_actual == 'auditoria' or pagina_actual == 'monitoreo_seguridad' or pagina_actual == 'calendario_eventos' or pagina_actual == 'solicitud_reuniones' or pagina_actual == 'importar_datos' or pagina_actual == 'active_sessions' or pagina_actual == 'password_history' or pagina_actual == 'gestionar_escuelas' or pagina_actual == 'notificaciones' or pagina_actual == 'perfil' %}
+                        {% include content_template %}
+                    {% else %}
+                        {% include 'admin/_admin_content_shell.html' %}
+                    {% endif %}
                 {% else %}
                     {% include content_template %}
                 {% endif %}

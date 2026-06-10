@@ -2101,3 +2101,211 @@ body.vista-personal .mc-grid {
         transform: none;
     }
 }
+
+/* ==========================================================================
+   Hierarchical Nav Tree for Personal Sidebar
+   ========================================================================== */
+.pers-sidebar .nav-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pers-sidebar .nav-tree .nav-tree__item {
+    list-style: none;
+}
+
+/* Top-level items (e.g. Inicio) */
+.pers-sidebar .nav-tree > .nav-tree__item > .nav-tree__link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 2px 4px;
+    color: var(--pers-text);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.pers-sidebar .nav-tree > .nav-tree__item > .nav-tree__link:hover {
+    background: #f5f3ff;
+}
+
+.pers-sidebar .nav-tree > .nav-tree__item.active > .nav-tree__link {
+    background: #ede9fe;
+    border-left: 3px solid var(--pers-accent-deep);
+    padding-left: 13px;
+    color: var(--pers-accent-deep);
+    font-weight: 700;
+}
+
+/* Group container */
+.pers-sidebar .nav-tree__group {
+    list-style: none;
+    margin: 4px 4px;
+}
+
+/* Toggle button (Folder Header) */
+.pers-sidebar .nav-tree__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    border-radius: 10px;
+    transition: background 0.2s ease, color 0.2s ease;
+    color: var(--pers-text);
+}
+
+.pers-sidebar .nav-tree__toggle:hover {
+    background: #f5f3ff;
+}
+
+/* Chevron icon */
+.pers-sidebar .nav-tree__toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--pers-text-soft);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.pers-sidebar .nav-tree__toggle-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.pers-sidebar .nav-tree__group--open > .nav-tree__toggle .nav-tree__toggle-icon {
+    transform: rotate(90deg);
+    color: var(--pers-accent-deep);
+}
+
+/* Toggle Label */
+.pers-sidebar .nav-tree__toggle-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pers-text-soft);
+    flex: 1;
+    transition: color 0.2s ease;
+}
+
+.pers-sidebar .nav-tree__group--open > .nav-tree__toggle .nav-tree__toggle-label {
+    color: var(--pers-text);
+}
+
+/* Badge Count */
+.pers-sidebar .nav-tree__toggle-badge {
+    font-size: 10px;
+    color: var(--pers-text-soft);
+    background: rgba(109, 40, 217, 0.08);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.pers-sidebar .nav-tree__group--open > .nav-tree__toggle .nav-tree__toggle-badge {
+    background: rgba(106, 90, 184, 0.15);
+    color: var(--pers-accent-deep);
+}
+
+/* Children list (collapsible) */
+.pers-sidebar .nav-tree__children {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pers-sidebar .nav-tree__children .nav-tree__item {
+    list-style: none;
+}
+
+/* Sub-items */
+.pers-sidebar .nav-tree__children .nav-tree__link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 8px 36px;
+    margin: 2px 0;
+    color: var(--pers-text);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 500;
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+/* Line connector indicator */
+.pers-sidebar .nav-tree__children .nav-tree__link::before {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    width: 6px;
+    height: 1px;
+    background: var(--pers-sidebar-border);
+    transition: background 0.2s ease;
+}
+
+.pers-sidebar .nav-tree__children .nav-tree__link:hover {
+    background: #f5f3ff;
+    color: var(--pers-accent-deep);
+    transform: translateX(2px);
+}
+
+.pers-sidebar .nav-tree__children .nav-tree__link:hover::before {
+    background: var(--pers-accent-deep);
+}
+
+.pers-sidebar .nav-tree__children .nav-tree__item.active .nav-tree__link {
+    background: #ede9fe;
+    color: var(--pers-accent-deep);
+    font-weight: 700;
+    border-left: 3px solid var(--pers-accent-deep);
+    padding-left: 33px;
+}
+
+.pers-sidebar .nav-tree__children .nav-tree__item.active .nav-tree__link::before {
+    background: var(--pers-accent-deep);
+}
+
+/* Emojis & icons in sub-items */
+.pers-sidebar .nav-tree__children .nav-tree__link .icon {
+    font-size: 0.95rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* Section Header internally within Admin Escolar */
+.pers-sidebar .nav-tree__section-header {
+    padding: 10px 12px 4px 36px;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: var(--pers-text-soft);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    list-style: none;
+}
+
