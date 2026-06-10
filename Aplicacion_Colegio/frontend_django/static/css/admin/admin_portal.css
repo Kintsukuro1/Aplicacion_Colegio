@@ -216,14 +216,32 @@ body.vista-admin-global .adm-global-shell .dashboard-personal-layout {
 }
 
 body.vista-admin-global .adm-global-shell .pers-sidebar {
-    min-height: 100vh;
-    height: auto;
-    max-height: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+}
+
+body.vista-admin-global .adm-global-shell .pers-sidebar__top {
+    flex-shrink: 0;
 }
 
 body.vista-admin-global .adm-global-shell .pers-sidebar__nav {
-    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+body.vista-admin-global .adm-global-shell .pers-sidebar__footer {
+    flex-shrink: 0;
+    background: #ffffff;
 }
 
 .adm-page-content {

@@ -3,10 +3,12 @@
 {% include 'admin/_admin_wrap_start.html' %}
 <div class="adm-portal adm-importar-datos">
     {% include 'admin/_admin_hero.html' with hero_eyebrow="Gestión de datos" hero_title="Importar / exportar datos" hero_subtitle=hero_subtitle_import hero_aria="Importar exportar datos" hero_show_date="0" m1_value=total_estudiantes m1_label="Estudiantes" m1_mod="clases" m2_value=total_profesores m2_label="Profesores" m2_mod="tareas" m3_value=total_apoderados m3_label="Apoderados" m3_mod="asistencia" m4_value="CSV" m4_label="Formato" m4_mod="neutral" %}
+{% elif rol == 'admin_escolar' or rol == 'Administrador escolar' %}
+<div class="adm-importar-datos">
 {% endif %}
 
-<div class="data-management-container{% if adm_portal %} data-management-container--portal{% endif %}">
-    {% if rol != 'admin_general' and rol != 'Administrador general' %}
+<div class="data-management-container{% if adm_portal or rol == 'admin_escolar' or rol == 'Administrador escolar' %} data-management-container--portal{% endif %}">
+    {% if rol != 'admin_general' and rol != 'Administrador general' and rol != 'admin_escolar' and rol != 'Administrador escolar' %}
     <div class="page-header">
         <h1>📥 Gestión de Datos</h1>
         <p>Importa o inserta datos de estudiantes, profesores y apoderados de forma manual o masiva</p>
@@ -239,4 +241,6 @@
 {% if rol == 'admin_general' or rol == 'Administrador general' %}
 </div>
 {% include 'admin/_admin_wrap_end.html' %}
+{% elif rol == 'admin_escolar' or rol == 'Administrador escolar' %}
+</div>
 {% endif %}
