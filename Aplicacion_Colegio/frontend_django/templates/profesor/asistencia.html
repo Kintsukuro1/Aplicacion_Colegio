@@ -2,7 +2,9 @@
 
 {% load custom_filters %}
 
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_start.html' %}
+{% endif %}
 
 
 
@@ -22,7 +24,7 @@
 
 
 
-            {% if rol == 'admin_escolar' %}
+            {% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
 
             <div class="filtro-group">
 
@@ -715,9 +717,10 @@ window.addEventListener('beforeunload', function (e) {
 
 
 
-{% if rol == 'admin_escolar' %}
+{% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
 {% include 'profesor/_filtrar_clases_por_curso_script.html' %}
 {% endif %}
-
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_end.html' %}
+{% endif %}
 

@@ -1,6 +1,8 @@
 {% load static %}
 {% load custom_filters %}
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_start.html' %}
+{% endif %}
 <link rel="stylesheet" href="{% static 'css/profesor/libro_clases.css' %}?v=20260528-demo">
 
 <div class="lc-page">
@@ -18,7 +20,7 @@
         </div>
         <form method="GET" class="lc-toolbar__form">
             <input type="hidden" name="pagina" value="libro_clases">
-            {% if rol == 'admin_escolar' %}
+            {% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
             <div class="lc-field">
                 <label class="lc-field__label" for="filtro_curso_nombre">Curso</label>
                 <select id="filtro_curso_nombre" onchange="filtrarClasesPorCurso(this.value)">
@@ -615,7 +617,9 @@ function exportarExcel() {
 }
 </script>
 
-{% if rol == 'admin_escolar' %}
+{% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
 {% include 'profesor/_filtrar_clases_por_curso_script.html' %}
 {% endif %}
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_end.html' %}
+{% endif %}

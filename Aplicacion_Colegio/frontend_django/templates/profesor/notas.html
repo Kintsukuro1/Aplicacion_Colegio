@@ -1,6 +1,8 @@
 {% load static %}
 {% load custom_filters %}
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_start.html' %}
+{% endif %}
 
 <link rel="stylesheet" href="{% static 'css/profesor/notas.css' %}?v=20260528-premium-demo">
 
@@ -89,7 +91,7 @@
             <input type="hidden" name="pagina" value="notas">
             <input type="hidden" name="modo" value="{{ modo }}">
             
-            {% if rol == 'admin_escolar' %}
+            {% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
             <div class="filtro-group">
                 <label for="filtro_curso_nombre">
                     <i class="fas fa-filter"></i> Curso
@@ -869,7 +871,9 @@ document.addEventListener('keydown', function(e) {
 })();
 </script>
 
-{% if rol == 'admin_escolar' %}
+{% if rol == 'admin_escolar' or rol == 'Administrador escolar' or rol == 'admin_general' or rol == 'Administrador general' %}
 {% include 'profesor/_filtrar_clases_por_curso_script.html' %}
 {% endif %}
+{% if rol == 'profesor' or rol == 'Profesor' %}
 {% include 'profesor/_personal_wrap_end.html' %}
+{% endif %}
